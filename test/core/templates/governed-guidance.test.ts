@@ -115,4 +115,40 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
       expect(governedApply.body).toContain(GOVERNED_MARKER);
     });
   });
+
+  // Unit 4: the modified openspec-conventions authoring rules are taught only
+  // under the governed model, and legacy output never mentions them.
+  describe('governed authoring conventions (openspec-conventions delta)', () => {
+    // Project Structure: namespace directories and safe nested locators live in
+    // the shared primer, so every governed workflow carries them.
+    const STRUCTURE_MARKERS = [
+      'arbitrary safe depth',
+      'is a **namespace** and needs no pair',
+      'plane-qualified locator as the target current pair',
+    ];
+
+    for (const marker of STRUCTURE_MARKERS) {
+      it(`teaches structure convention "${marker}" under governed, absent under legacy`, () => {
+        for (const getter of Object.values(SKILL_GETTERS)) {
+          expect(getter(GOVERNED).instructions).toContain(marker);
+          expect(getter().instructions).not.toContain(marker);
+        }
+      });
+    }
+
+    // Behavior-First boundary, "Tool behavior is itself observable": taught in the
+    // explore classification, so a tool's own behavior lands in the behavioral plane
+    // while the architectural requirement binds to it through enforcement.
+    it('teaches that tool behavior is behavioral truth bound through enforcement (explore)', () => {
+      const governed = getExploreSkillTemplate(GOVERNED).instructions;
+      const command = getOpsxExploreCommandTemplate(GOVERNED).content;
+      for (const surface of [governed, command]) {
+        expect(surface).toContain('that behavior is **behavioral truth**');
+        expect(surface).toContain("do NOT embed the tool's implementation");
+      }
+      expect(getExploreSkillTemplate().instructions).not.toContain(
+        'that behavior is **behavioral truth**'
+      );
+    });
+  });
 });

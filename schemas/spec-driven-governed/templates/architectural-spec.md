@@ -8,6 +8,11 @@ id: architecture.domain
   specs/architecture/<locator>/spec.md and is paired with an enforcement.md in
   the same directory. State only what must be true now - the rationale for the
   transition belongs in design/proposal and the dated archive.
+
+  If a custom test or lint tool has its own durable user-visible behavior, that
+  behavior is behavioral truth: specify it in a behavior/ pair and bind this
+  architectural requirement to the tool through enforcement.md - do not embed the
+  tool's implementation here.
 -->
 
 ## ADDED Requirements

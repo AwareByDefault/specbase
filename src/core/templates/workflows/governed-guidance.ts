@@ -64,7 +64,16 @@ never hardcode them. Durable truth lives in two planes:
 Every governed \`spec.md\` is PAIRED with an \`enforcement.md\`. Stable identity is
 scoped narrowly: the frontmatter \`id\` (e.g. \`architecture.domain\`) is the only
 project-unique governed ID; requirement, scenario, and binding \`**ID:**\` slugs
-are unique only within their pair, and stay fixed when titles or locators move.`;
+are unique only within their pair, and stay fixed when titles or locators move.
+
+**Structure conventions (governed):**
+- Locators may nest to arbitrary safe depth (e.g. \`architecture/platforms/desktop\`);
+  JSON reports normalized slash-separated locators, filesystem access is native.
+- A directory that only GROUPS child pairs is a **namespace** and needs no pair of
+  its own. Only a directory that contains \`spec.md\` must also contain
+  \`enforcement.md\`; ancestry provides navigation, never inherited requirements.
+- A change stores its \`spec.md\` and \`enforcement.md\` deltas under the SAME
+  plane-qualified locator as the target current pair, so both members move together.`;
 
 /** explore (task 6.1 / Requirement: Explore classifies durable insights). */
 export const GOVERNED_EXPLORE_GUIDANCE = `${GOVERNED_PRIMER}
@@ -89,7 +98,12 @@ belongs to - they are not interchangeable:
   particular change, its durable home is **design or proposal** (transitional
   rationale), NOT current architectural truth.
 - Never fold "why we changed it" into an architectural spec: the spec states only
-  what must be true now.`;
+  what must be true now.
+- When a custom test or lint **tool** itself exposes durable user-visible behavior
+  (its own outputs, flags, or errors), that behavior is **behavioral truth** -
+  specify it in a behavioral spec pair. Bind the architectural requirement to that
+  tool through an **enforcement binding**; do NOT embed the tool's implementation
+  inside the architectural spec.`;
 
 /**
  * new / propose / ff / continue (task 6.2 / Requirement: Proposal and artifact
