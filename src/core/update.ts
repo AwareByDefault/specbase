@@ -23,6 +23,7 @@ import {
   getCommandContents,
   generateSkillContent,
   getToolsWithSkillsDir,
+  resolveProjectSpecModel,
   type ToolVersionStatus,
 } from './shared/index.js';
 import {
@@ -169,8 +170,9 @@ export class UpdateCommand {
     console.log();
 
     // 9. Determine what to generate based on delivery
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows) : [];
-    const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows) : [];
+    const specModel = resolveProjectSpecModel(resolvedProjectPath);
+    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows, specModel) : [];
+    const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows, specModel) : [];
 
     // 10. Update tools (all if force, otherwise only those needing update)
     const toolsToUpdate = this.force ? configuredTools : [...toolsToUpdateSet];
@@ -672,8 +674,9 @@ export class UpdateCommand {
     const newlyConfigured: string[] = [];
     const shouldGenerateSkills = delivery !== 'commands';
     const shouldGenerateCommands = delivery !== 'skills';
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows) : [];
-    const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows) : [];
+    const specModel = resolveProjectSpecModel(projectPath);
+    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(desiredWorkflows, specModel) : [];
+    const commandContents = shouldGenerateCommands ? getCommandContents(desiredWorkflows, specModel) : [];
 
     for (const toolId of selectedTools) {
       const tool = AI_TOOLS.find((t) => t.value === toolId);

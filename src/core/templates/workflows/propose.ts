@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_AUTHORING_GUIDANCE } from './governed-guidance.js';
 
-export function getOpsxProposeSkillTemplate(): SkillTemplate {
+export function getOpsxProposeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-propose',
     description: 'Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.',
-    instructions: `Propose a new change - create the change and generate all artifacts in one step.
+    instructions: withGovernedGuidance(`Propose a new change - create the change and generate all artifacts in one step.
 
 I'll create a change with artifacts:
 - proposal.md (what & why)
@@ -112,20 +114,20 @@ After completing all artifacts, summarize:
 - Always read dependency artifacts before creating a new one
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, ask if user wants to continue it or create a new one
-- Verify each artifact file exists after writing before proceeding to next`,
+- Verify each artifact file exists after writing before proceeding to next`, specModel, GOVERNED_AUTHORING_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxProposeCommandTemplate(): CommandTemplate {
+export function getOpsxProposeCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Propose',
     description: 'Propose a new change - create it and generate all artifacts in one step',
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
-    content: `Propose a new change - create the change and generate all artifacts in one step.
+    content: withGovernedGuidance(`Propose a new change - create the change and generate all artifacts in one step.
 
 I'll create a change with artifacts:
 - proposal.md (what & why)
@@ -226,6 +228,6 @@ After completing all artifacts, summarize:
 - Always read dependency artifacts before creating a new one
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, ask if user wants to continue it or create a new one
-- Verify each artifact file exists after writing before proceeding to next`
+- Verify each artifact file exists after writing before proceeding to next`, specModel, GOVERNED_AUTHORING_GUIDANCE),
   };
 }

@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_AUTHORING_GUIDANCE } from './governed-guidance.js';
 
-export function getNewChangeSkillTemplate(): SkillTemplate {
+export function getNewChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-new-change',
     description: 'Start a new OpenSpec change using the experimental artifact workflow. Use when the user wants to create a new feature, fix, or modification with a structured step-by-step approach.',
-    instructions: `Start a new change using the experimental artifact-driven approach.
+    instructions: withGovernedGuidance(`Start a new change using the experimental artifact-driven approach.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -75,20 +77,20 @@ After completing the steps, summarize:
 - Do NOT advance beyond showing the first artifact template
 - If the name is invalid (not kebab-case), ask for a valid name
 - If a change with that name already exists, suggest continuing that change instead
-- Pass --schema if using a non-default workflow`,
+- Pass --schema if using a non-default workflow`, specModel, GOVERNED_AUTHORING_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxNewCommandTemplate(): CommandTemplate {
+export function getOpsxNewCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: New',
     description: 'Start a new change using the experimental artifact workflow (OPSX)',
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
-    content: `Start a new change using the experimental artifact-driven approach.
+    content: withGovernedGuidance(`Start a new change using the experimental artifact-driven approach.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -151,6 +153,6 @@ After completing the steps, summarize:
 - Do NOT advance beyond showing the first artifact template
 - If the name is invalid (not kebab-case), ask for a valid name
 - If a change with that name already exists, suggest using \`/opsx:continue\` instead
-- Pass --schema if using a non-default workflow`
+- Pass --schema if using a non-default workflow`, specModel, GOVERNED_AUTHORING_GUIDANCE),
   };
 }

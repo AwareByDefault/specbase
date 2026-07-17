@@ -1,0 +1,156 @@
+/**
+ * Governed-model workflow guidance (design decision 10).
+ *
+ * The canonical OPSX workflow templates are generated once into project-agnostic
+ * skill/command files. To keep the legacy flat workflow byte-for-byte unchanged
+ * while teaching governed projects the two-plane + paired-enforcement model, each
+ * affected getter takes an OPTIONAL resolved spec model:
+ *
+ *   - omitted / legacy  -> the getter returns its existing payload verbatim, so
+ *     every hash-locked parity snapshot and the default init flow are untouched.
+ *   - governed          -> the governed section below is appended.
+ *
+ * The governed guidance itself never hardcodes plane paths or lifecycle rules as
+ * ground truth for a specific project: it instructs the agent to CONFIRM the
+ * governed model and read concrete artifact paths from `openspec status` /
+ * `openspec instructions` output, satisfying "derive from CLI output rather than
+ * hardcoding a flat capability layout".
+ */
+import type { SpecModel } from '../../artifact-graph/types.js';
+
+/** True only when a governed spec model is resolved. Core dispatches on the
+ * declared model, never on a schema name. */
+export function isGovernedModel(specModel?: SpecModel): boolean {
+  return specModel?.kind === 'governed';
+}
+
+/**
+ * Append governed guidance to a base template body when (and only when) the
+ * resolved model is governed. Returns the base unchanged otherwise, which keeps
+ * legacy output identical down to the byte.
+ */
+export function withGovernedGuidance(
+  base: string,
+  specModel: SpecModel | undefined,
+  guidance: string
+): string {
+  if (!isGovernedModel(specModel)) return base;
+  return `${base}\n\n${guidance}`;
+}
+
+/**
+ * Shared primer: how to recognize the governed model at runtime and where its
+ * durable truth lives. Reused verbatim by every affected workflow so skill and
+ * command projections carry identical governed semantics (parity requirement).
+ */
+const GOVERNED_PRIMER = `## Governed spec model
+
+This project may use the governed spec model (two permanent truth planes with
+paired enforcement). Do NOT assume the flat \`specs/<capability>/spec.md\` layout.
+
+**Confirm the model from the CLI, do not guess:**
+- Run \`openspec status --change "<name>" --json\` and read \`specModel\`.
+- The governed model reports \`specModel.kind == "governed"\` with
+  \`planes: [behavior, architecture]\` and \`pairedEnforcement: true\`.
+- If \`specModel.kind\` is \`legacy\` (or absent), follow the flat-spec guidance
+  above unchanged.
+
+**Under the governed model, derive concrete paths from CLI output** (\`status\`
+\`artifactPaths\` and \`openspec instructions <artifact> --change ... --json\`),
+never hardcode them. Durable truth lives in two planes:
+- Behavioral truth: \`specs/behavior/<locator>/{spec.md,enforcement.md}\`
+- Architectural truth: \`specs/architecture/<locator>/{spec.md,enforcement.md}\`
+
+Every governed \`spec.md\` is PAIRED with an \`enforcement.md\`. Stable identity is
+scoped narrowly: the frontmatter \`id\` (e.g. \`architecture.domain\`) is the only
+project-unique governed ID; requirement, scenario, and binding \`**ID:**\` slugs
+are unique only within their pair, and stay fixed when titles or locators move.`;
+
+/** explore (task 6.1 / Requirement: Explore classifies durable insights). */
+export const GOVERNED_EXPLORE_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Classifying durable insights (governed)
+
+Before offering to capture anything, decide which of five homes an insight
+belongs to - they are not interchangeable:
+
+| Insight | Home |
+|---|---|
+| User/client-visible capability that must stay true | Behavioral spec pair (\`specs/behavior/...\`) |
+| Package responsibility or dependency invariant that must stay true | Architectural spec pair (\`specs/architecture/...\`) |
+| How a claim is proven (test/lint/review mechanism) | Paired \`enforcement.md\` binding |
+| Why THIS change is being made a certain way | \`design.md\` / \`proposal.md\` (change design) |
+| Historical rationale for a past transition | The dated change archive |
+
+- When exploration establishes a package responsibility or dependency invariant
+  that must remain true, name it as a possible **architectural requirement** and
+  consider how it could be **enforced** (which mechanism would protect it).
+- When exploration only explains why one implementation approach was chosen for a
+  particular change, its durable home is **design or proposal** (transitional
+  rationale), NOT current architectural truth.
+- Never fold "why we changed it" into an architectural spec: the spec states only
+  what must be true now.`;
+
+/**
+ * new / propose / ff / continue (task 6.2 / Requirement: Proposal and artifact
+ * creation classify governed changes).
+ */
+export const GOVERNED_AUTHORING_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Classifying planes and creating pairs (governed)
+
+- **Classify every proposed spec by plane** (behavioral vs architectural truth).
+  A single initiative may change user-visible behavior AND package boundaries; if
+  so, author **separate deltas for each plane**, each with its own stable spec ID.
+- **Create specifications THEN enforcement**, following the schema's artifact
+  order (\`specs\` before \`enforcement\`). Get each artifact's guidance and output
+  path from \`openspec instructions <artifact> --change "<name>" --json\` and write
+  to the CLI-reported paths.
+- **Assign stable identity when authoring:** a project-unique spec \`id\` in the
+  \`spec.md\` frontmatter, and pair-local \`**ID:**\` slugs for each requirement,
+  scenario, and enforcement binding.
+- **Pair every governed spec with enforcement:** each SHALL/MUST requirement needs
+  at least one binding in the paired \`enforcement.md\`; a binding may be
+  \`planned\` while planning but must become \`active\` before verify/archive. A
+  \`covers\` list references only IDs from its own pair.`;
+
+/** update (task 6.3 / Requirement: Change updates preserve pair coherence). */
+export const GOVERNED_UPDATE_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Keeping pairs coherent on update (governed)
+
+Review each governed \`spec.md\` together with its paired \`enforcement.md\` - never
+update one member of a pair in isolation. When you add, modify, remove, or move a
+normative claim, check the paired bindings for the result:
+
+- **Removed requirement/scenario** whose stable ID a binding still \`covers\` ->
+  update or remove that now-**stale** binding, and report its no-longer-referenced
+  \`targets\` as **cleanup candidates** (do not delete them here - apply decides
+  safely).
+- **Added SHALL/MUST claim** with no covering binding -> a **hanging claim**; add a
+  binding.
+- **Moved spec** (new locator, same meaning) -> keep the stable spec \`id\`
+  unchanged; only the mutable locator/title changes.
+- Preserve all scoped IDs (spec, requirement, scenario, binding) across the edit
+  so drift detection stays meaningful.`;
+
+/** apply (task 6.3 / Requirement: Apply resolves enforcement bindings). */
+export const GOVERNED_APPLY_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Implementing truth and evidence (governed)
+
+Apply implements BOTH the product/architecture change and its declared evidence:
+
+- **Resolve planned bindings.** As each binding's target and command land, move it
+  from \`status: planned\` to \`status: active\`. If implementation finishes but a
+  mandatory binding is still \`planned\` (or stale, hanging, broken, or missing its
+  target), report the unresolved evidence and do **not** mark that spec's related
+  work complete.
+- **New enforcement mechanism.** If an architectural requirement needs a new lint
+  rule or conformance check, implement the rule AND its checks, and make the
+  binding name concrete \`targets\` and a runnable command. Any user-visible
+  behavior of that tooling is itself behavioral truth - capture it in the
+  appropriate behavioral spec pair.
+- **Assess retired-target cleanup safely.** When reconciliation reports a retired
+  test, rule, fixture, or review target, check surviving bindings and project usage
+  before removing it. Never auto-delete a shared or intentionally retained target.`;

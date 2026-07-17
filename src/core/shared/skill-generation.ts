@@ -32,7 +32,30 @@ import {
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
+import type { SpecModel } from '../artifact-graph/types.js';
+import { LEGACY_SPEC_MODEL, resolveSpecModel } from '../artifact-graph/types.js';
+import { resolveSchema } from '../artifact-graph/resolver.js';
+import { readProjectConfig } from '../project-config.js';
 import { OPENSPEC_CLI_ALLOWED_TOOLS } from './allowed-tools.js';
+
+/** The project default schema when config declares none. */
+const DEFAULT_SCHEMA_NAME = 'spec-driven';
+
+/**
+ * Resolve the spec model a project's DEFAULT schema selects, so skill/command
+ * generation can gate governed guidance on the declared model rather than a
+ * schema name. Any failure (missing config, unknown/invalid schema) falls back
+ * to the legacy model, keeping generation resilient and legacy output unchanged.
+ */
+export function resolveProjectSpecModel(projectRoot: string): SpecModel {
+  try {
+    const config = readProjectConfig(projectRoot);
+    const schemaName = config?.schema ?? DEFAULT_SCHEMA_NAME;
+    return resolveSpecModel(resolveSchema(schemaName, projectRoot));
+  } catch {
+    return LEGACY_SPEC_MODEL;
+  }
+}
 
 /**
  * Skill template with directory name and workflow ID mapping.
@@ -56,20 +79,23 @@ export interface CommandTemplateEntry {
  *
  * @param workflowFilter - If provided, only return templates whose workflowId is in this array
  */
-export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemplateEntry[] {
+export function getSkillTemplates(
+  workflowFilter?: readonly string[],
+  specModel?: SpecModel
+): SkillTemplateEntry[] {
   const all: SkillTemplateEntry[] = [
-    { template: getExploreSkillTemplate(), dirName: 'openspec-explore', workflowId: 'explore' },
-    { template: getNewChangeSkillTemplate(), dirName: 'openspec-new-change', workflowId: 'new' },
-    { template: getContinueChangeSkillTemplate(), dirName: 'openspec-continue-change', workflowId: 'continue' },
-    { template: getApplyChangeSkillTemplate(), dirName: 'openspec-apply-change', workflowId: 'apply' },
-    { template: getUpdateChangeSkillTemplate(), dirName: 'openspec-update-change', workflowId: 'update' },
-    { template: getFfChangeSkillTemplate(), dirName: 'openspec-ff-change', workflowId: 'ff' },
+    { template: getExploreSkillTemplate(specModel), dirName: 'openspec-explore', workflowId: 'explore' },
+    { template: getNewChangeSkillTemplate(specModel), dirName: 'openspec-new-change', workflowId: 'new' },
+    { template: getContinueChangeSkillTemplate(specModel), dirName: 'openspec-continue-change', workflowId: 'continue' },
+    { template: getApplyChangeSkillTemplate(specModel), dirName: 'openspec-apply-change', workflowId: 'apply' },
+    { template: getUpdateChangeSkillTemplate(specModel), dirName: 'openspec-update-change', workflowId: 'update' },
+    { template: getFfChangeSkillTemplate(specModel), dirName: 'openspec-ff-change', workflowId: 'ff' },
     { template: getSyncSpecsSkillTemplate(), dirName: 'openspec-sync-specs', workflowId: 'sync' },
     { template: getArchiveChangeSkillTemplate(), dirName: 'openspec-archive-change', workflowId: 'archive' },
     { template: getBulkArchiveChangeSkillTemplate(), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
     { template: getVerifyChangeSkillTemplate(), dirName: 'openspec-verify-change', workflowId: 'verify' },
     { template: getOnboardSkillTemplate(), dirName: 'openspec-onboard', workflowId: 'onboard' },
-    { template: getOpsxProposeSkillTemplate(), dirName: 'openspec-propose', workflowId: 'propose' },
+    { template: getOpsxProposeSkillTemplate(specModel), dirName: 'openspec-propose', workflowId: 'propose' },
   ];
 
   if (!workflowFilter) return all;
@@ -83,20 +109,23 @@ export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemp
  *
  * @param workflowFilter - If provided, only return templates whose id is in this array
  */
-export function getCommandTemplates(workflowFilter?: readonly string[]): CommandTemplateEntry[] {
+export function getCommandTemplates(
+  workflowFilter?: readonly string[],
+  specModel?: SpecModel
+): CommandTemplateEntry[] {
   const all: CommandTemplateEntry[] = [
-    { template: getOpsxExploreCommandTemplate(), id: 'explore' },
-    { template: getOpsxNewCommandTemplate(), id: 'new' },
-    { template: getOpsxContinueCommandTemplate(), id: 'continue' },
-    { template: getOpsxApplyCommandTemplate(), id: 'apply' },
-    { template: getOpsxUpdateCommandTemplate(), id: 'update' },
-    { template: getOpsxFfCommandTemplate(), id: 'ff' },
+    { template: getOpsxExploreCommandTemplate(specModel), id: 'explore' },
+    { template: getOpsxNewCommandTemplate(specModel), id: 'new' },
+    { template: getOpsxContinueCommandTemplate(specModel), id: 'continue' },
+    { template: getOpsxApplyCommandTemplate(specModel), id: 'apply' },
+    { template: getOpsxUpdateCommandTemplate(specModel), id: 'update' },
+    { template: getOpsxFfCommandTemplate(specModel), id: 'ff' },
     { template: getOpsxSyncCommandTemplate(), id: 'sync' },
     { template: getOpsxArchiveCommandTemplate(), id: 'archive' },
     { template: getOpsxBulkArchiveCommandTemplate(), id: 'bulk-archive' },
     { template: getOpsxVerifyCommandTemplate(), id: 'verify' },
     { template: getOpsxOnboardCommandTemplate(), id: 'onboard' },
-    { template: getOpsxProposeCommandTemplate(), id: 'propose' },
+    { template: getOpsxProposeCommandTemplate(specModel), id: 'propose' },
   ];
 
   if (!workflowFilter) return all;
@@ -110,8 +139,11 @@ export function getCommandTemplates(workflowFilter?: readonly string[]): Command
  *
  * @param workflowFilter - If provided, only return contents whose id is in this array
  */
-export function getCommandContents(workflowFilter?: readonly string[]): CommandContent[] {
-  const commandTemplates = getCommandTemplates(workflowFilter);
+export function getCommandContents(
+  workflowFilter?: readonly string[],
+  specModel?: SpecModel
+): CommandContent[] {
+  const commandTemplates = getCommandTemplates(workflowFilter, specModel);
   return commandTemplates.map(({ template, id }) => ({
     id,
     name: template.name,

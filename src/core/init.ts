@@ -41,6 +41,7 @@ import {
   getSkillTemplates,
   getCommandContents,
   generateSkillContent,
+  resolveProjectSpecModel,
   type ToolSkillStatus,
 } from './shared/index.js';
 import { getGlobalConfig, type Delivery, type Profile } from './global-config.js';
@@ -548,8 +549,11 @@ export class InitCommand {
     // Get skill and command templates filtered by profile workflows
     const shouldGenerateSkills = delivery !== 'commands';
     const shouldGenerateCommands = delivery !== 'skills';
-    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(workflows) : [];
-    const commandContents = shouldGenerateCommands ? getCommandContents(workflows) : [];
+    // Gate governed workflow guidance on the project's declared spec model
+    // (legacy fallback keeps default/legacy output byte-identical).
+    const specModel = resolveProjectSpecModel(projectPath);
+    const skillTemplates = shouldGenerateSkills ? getSkillTemplates(workflows, specModel) : [];
+    const commandContents = shouldGenerateCommands ? getCommandContents(workflows, specModel) : [];
 
     // Process each tool
     for (const tool of tools) {

@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_AUTHORING_GUIDANCE } from './governed-guidance.js';
 
-export function getContinueChangeSkillTemplate(): SkillTemplate {
+export function getContinueChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-continue-change',
     description: 'Continue working on an OpenSpec change by creating the next artifact. Use when the user wants to progress their change, create the next artifact, or continue their workflow.',
-    instructions: `Continue working on a change by creating the next artifact.
+    instructions: withGovernedGuidance(`Continue working on a change by creating the next artifact.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -120,20 +122,20 @@ For other schemas, follow the \`instruction\` field from the CLI output.
 - Use the schema's artifact sequence, don't assume specific artifact names
 - **IMPORTANT**: \`context\` and \`rules\` are constraints for YOU, not content for the file
   - Do NOT copy \`<context>\`, \`<rules>\`, \`<project_context>\` blocks into the artifact
-  - These guide what you write, but should never appear in the output`,
+  - These guide what you write, but should never appear in the output`, specModel, GOVERNED_AUTHORING_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxContinueCommandTemplate(): CommandTemplate {
+export function getOpsxContinueCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Continue',
     description: 'Continue working on a change - create the next artifact (Experimental)',
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
-    content: `Continue working on a change by creating the next artifact.
+    content: withGovernedGuidance(`Continue working on a change by creating the next artifact.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -242,6 +244,6 @@ For other schemas, follow the \`instruction\` field from the CLI output.
 - Use the schema's artifact sequence, don't assume specific artifact names
 - **IMPORTANT**: \`context\` and \`rules\` are constraints for YOU, not content for the file
   - Do NOT copy \`<context>\`, \`<rules>\`, \`<project_context>\` blocks into the artifact
-  - These guide what you write, but should never appear in the output`
+  - These guide what you write, but should never appear in the output`, specModel, GOVERNED_AUTHORING_GUIDANCE),
   };
 }
