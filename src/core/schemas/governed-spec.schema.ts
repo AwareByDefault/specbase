@@ -84,22 +84,33 @@ export const BindingStatusSchema = z.enum(['planned', 'active']);
 export const BindingRunSchema = z.object({
   command: z.string().min(1),
   args: z.array(z.string()).default([]),
-  cwd: z.string().default('.'),
+  cwd: z.string().min(1).default('.'),
 });
 
-/** One enforcement binding. Loosely modeled here; later units tighten it. */
+/** Review procedure and required inputs for review-strength bindings. */
+export const BindingReviewSchema = z.object({
+  procedure: z.string().min(1),
+  inputs: z.array(z.string()).default([]),
+});
+
+/**
+ * One enforcement binding (design decision 4). Field *types* are validated
+ * here; cross-field completeness (e.g. an automated binding needing a `run`, an
+ * active binding needing existing targets) is a coverage/readiness concern the
+ * drift engine reports, so authoring may leave a `planned` binding incomplete.
+ */
 export const BindingSchema = z.object({
   id: LocalSlugSchema,
   covers: z.array(LocalSlugSchema).default([]),
   mechanism: BindingMechanismSchema,
   strength: BindingStrengthSchema,
   status: BindingStatusSchema,
-  targets: z.array(z.string()).default([]),
+  targets: z.array(z.string().min(1)).default([]),
   run: BindingRunSchema.optional(),
-  review: z.unknown().optional(),
-  procedure: z.string().optional(),
-  rationale: z.string().optional(),
-  limitations: z.string().optional(),
+  review: BindingReviewSchema.optional(),
+  procedure: z.string().min(1).optional(),
+  rationale: z.string().min(1).optional(),
+  limitations: z.string().min(1).optional(),
 });
 
 /** The authoritative fenced YAML document inside an `enforcement.md`. */
@@ -141,6 +152,8 @@ export type GovernedSpecRecord = z.infer<typeof GovernedSpecRecordSchema>;
 export type BindingMechanism = z.infer<typeof BindingMechanismSchema>;
 export type BindingStrength = z.infer<typeof BindingStrengthSchema>;
 export type BindingStatus = z.infer<typeof BindingStatusSchema>;
+export type BindingRun = z.infer<typeof BindingRunSchema>;
+export type BindingReview = z.infer<typeof BindingReviewSchema>;
 export type Binding = z.infer<typeof BindingSchema>;
 export type EnforcementDocument = z.infer<typeof EnforcementDocumentSchema>;
 export type PairCompleteness = z.infer<typeof PairCompletenessSchema>;

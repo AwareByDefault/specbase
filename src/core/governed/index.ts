@@ -52,3 +52,48 @@ export {
   resolvePair,
   type GovernedRepository,
 } from './repository.js';
+
+export {
+  parseEnforcement,
+  type ParsedEnforcement,
+  type EnforcementIssue,
+  type EnforcementIssueCode,
+} from './enforcement-parser.js';
+
+export {
+  computeCoverage,
+  type CoverageInput,
+  type CoverageReport,
+  type CoverageState,
+  type NormativeCoverage,
+  type BindingDrift,
+  type BindingDriftState,
+} from './coverage.js';
+
+export {
+  validateTargets,
+  looksLikePath,
+  type TargetField,
+  type TargetProblem,
+  type TargetProblemKind,
+  type TargetValidationResult,
+  type TargetValidationOptions,
+} from './target-validation.js';
+
+export {
+  compareRetiredTargets,
+  analyzePairDrift,
+  type RetiredTargetCandidate,
+  type ReadinessBlocker,
+  type PairAnalysis,
+  type PairAnalysisInput,
+} from './drift.js';
+
+export {
+  collectDiagnostics,
+  renderDiagnostics,
+  type Diagnostic,
+  type DiagnosticCode,
+  type DiagnosticSeverity,
+  type DiagnosticsOptions,
+} from './diagnostics.js';
