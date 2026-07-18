@@ -148,6 +148,45 @@ normative claim, check the paired bindings for the result:
 - Preserve all scoped IDs (spec, requirement, scenario, binding) across the edit
   so drift detection stays meaningful.`;
 
+/** sync (task 6.5 / Requirements: Specs Sync Skill, Delta Reconciliation Logic). */
+export const GOVERNED_SYNC_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Reconciling governed pairs (governed)
+
+Governed sync reconciles complete \`spec.md\`/\`enforcement.md\` PAIRS together by
+stable scoped identity, never by title. Legacy header-identity merging above does
+NOT apply to governed pairs.
+
+- **Discover every concrete delta from status, not the filesystem shape.** Run
+  \`openspec status --change "<name>" --json\` and read every nested specification
+  AND enforcement delta path it reports; do not assume the flat
+  \`specs/<capability>/spec.md\` layout.
+- **Resolve current pairs by stable identity.** For each delta, resolve the
+  corresponding current pair by its stable spec \`id\` and locator, then reconcile
+  the whole pair - \`spec.md\` and \`enforcement.md\` - together in one step.
+- **Reconcile normative content by pair-local ID.** Apply added, modified, removed,
+  or renamed requirements and scenarios by their pair-local \`**ID:**\` slug, and
+  preserve unaffected normative content. Titles and locators are mutable; the
+  scoped IDs are not.
+- **Reconcile bindings by pair-local ID.** Apply binding add/modify/remove/rename
+  by pair-local binding ID, and validate each binding's \`covers\` IDs against the
+  prepared paired spec.
+- **A moved spec keeps its identity.** When a delta retains an existing stable spec
+  \`id\` at a new locator, update the moved pair in place without changing its ID.
+- **Preserve pair coherence.** Never promote a spec-only or enforcement-only half:
+  a governed \`spec.md\` and its \`enforcement.md\` are synced together or not at all.
+- **Report retired targets as cleanup candidates.** When reconciliation removes a
+  binding or a normative ID it covered, report the binding's former \`targets\` as
+  **cleanup candidates**, and indicate whether any surviving binding still shares
+  those targets. Never auto-delete a test, rule, fixture, or review target here.
+- **Block on invalid pairs, do not half-write.** If a prepared pair has duplicate
+  scoped identity, stale coverage, a hanging mandatory claim, an unresolved binding
+  status, a missing target, or a missing pair member, leave that current pair
+  unchanged and report the actionable conflicts.
+- **Stay idempotent.** Use the governed sync CLI behavior; running again on an
+  already-synchronized change leaves the specification and enforcement files
+  unchanged and duplicates no requirement, scenario, or binding.`;
+
 /** apply (task 6.3 / Requirement: Apply resolves enforcement bindings). */
 export const GOVERNED_APPLY_GUIDANCE = `${GOVERNED_PRIMER}
 

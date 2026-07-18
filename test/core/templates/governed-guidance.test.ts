@@ -7,6 +7,7 @@ import {
   getApplyChangeSkillTemplate,
   getUpdateChangeSkillTemplate,
   getFfChangeSkillTemplate,
+  getSyncSpecsSkillTemplate,
   getOpsxProposeSkillTemplate,
   getOpsxExploreCommandTemplate,
   getOpsxNewCommandTemplate,
@@ -14,6 +15,7 @@ import {
   getOpsxApplyCommandTemplate,
   getOpsxUpdateCommandTemplate,
   getOpsxFfCommandTemplate,
+  getOpsxSyncCommandTemplate,
   getOpsxProposeCommandTemplate,
 } from '../../../src/core/templates/skill-templates.js';
 import { getSkillTemplates, getCommandContents } from '../../../src/core/shared/skill-generation.js';
@@ -34,6 +36,7 @@ const SKILL_GETTERS = {
   apply: getApplyChangeSkillTemplate,
   update: getUpdateChangeSkillTemplate,
   ff: getFfChangeSkillTemplate,
+  sync: getSyncSpecsSkillTemplate,
   propose: getOpsxProposeSkillTemplate,
 } as const;
 
@@ -44,6 +47,7 @@ const COMMAND_GETTERS = {
   apply: getOpsxApplyCommandTemplate,
   update: getOpsxUpdateCommandTemplate,
   ff: getOpsxFfCommandTemplate,
+  sync: getOpsxSyncCommandTemplate,
   propose: getOpsxProposeCommandTemplate,
 } as const;
 
@@ -149,6 +153,45 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
       expect(getExploreSkillTemplate().instructions).not.toContain(
         'that behavior is **behavioral truth**'
       );
+    });
+  });
+
+  // Unit 6.5 (sync): governed sync reconciles complete pairs by stable scoped
+  // identity and reports retired enforcement targets as cleanup candidates. None
+  // of this appears in the legacy sync guidance.
+  describe('governed sync guidance (specs-sync-skill)', () => {
+    const SYNC_MARKERS = [
+      'Reconciling governed pairs (governed)',
+      'the whole pair - `spec.md` and `enforcement.md` - together in one step',
+      'by their pair-local `**ID:**` slug',
+      'Apply binding add/modify/remove/rename\n  by pair-local binding ID',
+      'update the moved pair in place without changing its ID',
+      'Never promote a spec-only or enforcement-only half',
+      'report the binding\'s former `targets` as\n  **cleanup candidates**',
+      'Never auto-delete a test, rule, fixture, or review target here',
+      'leave that current pair\n  unchanged and report the actionable conflicts',
+      'Use the governed sync CLI behavior',
+    ];
+
+    for (const marker of SYNC_MARKERS) {
+      it(`teaches sync guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
+        const skill = getSyncSpecsSkillTemplate(GOVERNED).instructions;
+        const command = getOpsxSyncCommandTemplate(GOVERNED).content;
+        expect(skill).toContain(marker);
+        expect(command).toContain(marker);
+        expect(getSyncSpecsSkillTemplate().instructions).not.toContain(marker);
+        expect(getOpsxSyncCommandTemplate().content).not.toContain(marker);
+      });
+    }
+
+    it('does not apply legacy header-identity merging to governed pairs', () => {
+      for (const surface of [
+        getSyncSpecsSkillTemplate(GOVERNED).instructions,
+        getOpsxSyncCommandTemplate(GOVERNED).content,
+      ]) {
+        expect(surface).toContain('stable scoped identity, never by title');
+        expect(surface).toContain('Discover every concrete delta from status');
+      }
     });
   });
 });
