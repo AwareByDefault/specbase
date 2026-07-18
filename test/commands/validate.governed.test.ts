@@ -60,6 +60,29 @@ async function writePair(
   }
 }
 
+/** A valid change with a single ADDED-requirement delta under specs/<cap>/. */
+async function writeChange(name: string, cap = 'auth'): Promise<void> {
+  const changeDir = path.join(tempDir, 'openspec', 'changes', name);
+  await fs.mkdir(changeDir, { recursive: true });
+  await fs.writeFile(
+    path.join(changeDir, 'proposal.md'),
+    '# Change\n\n## Why\nBecause reasons that are sufficiently long for validation.\n\n## What Changes\n- **auth:** Add something\n'
+  );
+  const delta = [
+    '## ADDED Requirements',
+    '### Requirement: Validator SHALL support the change delta',
+    'The validator SHALL accept deltas provided by the test harness.',
+    '',
+    '#### Scenario: Apply delta',
+    '- **GIVEN** the test change delta',
+    '- **WHEN** openspec validate runs',
+    '- **THEN** the validator reports the change as valid',
+  ].join('\n');
+  const deltaDir = path.join(changeDir, 'specs', cap);
+  await fs.mkdir(deltaDir, { recursive: true });
+  await fs.writeFile(path.join(deltaDir, 'spec.md'), delta);
+}
+
 async function writeConfig(schema: string): Promise<void> {
   const openspec = path.join(tempDir, 'openspec');
   await fs.mkdir(openspec, { recursive: true });
@@ -331,6 +354,64 @@ describe('governed validate — targeting', () => {
 
     expect(errOutput.join('\n')).toContain("Spec 'behavior/does-not-exist' not found");
     expect(process.exitCode).toBe(1);
+  });
+});
+
+describe('governed validate — change targets route to the change validator (#2)', () => {
+  it('validates a positional change target as a change, not "spec not found"', async () => {
+    await writeConfig(GOVERNED_SCHEMA);
+    await writeChange('add-auth');
+
+    await runValidate('add-auth');
+
+    expect(errOutput.join('\n')).not.toContain("not found");
+    expect(logOutput.join('\n')).toContain("Change 'add-auth' is valid");
+    expect(process.exitCode ?? 0).toBe(0);
+  });
+
+  it('routes an explicit --type change to the change validator', async () => {
+    await writeConfig(GOVERNED_SCHEMA);
+    await writeChange('add-auth');
+
+    await runValidate('add-auth', { type: 'change' });
+
+    expect(errOutput.join('\n')).not.toContain("not found");
+    expect(logOutput.join('\n')).toContain("Change 'add-auth' is valid");
+    expect(process.exitCode ?? 0).toBe(0);
+  });
+
+  it('reports change delta issues instead of a missing-governed-spec error', async () => {
+    await writeConfig(GOVERNED_SCHEMA);
+    // A change directory with no deltas is a change-validation failure, not a
+    // "spec not found" dead-end.
+    const emptyChange = path.join(tempDir, 'openspec', 'changes', 'empty-change');
+    await fs.mkdir(emptyChange, { recursive: true });
+    await fs.writeFile(
+      path.join(emptyChange, 'proposal.md'),
+      '# Change\n\n## Why\nReasons long enough for validation to accept.\n\n## What Changes\n- **x:** y\n'
+    );
+
+    await runValidate('empty-change');
+
+    expect(errOutput.join('\n')).not.toContain("not found");
+    expect(errOutput.join('\n')).toContain("Change 'empty-change' has issues");
+    expect(process.exitCode).toBe(1);
+  });
+
+  it('still validates a governed spec target as a governed pair', async () => {
+    await writeConfig(GOVERNED_SCHEMA);
+    await writePair('architecture/domain', {
+      spec: specDoc('architecture.domain'),
+      enforcement: coveredEnforcement('architecture.domain', 'src/domain.test.ts'),
+      target: 'src/domain.test.ts',
+    });
+
+    await runValidate('architecture/domain', { json: true });
+
+    const parsed = JSON.parse(logOutput.join('\n'));
+    expect(parsed.specs).toHaveLength(1);
+    expect(parsed.specs[0].locator).toBe('architecture/domain');
+    expect(parsed.valid).toBe(true);
   });
 });
 

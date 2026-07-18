@@ -822,6 +822,51 @@ artifacts:
       }, 60000);
     });
 
+    describe('governed schema detection (#3, #4)', () => {
+      async function writeGovernedConfig(): Promise<void> {
+        await fs.writeFile(
+          path.join(tempDir, 'openspec', 'config.yaml'),
+          'schema: spec-driven-governed\n'
+        );
+      }
+
+      it('new change progress reports the resolved governed schema, not the flag default (#4)', async () => {
+        await writeGovernedConfig();
+
+        const result = await runCLI(['new', 'change', 'gov-change'], {
+          cwd: tempDir,
+          timeoutMs: 30000,
+        });
+        expect(result.exitCode).toBe(0);
+        // The transient progress line (stderr) must report the ACTUALLY-resolved
+        // schema; before the fix it printed the 'spec-driven' flag default.
+        expect(getOutput(result)).toContain(
+          "with schema 'spec-driven-governed'"
+        );
+        expect(getOutput(result)).not.toContain("with schema 'spec-driven'.");
+      }, 60000);
+
+      it('templates defaults to the project config schema when no --schema is passed (#3)', async () => {
+        await writeGovernedConfig();
+
+        const result = await runCLI(['templates'], { cwd: tempDir, timeoutMs: 30000 });
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain('Schema: spec-driven-governed');
+      }, 60000);
+
+      it('templates honors an explicit --schema over the project config (#3)', async () => {
+        await writeGovernedConfig();
+
+        const result = await runCLI(['templates', '--schema', 'spec-driven'], {
+          cwd: tempDir,
+          timeoutMs: 30000,
+        });
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain('Schema: spec-driven');
+        expect(result.stdout).not.toContain('Schema: spec-driven-governed');
+      }, 60000);
+    });
+
     describe('instructions command with config', () => {
       it('injects context and rules from config into instructions', async () => {
         // Create project config with context and rules

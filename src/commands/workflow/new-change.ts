@@ -10,6 +10,7 @@
 import ora from 'ora';
 import path from 'path';
 import { createChange, validateChangeName } from '../../utils/change-utils.js';
+import { readProjectConfig } from '../../core/project-config.js';
 import { formatChangeLocation } from '../../core/planning-home.js';
 import {
   resolveRootForCommand,
@@ -115,7 +116,18 @@ export async function newChangeCommand(name: string | undefined, options: NewCha
       validateSchemaExists(options.schema, projectRoot);
     }
 
-    const resolvedSchema = options.schema ?? root.defaultSchema;
+    // Report the schema that will ACTUALLY be resolved (explicit flag → project
+    // config → root default), matching the precedence `createChange` applies so
+    // a governed project's progress line reads `spec-driven-governed` instead of
+    // the flag default. Config read is resilient; legacy projects are unchanged.
+    let resolvedSchema = options.schema ?? root.defaultSchema;
+    if (!options.schema) {
+      try {
+        resolvedSchema = readProjectConfig(projectRoot)?.schema ?? root.defaultSchema;
+      } catch {
+        resolvedSchema = root.defaultSchema;
+      }
+    }
     if (spinner) {
       spinner.start(`Creating change '${name}' with schema '${resolvedSchema}'...`);
     }

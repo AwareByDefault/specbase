@@ -54,12 +54,12 @@ export class ValidateCommand {
     // Governed projects validate spec/enforcement PAIRS through the shared Unit
     // 1-2 engine (identity, coverage, lifecycle, targets) plus project-wide
     // duplicate-spec-ID and unsafe-locator detection. Governed change-delta
-    // validation is deferred to Unit 10, so a `--changes`-only request falls
-    // through to the legacy change validator; every other mode is governed-aware.
+    // validation is deferred to Unit 10, so change targets (an explicit
+    // `--type change`, a `--changes` request, or a positional target that names
+    // an existing change rather than a governed spec) fall through to the legacy
+    // change validator; every other mode is governed-aware.
     if (resolveProjectSpecModel(root.path).kind === 'governed') {
-      const onlyChanges =
-        !!options.changes && !options.specs && !options.all && !itemName;
-      if (!onlyChanges) {
+      if ((await this.resolveGovernedRouting(root, itemName, options)) === 'governed') {
         await this.runGovernedValidation(root, itemName, options);
         return;
       }
@@ -153,6 +153,50 @@ export class ValidateCommand {
     }
 
     process.exitCode = report.valid ? 0 : 1;
+  }
+
+  /**
+   * Decide whether a governed-project `validate` invocation is handled by the
+   * governed pair engine or falls through to the legacy change validator.
+   * Governed change-delta validation is deferred (Unit 10), so change targets
+   * must not dead-end as "spec not found". Mirrors the non-governed spec/change
+   * dispatch: an explicit `--type change` and `--changes` route to changes; a
+   * bare positional target that resolves to a governed spec stays governed,
+   * while one that only names an existing change routes to the change validator.
+   */
+  private async resolveGovernedRouting(
+    root: ResolvedOpenSpecRoot,
+    itemName: string | undefined,
+    options: ExecuteOptions
+  ): Promise<'governed' | 'legacy'> {
+    const type = this.normalizeType(options.type);
+
+    // Explicit change type always routes to the legacy change validator.
+    if (type === 'change') return 'legacy';
+
+    // `--changes`-only (no spec/all target) is the legacy bulk change path.
+    if (!!options.changes && !options.specs && !options.all && !itemName) {
+      return 'legacy';
+    }
+
+    // Bulk spec/all requests and explicit `--type spec` are governed-aware.
+    if (options.all || options.specs || type === 'spec') return 'governed';
+
+    // Bare positional target: a governed spec (locator or stable ID) stays
+    // governed; a target that only names an existing change routes to the
+    // legacy change validator. An unknown target stays governed so the
+    // governed "spec not found" diagnostic is preserved.
+    if (itemName) {
+      const repository = await loadGovernedRepository(
+        path.join(root.path, 'openspec')
+      );
+      const resolution = resolveGovernedShowTarget(repository, itemName);
+      if (resolution.kind === 'resolved') return 'governed';
+      const changeIds = await this.listChangeIds(root);
+      if (changeIds.includes(itemName)) return 'legacy';
+    }
+
+    return 'governed';
   }
 
   private normalizeType(value?: string): ItemType | undefined {
