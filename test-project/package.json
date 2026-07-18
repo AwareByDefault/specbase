@@ -1,0 +1,11 @@
+{
+  "name": "temp-convert",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun test test",
+    "test:boundaries": "bun test tools/lint/boundaries.test.ts",
+    "start": "bun run src/main.ts"
+  }
+}
