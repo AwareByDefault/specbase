@@ -11,6 +11,7 @@ import {
   getVerifyChangeSkillTemplate,
   getArchiveChangeSkillTemplate,
   getBulkArchiveChangeSkillTemplate,
+  getOnboardSkillTemplate,
   getOpsxProposeSkillTemplate,
   getOpsxExploreCommandTemplate,
   getOpsxNewCommandTemplate,
@@ -22,6 +23,7 @@ import {
   getOpsxVerifyCommandTemplate,
   getOpsxArchiveCommandTemplate,
   getOpsxBulkArchiveCommandTemplate,
+  getOpsxOnboardCommandTemplate,
   getOpsxProposeCommandTemplate,
 } from '../../../src/core/templates/skill-templates.js';
 import { getSkillTemplates, getCommandContents } from '../../../src/core/shared/skill-generation.js';
@@ -46,6 +48,7 @@ const SKILL_GETTERS = {
   verify: getVerifyChangeSkillTemplate,
   archive: getArchiveChangeSkillTemplate,
   'bulk-archive': getBulkArchiveChangeSkillTemplate,
+  onboard: getOnboardSkillTemplate,
   propose: getOpsxProposeSkillTemplate,
 } as const;
 
@@ -60,6 +63,7 @@ const COMMAND_GETTERS = {
   verify: getOpsxVerifyCommandTemplate,
   archive: getOpsxArchiveCommandTemplate,
   'bulk-archive': getOpsxBulkArchiveCommandTemplate,
+  onboard: getOpsxOnboardCommandTemplate,
   propose: getOpsxProposeCommandTemplate,
 } as const;
 
@@ -326,5 +330,31 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
         'Applying the governed gate across a batch (governed)'
       );
     });
+  });
+
+  // Unit 6.6 (onboard): governed onboarding teaches both truth planes, stable
+  // scoped identity, paired enforcement, drift, and archived rationale.
+  describe('governed onboard guidance (opsx-onboard-skill)', () => {
+    const onboardMarkers = [
+      'Teaching the governed model while onboarding (governed)',
+      'Two truth planes',
+      'behavioral truth',
+      'architectural truth',
+      'durable identity while titles and locators are mutable',
+      'assign a project-unique stable spec',
+      'stale** bindings (covering a removed ID)',
+      'hanging** claims (a mandatory',
+      'governed verification',
+      'archived **proposal and design preserve WHY**',
+      'historical rationale lives in the dated archive, not in current truth',
+    ];
+    for (const marker of onboardMarkers) {
+      it(`teaches onboard guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
+        expect(getOnboardSkillTemplate(GOVERNED).instructions).toContain(marker);
+        expect(getOpsxOnboardCommandTemplate(GOVERNED).content).toContain(marker);
+        expect(getOnboardSkillTemplate().instructions).not.toContain(marker);
+        expect(getOpsxOnboardCommandTemplate().content).not.toContain(marker);
+      });
+    }
   });
 });

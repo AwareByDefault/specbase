@@ -94,7 +94,7 @@ export function getSkillTemplates(
     { template: getArchiveChangeSkillTemplate(specModel), dirName: 'openspec-archive-change', workflowId: 'archive' },
     { template: getBulkArchiveChangeSkillTemplate(specModel), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
     { template: getVerifyChangeSkillTemplate(specModel), dirName: 'openspec-verify-change', workflowId: 'verify' },
-    { template: getOnboardSkillTemplate(), dirName: 'openspec-onboard', workflowId: 'onboard' },
+    { template: getOnboardSkillTemplate(specModel), dirName: 'openspec-onboard', workflowId: 'onboard' },
     { template: getOpsxProposeSkillTemplate(specModel), dirName: 'openspec-propose', workflowId: 'propose' },
   ];
 
@@ -124,7 +124,7 @@ export function getCommandTemplates(
     { template: getOpsxArchiveCommandTemplate(specModel), id: 'archive' },
     { template: getOpsxBulkArchiveCommandTemplate(specModel), id: 'bulk-archive' },
     { template: getOpsxVerifyCommandTemplate(specModel), id: 'verify' },
-    { template: getOpsxOnboardCommandTemplate(), id: 'onboard' },
+    { template: getOpsxOnboardCommandTemplate(specModel), id: 'onboard' },
     { template: getOpsxProposeCommandTemplate(specModel), id: 'propose' },
   ];
 

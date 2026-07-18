@@ -325,3 +325,57 @@ Apply implements BOTH the product/architecture change and its declared evidence:
 - **Assess retired-target cleanup safely.** When reconciliation reports a retired
   test, rule, fixture, or review target, check surviving bindings and project usage
   before removing it. Never auto-delete a shared or intentionally retained target.`;
+
+/** onboard (task 6.6 / Requirements: Guided Artifact Creation, Guided
+ * Implementation, Archive with Explanation). */
+export const GOVERNED_ONBOARD_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Teaching the governed model while onboarding (governed)
+
+When the project uses the governed model, the guided cycle must TEACH the two
+truth planes, stable scoped identity, paired enforcement, drift, and archived
+rationale as it does real work - never present unsettled design as current
+architecture. Weave the following into the phases:
+
+- **Two truth planes.** Explain that durable truth lives in two permanent planes:
+  **behavioral truth** (externally observable capabilities under
+  \`specs/behavior/...\`) and **architectural truth** (current packages,
+  responsibilities, boundaries, and structural invariants under
+  \`specs/architecture/...\`). A single initiative may touch both; each plane gets
+  its own spec pair.
+- **Change creation.** Explain that a change is a container that preserves the
+  transition **rationale** and the **planned** pair updates; show the
+  schema-defined artifact structure (proposal -> specs -> enforcement -> tasks).
+- **Proposal.** Explain WHY the change exists, and classify each affected governed
+  spec as **behavioral** or **architectural** truth.
+- **Governed specs.** Explain observable behavioral contracts vs current
+  architectural invariants, and assign a project-unique stable spec \`id\` plus
+  pair-local \`**ID:**\` requirement and scenario slugs. Stress that the IDs are
+  durable identity while titles and locators are mutable presentation - a moved
+  spec keeps its \`id\`.
+- **Paired enforcement.** Explain that every \`spec.md\` is paired with an
+  \`enforcement.md\`; assign pair-local **binding IDs**; describe **automated**,
+  **review**, **manual**, and **planned** evidence honestly (a passing command is
+  not proof of semantic correspondence); and demonstrate how stable IDs expose
+  **stale** bindings (covering a removed ID) and **hanging** claims (a mandatory
+  requirement with no covering binding), which \`openspec list\` and
+  \`openspec validate\` surface.
+- **Tasks.** Include implementation, **enforcement resolution** (planned ->
+  active), **targeted verification**, and **retired-target assessment** as explicit
+  task items.
+- **Guided implementation.** Identify the affected stable spec \`id\` and pair-local
+  normative IDs, implement or update the declared enforcement, and resolve the
+  actual \`targets\` before marking related work complete. When implementation
+  removes a requirement or scenario, update its binding and assess the former
+  \`targets\` for safe cleanup (never auto-delete). When all tasks are complete, run
+  governed verification (\`/opsx:verify\`) BEFORE transitioning to archive.
+- **Archive with explanation.** Explain that specification and enforcement deltas
+  update each affected pair TOGETHER, run the schema-aware governed archive, and
+  show the dated archive location, the updated current locators, and any cleanup
+  candidates. Explain that the archived **proposal and design preserve WHY** the
+  transition occurred, while the current architectural spec states only what must be
+  true NOW - historical rationale lives in the dated archive, not in current truth.
+- **Point to governed surfaces.** Show that \`openspec status\`, \`list\`, \`show\`,
+  \`spec\`, and \`validate\` report governed locators, stable IDs, pair status, and
+  coverage, and that the governed workflow skills (explore, propose, apply, verify,
+  sync, archive) understand both planes.`;
