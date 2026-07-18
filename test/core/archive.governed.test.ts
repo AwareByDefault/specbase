@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
 import { ArchiveCommand } from '../../src/core/archive.js';
+import { parseGovernedSpec, parseEnforcement } from '../../src/core/governed/index.js';
 
 const GOVERNED_SCHEMA = 'spec-driven-governed';
 
@@ -44,6 +45,46 @@ function staleEnforcement(id: string, target: string): string {
 /** Planned binding covering `r` — allowed while authoring, blocks archive. */
 function plannedEnforcement(id: string, target: string): string {
   return `# Enforcement\n\n\`\`\`yaml\nversion: 1\nspec: ${id}\nbindings:\n  - id: b\n    covers: [r]\n    mechanism: test\n    strength: automated\n    status: planned\n    targets: [${target}]\n    run:\n      command: pnpm\n      args: [vitest, run, ${target}]\n      cwd: .\n\`\`\`\n`;
+}
+
+/** A single active binding `bid` covering `cover`, targeting one file. */
+function bindingEnforcement(id: string, bid: string, cover: string, target: string): string {
+  return `# Enforcement\n\n\`\`\`yaml\nversion: 1\nspec: ${id}\nbindings:\n  - id: ${bid}\n    covers: [${cover}]\n    mechanism: test\n    strength: automated\n    status: active\n    targets: [${target}]\n    run:\n      command: pnpm\n      args: [vitest, run, ${target}]\n      cwd: .\n\`\`\`\n`;
+}
+
+// --- Governed DELTA authoring helpers -------------------------------------
+// A change authors OPERATION fragments (## ADDED/MODIFIED/REMOVED/RENAMED),
+// NOT the full next state. Archive merges these onto the current pair by
+// stable ID, preserving unaffected content.
+
+/** DELTA spec.md: `## ADDED Requirements` with one new requirement `r`/`s`. */
+function deltaAdded(id: string, title = 'R'): string {
+  return `---\nid: ${id}\n---\n\n## ADDED Requirements\n\n### Requirement: ${title}\n**ID:** \`r\`\nThe system MUST do X.\n#### Scenario: S\n**ID:** \`s\`\n- **WHEN** a\n- **THEN** b\n`;
+}
+
+/** DELTA spec.md: `## ADDED Requirements` adding requirement `r3`/`s3`. */
+function deltaAddR3(id: string): string {
+  return `---\nid: ${id}\n---\n\n## ADDED Requirements\n\n### Requirement: R3\n**ID:** \`r3\`\nThe system MUST do Z.\n#### Scenario: S3\n**ID:** \`s3\`\n- **WHEN** e\n- **THEN** f\n`;
+}
+
+/** DELTA spec.md: `## MODIFIED Requirements` replacing `r` (new title/body). */
+function deltaModified(id: string, title: string): string {
+  return `---\nid: ${id}\n---\n\n## MODIFIED Requirements\n\n### Requirement: ${title}\n**ID:** \`r\`\nThe system MUST do X, revised.\n#### Scenario: S\n**ID:** \`s\`\n- **WHEN** a\n- **THEN** b\n`;
+}
+
+/** DELTA spec.md: `## REMOVED Requirements` dropping requirement `r2`. */
+function deltaRemovedR2(id: string): string {
+  return `---\nid: ${id}\n---\n\n## REMOVED Requirements\n\n### Requirement: R2\n**ID:** \`r2\`\n**Reason:** superseded\n`;
+}
+
+/** DELTA spec.md: `## RENAMED Requirements` retitling requirement `r`. */
+function deltaRenamed(id: string, fromTitle: string, toTitle: string): string {
+  return `---\nid: ${id}\n---\n\n## RENAMED Requirements\n\n- FROM: \`### Requirement: ${fromTitle}\`\n- TO: \`### Requirement: ${toTitle}\`\n`;
+}
+
+/** DELTA enforcement.md that explicitly retires binding `b2` via `remove:`. */
+function removeB2Enforcement(id: string): string {
+  return `# Enforcement (delta)\n\n\`\`\`yaml\nversion: 1\nspec: ${id}\nbindings: []\nremove:\n  - b2\n\`\`\`\n`;
 }
 
 async function writeConfig(): Promise<void> {
@@ -129,9 +170,9 @@ describe('governed archive — coherent pair application', () => {
       spec: specDoc('behavior.session-loop', 'Old title'),
       enforcement: coveredEnforcement('behavior.session-loop', 'src/loop.test.ts'),
     });
-    // Delta re-titles the requirement (same stable ID) and keeps the pair coherent.
+    // Delta MODIFIES the requirement (same stable ID `r`, new title/body).
     await writePair('delta', change, 'behavior/session-loop', {
-      spec: specDoc('behavior.session-loop', 'New title'),
+      spec: deltaModified('behavior.session-loop', 'New title'),
       enforcement: coveredEnforcement('behavior.session-loop', 'src/loop.test.ts'),
     });
 
@@ -140,7 +181,11 @@ describe('governed archive — coherent pair application', () => {
     expect(out.archive).not.toBeNull();
     expect(out.archive.governed.verification).toBe('verified');
     // Current spec updated with the new title (reconciled by stable ID `r`).
-    expect(await read('openspec/specs/behavior/session-loop/spec.md')).toContain('New title');
+    const merged = await read('openspec/specs/behavior/session-loop/spec.md');
+    expect(merged).toContain('New title');
+    expect(merged).not.toContain('Old title');
+    // The merged spec is a clean governed spec (no delta operation headers).
+    expect(merged).not.toContain('## MODIFIED');
     // Change moved to archive.
     expect(await exists(`openspec/changes/${change}`)).toBe(false);
     expect(await exists(`openspec/changes/archive`)).toBe(true);
@@ -153,7 +198,7 @@ describe('governed archive — reconciliation and reporting', () => {
     await ensureChange(change);
     await writeTarget('src/domain.test.ts');
     await writePair('delta', change, 'architecture/domain', {
-      spec: specDoc('architecture.domain'),
+      spec: deltaAdded('architecture.domain'),
       enforcement: coveredEnforcement('architecture.domain', 'src/domain.test.ts'),
     });
 
@@ -201,10 +246,10 @@ describe('governed archive — reconciliation and reporting', () => {
       spec: twoReqSpecDoc('behavior.multi'),
       enforcement: twoBindingEnforcement('behavior.multi', 'src/r.test.ts', 'src/r2.test.ts'),
     });
-    // Delta removes r2 and its binding b2, retiring src/r2.test.ts.
+    // Delta REMOVES requirement r2 and explicitly retires its binding b2.
     await writePair('delta', change, 'behavior/multi', {
-      spec: specDoc('behavior.multi'),
-      enforcement: coveredEnforcement('behavior.multi', 'src/r.test.ts'),
+      spec: deltaRemovedR2('behavior.multi'),
+      enforcement: removeB2Enforcement('behavior.multi'),
     });
 
     const out = await runArchive(change);
@@ -216,8 +261,149 @@ describe('governed archive — reconciliation and reporting', () => {
     const retired = pair.retiredTargets.find((c: any) => c.path === 'src/r2.test.ts');
     expect(retired).toBeDefined();
     expect(retired.stillReferenced).toBe(false);
+    // r (and its binding b) were untouched — only r2/b2 were removed.
+    const merged = await read('openspec/specs/behavior/multi/spec.md');
+    expect(merged).toContain('**ID:** `r`');
+    expect(merged).not.toContain('**ID:** `r2`');
     // The project code is never deleted by archive.
     expect(await exists('src/r2.test.ts')).toBe(true);
+  });
+});
+
+describe('governed archive — delta operations merge by stable ID (no silent loss)', () => {
+  it('ADDED-only delta preserves existing requirements AND bindings (dogfood repro)', async () => {
+    const change = 'add-kelvin';
+    await ensureChange(change);
+    await writeTarget('src/r.test.ts');
+    await writeTarget('src/r2.test.ts');
+    await writeTarget('src/r3.test.ts');
+    // Current pair: two requirements (r, r2) and two bindings (b, b2).
+    await writePair('current', change, 'behavior/temp', {
+      spec: twoReqSpecDoc('behavior.temp'),
+      enforcement: twoBindingEnforcement('behavior.temp', 'src/r.test.ts', 'src/r2.test.ts'),
+    });
+    // Delta ADDS one requirement (r3) and one binding (b3) — nothing else stated.
+    await writePair('delta', change, 'behavior/temp', {
+      spec: deltaAddR3('behavior.temp'),
+      enforcement: bindingEnforcement('behavior.temp', 'b3', 'r3', 'src/r3.test.ts'),
+    });
+
+    const out = await runArchive(change);
+
+    expect(out.archive.governed.verification).toBe('verified');
+    const [pair] = out.archive.governed.pairs;
+    // Reported ops reflect the ACTUAL operation, not a full-replace diff.
+    expect(pair.normativeOps).toMatchObject({ added: 1, modified: 0, removed: 0, renamed: 0 });
+    expect(pair.bindingOps).toMatchObject({ added: 1, modified: 0, removed: 0 });
+
+    // Merged spec: the original 2 requirements are preserved plus the new one.
+    const mergedSpec = await read('openspec/specs/behavior/temp/spec.md');
+    expect(mergedSpec).not.toContain('## ADDED'); // clean governed spec, not a delta
+    const parsedSpec = parseGovernedSpec(mergedSpec);
+    expect(parsedSpec.issues).toEqual([]);
+    expect(parsedSpec.requirements.map((r) => r.id).sort()).toEqual(['r', 'r2', 'r3']);
+
+    // Merged enforcement: the original 2 bindings are preserved plus the new one.
+    const mergedEnf = parseEnforcement(await read('openspec/specs/behavior/temp/enforcement.md'));
+    expect(mergedEnf.issues).toEqual([]);
+    expect(mergedEnf.bindings.map((b) => b.id).sort()).toEqual(['b', 'b2', 'b3']);
+  });
+
+  it('MODIFIED delta replaces the requirement with that id, leaving others untouched', async () => {
+    const change = 'modify-r';
+    await ensureChange(change);
+    await writeTarget('src/r.test.ts');
+    await writeTarget('src/r2.test.ts');
+    await writePair('current', change, 'behavior/multi', {
+      spec: twoReqSpecDoc('behavior.multi'),
+      enforcement: twoBindingEnforcement('behavior.multi', 'src/r.test.ts', 'src/r2.test.ts'),
+    });
+    await writePair('delta', change, 'behavior/multi', {
+      spec: deltaModified('behavior.multi', 'R renamed and revised'),
+      enforcement: twoBindingEnforcement('behavior.multi', 'src/r.test.ts', 'src/r2.test.ts'),
+    });
+
+    const out = await runArchive(change);
+
+    expect(out.archive.governed.verification).toBe('verified');
+    const merged = await read('openspec/specs/behavior/multi/spec.md');
+    const parsed = parseGovernedSpec(merged);
+    expect(parsed.issues).toEqual([]);
+    // r was replaced (new title/body), r2 preserved verbatim.
+    expect(parsed.requirements.map((r) => r.id).sort()).toEqual(['r', 'r2']);
+    expect(merged).toContain('R renamed and revised');
+    expect(merged).toContain('The system MUST do X, revised.');
+    expect(merged).toContain('The system MUST do Y.'); // r2 body untouched
+  });
+
+  it('REMOVED delta drops the requirement by id and reports it (not silent)', async () => {
+    const change = 'remove-r2';
+    await ensureChange(change);
+    await writeTarget('src/r.test.ts');
+    await writeTarget('src/r2.test.ts');
+    await writePair('current', change, 'behavior/multi', {
+      spec: twoReqSpecDoc('behavior.multi'),
+      enforcement: twoBindingEnforcement('behavior.multi', 'src/r.test.ts', 'src/r2.test.ts'),
+    });
+    await writePair('delta', change, 'behavior/multi', {
+      spec: deltaRemovedR2('behavior.multi'),
+      enforcement: removeB2Enforcement('behavior.multi'),
+    });
+
+    const out = await runArchive(change);
+
+    const [pair] = out.archive.governed.pairs;
+    // The removal is surfaced explicitly in the reported operation counts.
+    expect(pair.normativeOps.removed).toBe(1);
+    const parsed = parseGovernedSpec(await read('openspec/specs/behavior/multi/spec.md'));
+    expect(parsed.requirements.map((r) => r.id)).toEqual(['r']);
+  });
+
+  it('RENAMED delta keeps the stable id and changes only the title', async () => {
+    const change = 'rename-r';
+    await ensureChange(change);
+    await writeTarget('src/loop.test.ts');
+    await writePair('current', change, 'behavior/loop', {
+      spec: specDoc('behavior.loop', 'Original title'),
+      enforcement: coveredEnforcement('behavior.loop', 'src/loop.test.ts'),
+    });
+    await writePair('delta', change, 'behavior/loop', {
+      spec: deltaRenamed('behavior.loop', 'Original title', 'Fresh title'),
+      enforcement: coveredEnforcement('behavior.loop', 'src/loop.test.ts'),
+    });
+
+    const out = await runArchive(change);
+
+    expect(out.archive.governed.verification).toBe('verified');
+    const parsed = parseGovernedSpec(await read('openspec/specs/behavior/loop/spec.md'));
+    expect(parsed.issues).toEqual([]);
+    // Same stable id `r`, new title, scenario `s` preserved.
+    expect(parsed.requirements).toHaveLength(1);
+    expect(parsed.requirements[0].id).toBe('r');
+    expect(parsed.requirements[0].title).toBe('Fresh title');
+    expect(parsed.requirements[0].scenarios.map((s) => s.id)).toEqual(['s']);
+  });
+
+  it('blocks a MODIFIED delta whose id does not exist in the current spec', async () => {
+    const change = 'modify-missing';
+    await ensureChange(change);
+    await writeTarget('src/r.test.ts');
+    await writePair('current', change, 'behavior/only-r', {
+      spec: specDoc('behavior.only-r'),
+      enforcement: coveredEnforcement('behavior.only-r', 'src/r.test.ts'),
+    });
+    // MODIFIED targets `nope` (id not present) — must not silently no-op.
+    await writePair('delta', change, 'behavior/only-r', {
+      spec: `---\nid: behavior.only-r\n---\n\n## MODIFIED Requirements\n\n### Requirement: Ghost\n**ID:** \`nope\`\nThe system MUST do nothing.\n#### Scenario: S\n**ID:** \`s\`\n- **WHEN** a\n- **THEN** b\n`,
+      enforcement: coveredEnforcement('behavior.only-r', 'src/r.test.ts'),
+    });
+
+    const out = await runArchive(change);
+    expect(out.archive).toBeNull();
+    expect(out.status[0].code).toBe('archive_governed_merge_conflict');
+    expect(process.exitCode).toBe(1);
+    expect(await exists(`openspec/changes/${change}`)).toBe(true);
+    process.exitCode = 0;
   });
 });
 
@@ -243,7 +429,7 @@ describe('governed archive — blocking conditions (no writes, change not moved)
     const change = 'hanging';
     await ensureChange(change);
     await writePair('delta', change, 'behavior/hang', {
-      spec: specDoc('behavior.hang'),
+      spec: deltaAdded('behavior.hang'),
       enforcement: hangingEnforcement('behavior.hang'),
     });
     await expectBlocked(change, 'archive_governed_not_ready');
@@ -255,7 +441,7 @@ describe('governed archive — blocking conditions (no writes, change not moved)
     await ensureChange(change);
     await writeTarget('src/s.test.ts');
     await writePair('delta', change, 'behavior/stale', {
-      spec: specDoc('behavior.stale'),
+      spec: deltaAdded('behavior.stale'),
       enforcement: staleEnforcement('behavior.stale', 'src/s.test.ts'),
     });
     await expectBlocked(change, 'archive_governed_not_ready');
@@ -265,7 +451,7 @@ describe('governed archive — blocking conditions (no writes, change not moved)
     const change = 'broken';
     await ensureChange(change);
     await writePair('delta', change, 'behavior/broken', {
-      spec: specDoc('behavior.broken'),
+      spec: deltaAdded('behavior.broken'),
       enforcement: coveredEnforcement('behavior.broken', 'src/missing.test.ts'),
     });
     await expectBlocked(change, 'archive_governed_not_ready');
@@ -276,7 +462,7 @@ describe('governed archive — blocking conditions (no writes, change not moved)
     await ensureChange(change);
     await writeTarget('src/p.test.ts');
     await writePair('delta', change, 'behavior/planned', {
-      spec: specDoc('behavior.planned'),
+      spec: deltaAdded('behavior.planned'),
       enforcement: plannedEnforcement('behavior.planned', 'src/p.test.ts'),
     });
     await expectBlocked(change, 'archive_governed_not_ready');
@@ -288,11 +474,11 @@ describe('governed archive — blocking conditions (no writes, change not moved)
     await writeTarget('src/a.test.ts');
     await writeTarget('src/b.test.ts');
     await writePair('delta', change, 'behavior/a', {
-      spec: specDoc('behavior.dup'),
+      spec: deltaAdded('behavior.dup'),
       enforcement: coveredEnforcement('behavior.dup', 'src/a.test.ts'),
     });
     await writePair('delta', change, 'behavior/b', {
-      spec: specDoc('behavior.dup'),
+      spec: deltaAdded('behavior.dup'),
       enforcement: coveredEnforcement('behavior.dup', 'src/b.test.ts'),
     });
     await expectBlocked(change, 'archive_governed_not_ready');
@@ -306,7 +492,7 @@ describe('governed archive — explicit bypass', () => {
     await writeTarget('src/p.test.ts');
     // Planned binding would normally block; --no-validate --yes bypasses.
     await writePair('delta', change, 'behavior/planned', {
-      spec: specDoc('behavior.planned'),
+      spec: deltaAdded('behavior.planned'),
       enforcement: plannedEnforcement('behavior.planned', 'src/p.test.ts'),
     });
 
@@ -346,8 +532,8 @@ describe('governed archive — human (non-JSON) output', () => {
       enforcement: twoBindingEnforcement('behavior.multi', 'src/r.test.ts', 'src/r2.test.ts'),
     });
     await writePair('delta', change, 'behavior/multi', {
-      spec: specDoc('behavior.multi'),
-      enforcement: coveredEnforcement('behavior.multi', 'src/r.test.ts'),
+      spec: deltaRemovedR2('behavior.multi'),
+      enforcement: removeB2Enforcement('behavior.multi'),
     });
 
     await new ArchiveCommand().execute(change, { json: false, yes: true } as any);
@@ -363,7 +549,7 @@ describe('governed archive — human (non-JSON) output', () => {
     const change = 'human-block';
     await ensureChange(change);
     await writePair('delta', change, 'behavior/hang', {
-      spec: specDoc('behavior.hang'),
+      spec: deltaAdded('behavior.hang'),
       enforcement: hangingEnforcement('behavior.hang'),
     });
 

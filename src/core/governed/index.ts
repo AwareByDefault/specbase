@@ -61,6 +61,13 @@ export {
 } from './enforcement-parser.js';
 
 export {
+  mergeGovernedSpec,
+  mergeEnforcement,
+  type SpecMergeResult,
+  type EnforcementMergeResult,
+} from './pair-merge.js';
+
+export {
   computeCoverage,
   type CoverageInput,
   type CoverageReport,

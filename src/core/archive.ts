@@ -764,6 +764,27 @@ export class ArchiveCommand {
       return false;
     }
 
+    if (plan.mergeErrors.length > 0) {
+      const detail = plan.mergeErrors
+        .map((m) => `${m.locator}: ${m.messages.join('; ')}`)
+        .join(' | ');
+      if (json) {
+        throw new ArchiveBlockedError(
+          'archive_governed_merge_conflict',
+          `Governed delta could not be reconciled onto the current pair in change '${changeName}': ${detail}.`,
+          'Fix the delta operations (unknown MODIFIED/REMOVED IDs, duplicate ADDED IDs) and rerun.'
+        );
+      }
+      console.log(chalk.red(`\nGoverned delta reconciliation failed (aborting before any spec write):`));
+      for (const m of plan.mergeErrors) {
+        for (const message of m.messages) {
+          console.log(chalk.red(`  ✗ ${m.locator}: ${message}`));
+        }
+      }
+      process.exitCode = 1;
+      return false;
+    }
+
     const validationErrors = (plan.validation?.specs ?? [])
       .flatMap((s) => s.diagnostics)
       .filter((d) => d.severity === 'error');

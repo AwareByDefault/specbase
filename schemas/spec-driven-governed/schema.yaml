@@ -167,6 +167,13 @@ artifacts:
       - A binding may be `planned` during planning but MUST become `active`, with an
         existing target, before governed verification and archive readiness.
 
+      Delta semantics (how a change's enforcement.md merges at archive): the
+      `bindings` list is an UPSERT by binding `id` onto the current pair - a new
+      id is added, a matching id replaces that binding, and every current binding
+      you DO NOT restate is preserved (never silently dropped). To retire a
+      current binding, list its id under a top-level `remove: [id, ...]`. Do not
+      re-list unaffected bindings just to keep them.
+
       Core parses and reports bindings; it never runs them. Governed workflows
       execute declared commands with process tools.
     requires:
