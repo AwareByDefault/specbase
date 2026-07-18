@@ -7,6 +7,19 @@ import type { Spec } from '../core/schemas/index.js';
 import type { RootOutput } from '../core/root-selection.js';
 import { isInteractive } from '../utils/interactive.js';
 import { getSpecIds } from '../utils/item-discovery.js';
+import { resolveProjectSpecModel } from '../core/shared/skill-generation.js';
+import { ListCommand } from '../core/list.js';
+import {
+  loadGovernedRepository,
+  collectDiagnostics,
+  renderDiagnostics,
+} from '../core/governed/index.js';
+import {
+  resolveGovernedShowTarget,
+  analyzeGovernedPair,
+  renderGovernedSpecSummary,
+  type GovernedShowResolution,
+} from '../core/artifact-graph/governed-show.js';
 
 const SPECS_DIR = 'openspec/specs';
 
@@ -78,6 +91,14 @@ export class SpecCommand {
   }
 
   async show(specId?: string, options: ShowOptions = {}): Promise<void> {
+    // Governed projects resolve by plane-qualified locator or stable spec ID and
+    // render the paired enforcement + coverage summary; legacy stays byte-for-byte.
+    const projectRoot = this.rootPath ?? process.cwd();
+    if (resolveProjectSpecModel(projectRoot).kind === 'governed') {
+      await this.showGoverned(specId, options, projectRoot);
+      return;
+    }
+
     if (!specId) {
       const canPrompt = isInteractive(options);
       const specIds = await getSpecIds(this.rootPath ?? process.cwd());
@@ -120,6 +141,175 @@ export class SpecCommand {
     }
     printSpecTextRaw(specPath);
   }
+
+  /**
+   * Show a governed spec resolved by plane-qualified locator or stable spec ID.
+   * Reuses the Unit 7 governed-show helpers: text mode is raw-first (spec.md,
+   * then the pair/enforcement/coverage summary); `--json` emits the structured
+   * governed view (stable ID, plane, locator, native pair paths, requirement and
+   * scenario IDs, bindings, coverage states).
+   */
+  private async showGoverned(
+    specId: string | undefined,
+    options: ShowOptions,
+    projectRoot: string
+  ): Promise<void> {
+    const repository = await loadGovernedRepository(join(projectRoot, 'openspec'));
+
+    if (!specId) {
+      const canPrompt = isInteractive(options);
+      const locators = repository.discovery.pairs.map((p) => p.locator);
+      if (canPrompt && locators.length > 0) {
+        const { select } = await import('@inquirer/prompts');
+        specId = await select({
+          message: 'Select a spec to show',
+          choices: locators.map((id) => ({ name: id, value: id })),
+        });
+      } else {
+        throw new Error('Missing required argument <spec-id>');
+      }
+    }
+
+    const resolution = resolveGovernedShowTarget(repository, specId);
+    if (resolution.kind !== 'resolved') {
+      reportGovernedResolutionError(specId, resolution, options);
+      process.exitCode = 1;
+      return;
+    }
+
+    const { view } = await analyzeGovernedPair({
+      repository,
+      record: resolution.record,
+      projectRoot,
+    });
+
+    if (options.json) {
+      const output = {
+        ...view,
+        ...(options.rootOutput ? { root: options.rootOutput } : {}),
+      };
+      console.log(JSON.stringify(output, null, 2));
+      return;
+    }
+
+    // Raw-first: print the spec source verbatim before the derived summary.
+    if (resolution.record.specPath) {
+      try {
+        console.log(readFileSync(resolution.record.specPath, 'utf-8'));
+      } catch {
+        console.log('(spec.md could not be read)');
+      }
+    }
+    console.log(renderGovernedSpecSummary(view));
+  }
+}
+
+/**
+ * Report an ambiguous unqualified basename (with its candidate locators) or an
+ * unknown governed target, in text or `--json`. Shared by governed `spec show`
+ * and `spec validate` so both surface the same actionable resolution errors.
+ */
+function reportGovernedResolutionError(
+  target: string,
+  resolution: Exclude<GovernedShowResolution, { kind: 'resolved' }>,
+  options: { json?: boolean }
+): void {
+  if (resolution.kind === 'ambiguous-basename') {
+    const message = `Ambiguous spec '${target}' matches multiple governed locators: ${resolution.candidates.join(', ')}.`;
+    const fix = 'Use a plane-qualified locator or the stable spec ID.';
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            status: [
+              { severity: 'error', code: 'ambiguous_spec', message, fix, candidates: resolution.candidates },
+            ],
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.error(message);
+      console.error(fix);
+    }
+    return;
+  }
+
+  const message = `Spec '${target}' not found`;
+  if (options.json) {
+    console.log(
+      JSON.stringify({ status: [{ severity: 'error', code: 'unknown_item', message }] }, null, 2)
+    );
+  } else {
+    console.error(message);
+  }
+}
+
+/**
+ * Validate one governed pair (or every pair when no target is given) through the
+ * Unit 1-2 drift engine: identity, coverage, lifecycle state, and declared
+ * paths. Renders the deterministic diagnostics via {@link collectDiagnostics} /
+ * {@link renderDiagnostics}. The standalone `validate` command is Unit 9; this
+ * only surfaces governed validation through the `spec` noun command.
+ */
+async function validateGovernedSpec(
+  target: string | undefined,
+  options: { json?: boolean; noInteractive?: boolean },
+  projectRoot: string
+): Promise<void> {
+  const repository = await loadGovernedRepository(join(projectRoot, 'openspec'));
+
+  let records = repository.discovery.pairs;
+  if (target) {
+    const resolution = resolveGovernedShowTarget(repository, target);
+    if (resolution.kind !== 'resolved') {
+      reportGovernedResolutionError(target, resolution, options);
+      process.exitCode = 1;
+      return;
+    }
+    records = [resolution.record];
+  } else if (isInteractive(options)) {
+    const locators = repository.discovery.pairs.map((p) => p.locator);
+    if (locators.length > 0) {
+      const { select } = await import('@inquirer/prompts');
+      const picked = await select({
+        message: 'Select a spec to validate',
+        choices: locators.map((id) => ({ name: id, value: id })),
+      });
+      const resolution = resolveGovernedShowTarget(repository, picked);
+      records = resolution.kind === 'resolved' ? [resolution.record] : [];
+    }
+  }
+
+  const results: Array<{
+    locator: string;
+    specId: string | null;
+    valid: boolean;
+    diagnostics: ReturnType<typeof collectDiagnostics>;
+  }> = [];
+  for (const record of records) {
+    const { analysis } = await analyzeGovernedPair({ repository, record, projectRoot });
+    const diagnostics = collectDiagnostics(analysis);
+    const valid = diagnostics.every((d) => d.severity !== 'error');
+    results.push({ locator: record.locator, specId: analysis.specId, valid, diagnostics });
+  }
+
+  const allValid = results.every((r) => r.valid);
+
+  if (options.json) {
+    console.log(JSON.stringify({ valid: allValid, specs: results }, null, 2));
+  } else {
+    for (const result of results) {
+      if (result.valid) {
+        console.log(`Governed spec '${result.locator}' is valid`);
+      } else {
+        console.error(`Governed spec '${result.locator}' has issues`);
+        console.error(renderDiagnostics(result.diagnostics));
+      }
+    }
+  }
+  process.exitCode = allValid ? 0 : 1;
 }
 
 export function registerSpecCommand(rootProgram: typeof program) {
@@ -155,8 +345,15 @@ export function registerSpecCommand(rootProgram: typeof program) {
     .description('List all available specifications')
     .option('--json', 'Output as JSON')
     .option('--long', 'Show id and title with counts')
-    .action((options: { json?: boolean; long?: boolean }) => {
+    .action(async (options: { json?: boolean; long?: boolean }) => {
       try {
+        // Governed projects recursively list plane-qualified pairs with stable
+        // IDs and coverage summaries (Unit 6 shape); legacy stays byte-for-byte.
+        if (resolveProjectSpecModel(process.cwd()).kind === 'governed') {
+          await new ListCommand().execute(process.cwd(), 'specs', { json: options.json });
+          return;
+        }
+
         if (!existsSync(SPECS_DIR)) {
           console.log('No items found');
           return;
@@ -217,6 +414,13 @@ export function registerSpecCommand(rootProgram: typeof program) {
     .option('--no-interactive', 'Disable interactive prompts')
     .action(async (specId: string | undefined, options: { strict?: boolean; json?: boolean; noInteractive?: boolean }) => {
       try {
+        // Governed projects validate the paired spec/enforcement through the
+        // Unit 1-2 drift engine and report diagnostics; legacy is unchanged.
+        if (resolveProjectSpecModel(process.cwd()).kind === 'governed') {
+          await validateGovernedSpec(specId, options, process.cwd());
+          return;
+        }
+
         if (!specId) {
           const canPrompt = isInteractive(options);
           const specIds = await getSpecIds();

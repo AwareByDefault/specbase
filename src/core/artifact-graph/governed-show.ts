@@ -13,9 +13,11 @@
  * It consumes the Unit 1-2 governed repository/drift APIs and never re-parses the
  * governed file format itself.
  */
-import { resolvePair } from '../governed/index.js';
+import { readFileSync } from 'fs';
+import { analyzePairDrift, parseEnforcement, resolvePair } from '../governed/index.js';
 import type {
   GovernedRepository,
+  ParsedEnforcement,
   ParsedGovernedSpec,
   PairAnalysis,
 } from '../governed/index.js';
@@ -246,6 +248,62 @@ export function buildGovernedSpecView(input: {
     bindings: bindingViews,
     coverage: summarizeCoverage(record.completeness, analysis),
   };
+}
+
+/** An empty parsed enforcement used when a pair has no readable enforcement.md. */
+const EMPTY_ENFORCEMENT: ParsedEnforcement = {
+  version: null,
+  spec: null,
+  bindings: [],
+  issues: [],
+};
+
+/** An empty parsed spec used when a pair's spec.md is absent from the index. */
+const EMPTY_SPEC: ParsedGovernedSpec = { id: null, requirements: [], issues: [] };
+
+/** The full analysis of one governed pair: parsed halves, drift, and view. */
+export interface GovernedPairAnalysis {
+  spec: ParsedGovernedSpec;
+  enforcement: ParsedEnforcement;
+  analysis: PairAnalysis;
+  view: GovernedSpecView;
+}
+
+/**
+ * Load and analyze a resolved governed pair end-to-end: reuse the indexed parsed
+ * spec, parse its enforcement.md (empty when missing/unreadable), run the Unit 2
+ * drift engine, and build the structured governed spec view. Shared by every
+ * `show`/`spec` surface so they consume one analysis rather than re-parsing the
+ * governed file format independently (design decision 9).
+ */
+export async function analyzeGovernedPair(input: {
+  repository: GovernedRepository;
+  record: GovernedPairRecord;
+  projectRoot: string;
+}): Promise<GovernedPairAnalysis> {
+  const { repository, record, projectRoot } = input;
+  const indexed = repository.indexedPairs.find(
+    (p) => p.record.locator === record.locator
+  );
+  const spec = indexed?.spec ?? EMPTY_SPEC;
+
+  let enforcement = EMPTY_ENFORCEMENT;
+  if (record.enforcementPath) {
+    try {
+      enforcement = parseEnforcement(readFileSync(record.enforcementPath, 'utf-8'));
+    } catch {
+      // Keep the empty enforcement; an unreadable half is reported as such.
+    }
+  }
+
+  const analysis = await analyzePairDrift({ record, spec, enforcement, projectRoot });
+  const view = buildGovernedSpecView({
+    record,
+    spec,
+    bindings: enforcement.bindings,
+    analysis,
+  });
+  return { spec, enforcement, analysis, view };
 }
 
 /**

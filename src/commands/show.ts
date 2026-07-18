@@ -16,14 +16,11 @@ import { readFileSync } from 'fs';
 import { resolveProjectSpecModel } from '../core/shared/skill-generation.js';
 import {
   loadGovernedRepository,
-  parseEnforcement,
-  analyzePairDrift,
   type GovernedRepository,
-  type ParsedEnforcement,
 } from '../core/governed/index.js';
 import {
   resolveGovernedShowTarget,
-  buildGovernedSpecView,
+  analyzeGovernedPair,
   renderGovernedSpecSummary,
 } from '../core/artifact-graph/governed-show.js';
 import type { GovernedPairRecord } from '../core/schemas/governed-spec.schema.js';
@@ -356,26 +353,11 @@ export class ShowCommand {
     options: ShowExecuteOptions,
     repository: GovernedRepository
   ): Promise<void> {
-    const indexed = repository.indexedPairs.find((p) => p.record.locator === record.locator);
-    const spec = indexed?.spec ?? { id: null, requirements: [], issues: [] };
-
-    let enforcement: ParsedEnforcement = { version: null, spec: null, bindings: [], issues: [] };
-    if (record.enforcementPath) {
-      try {
-        enforcement = parseEnforcement(readFileSync(record.enforcementPath, 'utf-8'));
-      } catch {
-        // Keep the empty enforcement; an unreadable half is reported as such.
-      }
-    }
-
-    const analysis = await analyzePairDrift({
+    const { view } = await analyzeGovernedPair({
+      repository,
       record,
-      spec,
-      enforcement,
       projectRoot: root.path,
     });
-
-    const view = buildGovernedSpecView({ record, spec, bindings: enforcement.bindings, analysis });
 
     if (options.json) {
       const rootOutput = toRootOutput(root);
