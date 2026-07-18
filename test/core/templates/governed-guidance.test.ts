@@ -8,6 +8,7 @@ import {
   getUpdateChangeSkillTemplate,
   getFfChangeSkillTemplate,
   getSyncSpecsSkillTemplate,
+  getVerifyChangeSkillTemplate,
   getOpsxProposeSkillTemplate,
   getOpsxExploreCommandTemplate,
   getOpsxNewCommandTemplate,
@@ -16,6 +17,7 @@ import {
   getOpsxUpdateCommandTemplate,
   getOpsxFfCommandTemplate,
   getOpsxSyncCommandTemplate,
+  getOpsxVerifyCommandTemplate,
   getOpsxProposeCommandTemplate,
 } from '../../../src/core/templates/skill-templates.js';
 import { getSkillTemplates, getCommandContents } from '../../../src/core/shared/skill-generation.js';
@@ -28,7 +30,7 @@ const GOVERNED: SpecModel = {
   pairedEnforcement: true,
 };
 
-// The seven workflows this unit teaches governed awareness (tasks 6.1-6.3).
+// The workflows this unit teaches governed awareness (tasks 6.1-6.4).
 const SKILL_GETTERS = {
   explore: getExploreSkillTemplate,
   new: getNewChangeSkillTemplate,
@@ -37,6 +39,7 @@ const SKILL_GETTERS = {
   update: getUpdateChangeSkillTemplate,
   ff: getFfChangeSkillTemplate,
   sync: getSyncSpecsSkillTemplate,
+  verify: getVerifyChangeSkillTemplate,
   propose: getOpsxProposeSkillTemplate,
 } as const;
 
@@ -48,6 +51,7 @@ const COMMAND_GETTERS = {
   update: getOpsxUpdateCommandTemplate,
   ff: getOpsxFfCommandTemplate,
   sync: getOpsxSyncCommandTemplate,
+  verify: getOpsxVerifyCommandTemplate,
   propose: getOpsxProposeCommandTemplate,
 } as const;
 
@@ -191,6 +195,56 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
       ]) {
         expect(surface).toContain('stable scoped identity, never by title');
         expect(surface).toContain('Discover every concrete delta from status');
+      }
+    });
+  });
+
+  // Unit 6.4 (verify): governed verify assesses enforcement coverage first,
+  // executes each affected automated binding's declared command, labels semantic
+  // correspondence as review (not deterministic automation), reports retired
+  // targets, and reports evidence strength. None of this appears under legacy.
+  describe('governed verify guidance (opsx-verify-skill)', () => {
+    const VERIFY_MARKERS = [
+      'Verifying coverage and evidence (governed)',
+      'Assess enforcement COVERAGE first',
+      'EXECUTE each affected automated binding',
+      'declared \\`run: {command, args, cwd}\\`',
+      'Associate each pass/fail with the binding',
+      'does NOT by itself prove the check verifies the intended claim',
+      'Perform structured REVIEW procedures',
+      'Report \\`manual\\` evidence separately',
+      'Assess SEMANTIC CORRESPONDENCE honestly',
+      'distinguish "command passed" from "the check verifies the intended',
+      'never upgrade it to automated strength',
+      'Report RETIRED enforcement targets',
+      'never delete a target here',
+      'Report evidence STRENGTH per binding',
+      'Block archive-readiness while any affected binding is',
+    ]
+      // Source strings use single backticks; markers escape them for readability.
+      .map((m) => m.replace(/\\`/g, '`'));
+
+    for (const marker of VERIFY_MARKERS) {
+      it(`teaches verify guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
+        const skill = getVerifyChangeSkillTemplate(GOVERNED).instructions;
+        const command = getOpsxVerifyCommandTemplate(GOVERNED).content;
+        expect(skill).toContain(marker);
+        expect(command).toContain(marker);
+        expect(getVerifyChangeSkillTemplate().instructions).not.toContain(marker);
+        expect(getOpsxVerifyCommandTemplate().content).not.toContain(marker);
+      });
+    }
+
+    it('raises CRITICAL with stable IDs for incomplete coverage and failed commands', () => {
+      for (const surface of [
+        getVerifyChangeSkillTemplate(GOVERNED).instructions,
+        getOpsxVerifyCommandTemplate(GOVERNED).content,
+      ]) {
+        // Incomplete governed coverage -> CRITICAL naming stable spec/normative/binding IDs.
+        expect(surface).toContain('raise a **CRITICAL** issue that');
+        expect(surface).toContain('names the stable spec `id`');
+        // Automated enforcement fails -> CRITICAL + not ready to archive.
+        expect(surface).toContain('mark the change **not ready to');
       }
     });
   });

@@ -187,6 +187,59 @@ NOT apply to governed pairs.
   already-synchronized change leaves the specification and enforcement files
   unchanged and duplicates no requirement, scenario, or binding.`;
 
+/** verify (task 6.4 / Requirements: Completeness Verification, Correctness Verification). */
+export const GOVERNED_VERIFY_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Verifying coverage and evidence (governed)
+
+Governed verify checks whether declared enforcement actually protects the affected
+normative truth, then reports evidence STRENGTH honestly. Core validates
+declaration shape only; the WORKFLOW executes commands and review procedures with
+your process tools.
+
+- **Assess enforcement COVERAGE first.** From \`openspec validate\` (or
+  \`openspec spec validate\`) plus \`openspec status --change "<name>" --json\`, load
+  every affected \`spec.md\`/\`enforcement.md\` PAIR and map each requirement and
+  scenario by its stable pair-local \`**ID:**\` to its covering bindings. Every
+  mandatory (SHALL/MUST) requirement needs at least one complete **active** binding.
+  Report separately: **hanging** mandatory claims (no covering binding), uncovered
+  scenarios, **stale** bindings (covering a removed ID), **broken** bindings
+  (missing target), and \`planned\` bindings. When a normative ID lacks complete
+  enforcement, or a binding \`covers\` an absent ID, raise a **CRITICAL** issue that
+  names the stable spec \`id\`, the pair-local normative ID, and the binding ID.
+- **EXECUTE each affected automated binding's declared command.** For a binding
+  whose mechanism is automated, read its declared \`run: {command, args, cwd}\`
+  vector, resolve the project-relative \`targets\` and working directory, and run
+  the declared executable with its exact argument vector using your process tools.
+  Associate each pass/fail with the binding's covered stable IDs. A target file
+  existing AND its command passing is **deterministic** evidence the check ran - but
+  it does NOT by itself prove the check verifies the intended claim. If a mandatory
+  automated command fails or cannot execute, raise a **CRITICAL** issue with the
+  command output and the covered stable IDs, and mark the change **not ready to
+  archive**.
+- **Perform structured REVIEW procedures.** For a binding whose mechanism is
+  \`review\`, follow its stated procedure using the required code and architecture
+  inputs, and report the conclusion labeled with **review** strength (weaker than
+  automated). Report \`manual\` evidence separately, together with its stated
+  limitations - never present it as automated proof.
+- **Assess SEMANTIC CORRESPONDENCE honestly.** For each changed automated binding
+  that resolves and passes, inspect whether its check plausibly proves the covered
+  claim. Report that judgment as a **REVIEW** conclusion, SEPARATE from the command
+  status: distinguish "command passed" from "the check verifies the intended
+  semantics". A plausible-correspondence conclusion is review evidence, not
+  deterministic automation - never upgrade it to automated strength.
+- **Report RETIRED enforcement targets.** Surface any former test, rule, fixture, or
+  review target that sync or archive flagged as a **cleanup candidate**, and state
+  whether any surviving binding still references it. Do NOT assume an unshared target
+  was deleted without checking project usage, and never delete a target here.
+- **Report evidence STRENGTH per binding and gate archive-readiness.** For every
+  affected binding, label its evidence as **automated**, **review**, **manual**, or
+  **unenforced**. Block archive-readiness while any affected binding is \`planned\`,
+  unenforced, unresolved, stale, broken, or missing its target.
+
+Legacy changes (\`specModel.kind == "legacy"\`) retain the heuristic requirement /
+scenario / design verification described above unchanged.`;
+
 /** apply (task 6.3 / Requirement: Apply resolves enforcement bindings). */
 export const GOVERNED_APPLY_GUIDANCE = `${GOVERNED_PRIMER}
 
