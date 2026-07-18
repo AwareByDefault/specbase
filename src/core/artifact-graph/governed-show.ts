@@ -95,6 +95,49 @@ export function resolveGovernedShowTarget(
   return { kind: 'not-found' };
 }
 
+/**
+ * Report an ambiguous unqualified basename (with its candidate locators) or an
+ * unknown governed target, in text or `--json`. Shared by governed `spec show`,
+ * `spec validate`, and the standalone `validate` command so every surface emits
+ * the same actionable resolution errors.
+ */
+export function reportGovernedResolutionError(
+  target: string,
+  resolution: Exclude<GovernedShowResolution, { kind: 'resolved' }>,
+  options: { json?: boolean }
+): void {
+  if (resolution.kind === 'ambiguous-basename') {
+    const message = `Ambiguous spec '${target}' matches multiple governed locators: ${resolution.candidates.join(', ')}.`;
+    const fix = 'Use a plane-qualified locator or the stable spec ID.';
+    if (options.json) {
+      console.log(
+        JSON.stringify(
+          {
+            status: [
+              { severity: 'error', code: 'ambiguous_spec', message, fix, candidates: resolution.candidates },
+            ],
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.error(message);
+      console.error(fix);
+    }
+    return;
+  }
+
+  const message = `Spec '${target}' not found`;
+  if (options.json) {
+    console.log(
+      JSON.stringify({ status: [{ severity: 'error', code: 'unknown_item', message }] }, null, 2)
+    );
+  } else {
+    console.error(message);
+  }
+}
+
 /** One binding merged with its computed drift state for structured output. */
 export interface GovernedBindingView {
   id: string;

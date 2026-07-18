@@ -12,6 +12,13 @@ import { isInteractive, resolveNoInteractive } from '../utils/interactive.js';
 import { getSpecIds } from '../utils/item-discovery.js';
 import { getAvailableChanges } from './workflow/shared.js';
 import { nearestMatches } from '../utils/match.js';
+import { resolveProjectSpecModel } from '../core/shared/skill-generation.js';
+import { loadGovernedRepository, renderDiagnostics } from '../core/governed/index.js';
+import {
+  resolveGovernedShowTarget,
+  reportGovernedResolutionError,
+} from '../core/artifact-graph/governed-show.js';
+import { validateGovernedPairs } from '../core/artifact-graph/governed-validate.js';
 
 type ItemType = 'change' | 'spec';
 
@@ -44,6 +51,20 @@ export class ValidateCommand {
       return;
     }
 
+    // Governed projects validate spec/enforcement PAIRS through the shared Unit
+    // 1-2 engine (identity, coverage, lifecycle, targets) plus project-wide
+    // duplicate-spec-ID and unsafe-locator detection. Governed change-delta
+    // validation is deferred to Unit 10, so a `--changes`-only request falls
+    // through to the legacy change validator; every other mode is governed-aware.
+    if (resolveProjectSpecModel(root.path).kind === 'governed') {
+      const onlyChanges =
+        !!options.changes && !options.specs && !options.all && !itemName;
+      if (!onlyChanges) {
+        await this.runGovernedValidation(root, itemName, options);
+        return;
+      }
+    }
+
     const interactive = isInteractive(options);
 
     // Handle bulk flags first
@@ -69,6 +90,69 @@ export class ValidateCommand {
     // Direct item validation with type detection or override
     const typeOverride = this.normalizeType(options.type);
     await this.validateDirectItem(root, itemName, { typeOverride, strict: !!options.strict, json: !!options.json });
+  }
+
+  /**
+   * Governed-aware validation for the standalone `validate` command. Validates a
+   * single pair when targeted by plane-qualified locator or stable spec ID, and
+   * the whole governed repository (every discovered pair plus repo-level unsafe
+   * locators) otherwise — including the `--specs`/`--all` bulk modes. Reuses the
+   * shared {@link validateGovernedPairs} engine so it is byte-consistent with
+   * `spec validate`; the legacy flat validator is never reached here.
+   */
+  private async runGovernedValidation(
+    root: ResolvedOpenSpecRoot,
+    itemName: string | undefined,
+    options: ExecuteOptions
+  ): Promise<void> {
+    const projectRoot = root.path;
+    const repository = await loadGovernedRepository(path.join(projectRoot, 'openspec'));
+
+    const bulk = !!options.all || !!options.specs || !!options.changes;
+
+    let records = repository.discovery.pairs;
+    let targeted = false;
+    if (itemName && !bulk) {
+      const resolution = resolveGovernedShowTarget(repository, itemName);
+      if (resolution.kind !== 'resolved') {
+        reportGovernedResolutionError(itemName, resolution, options);
+        process.exitCode = 1;
+        return;
+      }
+      records = [resolution.record];
+      targeted = true;
+    }
+
+    const report = await validateGovernedPairs({
+      repository,
+      records,
+      projectRoot,
+      includeUnsafeLocators: !targeted,
+    });
+
+    if (options.json) {
+      console.log(
+        JSON.stringify({ ...report, root: toRootOutput(root) }, null, 2)
+      );
+    } else if (report.specs.length === 0 && report.unsafeLocators.length === 0) {
+      console.log('No items found to validate.');
+    } else {
+      for (const result of report.specs) {
+        if (result.valid) {
+          console.log(`✓ ${result.locator}`);
+        } else {
+          console.error(`✗ ${result.locator}`);
+          console.error(renderDiagnostics(result.diagnostics));
+        }
+      }
+      for (const unsafe of report.unsafeLocators) {
+        console.error(
+          `Unsafe locator rejected: ${unsafe.message} (${unsafe.nativeSourcePath})`
+        );
+      }
+    }
+
+    process.exitCode = report.valid ? 0 : 1;
   }
 
   private normalizeType(value?: string): ItemType | undefined {

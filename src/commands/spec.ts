@@ -11,15 +11,15 @@ import { resolveProjectSpecModel } from '../core/shared/skill-generation.js';
 import { ListCommand } from '../core/list.js';
 import {
   loadGovernedRepository,
-  collectDiagnostics,
   renderDiagnostics,
 } from '../core/governed/index.js';
 import {
   resolveGovernedShowTarget,
   analyzeGovernedPair,
   renderGovernedSpecSummary,
-  type GovernedShowResolution,
+  reportGovernedResolutionError,
 } from '../core/artifact-graph/governed-show.js';
+import { validateGovernedPairs } from '../core/artifact-graph/governed-validate.js';
 
 const SPECS_DIR = 'openspec/specs';
 
@@ -205,53 +205,12 @@ export class SpecCommand {
 }
 
 /**
- * Report an ambiguous unqualified basename (with its candidate locators) or an
- * unknown governed target, in text or `--json`. Shared by governed `spec show`
- * and `spec validate` so both surface the same actionable resolution errors.
- */
-function reportGovernedResolutionError(
-  target: string,
-  resolution: Exclude<GovernedShowResolution, { kind: 'resolved' }>,
-  options: { json?: boolean }
-): void {
-  if (resolution.kind === 'ambiguous-basename') {
-    const message = `Ambiguous spec '${target}' matches multiple governed locators: ${resolution.candidates.join(', ')}.`;
-    const fix = 'Use a plane-qualified locator or the stable spec ID.';
-    if (options.json) {
-      console.log(
-        JSON.stringify(
-          {
-            status: [
-              { severity: 'error', code: 'ambiguous_spec', message, fix, candidates: resolution.candidates },
-            ],
-          },
-          null,
-          2
-        )
-      );
-    } else {
-      console.error(message);
-      console.error(fix);
-    }
-    return;
-  }
-
-  const message = `Spec '${target}' not found`;
-  if (options.json) {
-    console.log(
-      JSON.stringify({ status: [{ severity: 'error', code: 'unknown_item', message }] }, null, 2)
-    );
-  } else {
-    console.error(message);
-  }
-}
-
-/**
  * Validate one governed pair (or every pair when no target is given) through the
- * Unit 1-2 drift engine: identity, coverage, lifecycle state, and declared
- * paths. Renders the deterministic diagnostics via {@link collectDiagnostics} /
- * {@link renderDiagnostics}. The standalone `validate` command is Unit 9; this
- * only surfaces governed validation through the `spec` noun command.
+ * shared governed validation engine ({@link validateGovernedPairs}): identity,
+ * coverage, lifecycle state, declared paths, parse issues, scoped-identity
+ * duplicates, and unsafe locators. Renders the deterministic diagnostics via
+ * {@link renderDiagnostics}. The standalone top-level `validate` command reuses
+ * the same engine so both surfaces stay semantically identical.
  */
 async function validateGovernedSpec(
   target: string | undefined,
@@ -261,6 +220,7 @@ async function validateGovernedSpec(
   const repository = await loadGovernedRepository(join(projectRoot, 'openspec'));
 
   let records = repository.discovery.pairs;
+  let targeted = false;
   if (target) {
     const resolution = resolveGovernedShowTarget(repository, target);
     if (resolution.kind !== 'resolved') {
@@ -269,6 +229,7 @@ async function validateGovernedSpec(
       return;
     }
     records = [resolution.record];
+    targeted = true;
   } else if (isInteractive(options)) {
     const locators = repository.discovery.pairs.map((p) => p.locator);
     if (locators.length > 0) {
@@ -279,28 +240,21 @@ async function validateGovernedSpec(
       });
       const resolution = resolveGovernedShowTarget(repository, picked);
       records = resolution.kind === 'resolved' ? [resolution.record] : [];
+      targeted = true;
     }
   }
 
-  const results: Array<{
-    locator: string;
-    specId: string | null;
-    valid: boolean;
-    diagnostics: ReturnType<typeof collectDiagnostics>;
-  }> = [];
-  for (const record of records) {
-    const { analysis } = await analyzeGovernedPair({ repository, record, projectRoot });
-    const diagnostics = collectDiagnostics(analysis);
-    const valid = diagnostics.every((d) => d.severity !== 'error');
-    results.push({ locator: record.locator, specId: analysis.specId, valid, diagnostics });
-  }
-
-  const allValid = results.every((r) => r.valid);
+  const report = await validateGovernedPairs({
+    repository,
+    records,
+    projectRoot,
+    includeUnsafeLocators: !targeted,
+  });
 
   if (options.json) {
-    console.log(JSON.stringify({ valid: allValid, specs: results }, null, 2));
+    console.log(JSON.stringify(report, null, 2));
   } else {
-    for (const result of results) {
+    for (const result of report.specs) {
       if (result.valid) {
         console.log(`Governed spec '${result.locator}' is valid`);
       } else {
@@ -308,8 +262,11 @@ async function validateGovernedSpec(
         console.error(renderDiagnostics(result.diagnostics));
       }
     }
+    for (const unsafe of report.unsafeLocators) {
+      console.error(`Unsafe locator rejected: ${unsafe.message} (${unsafe.nativeSourcePath})`);
+    }
   }
-  process.exitCode = allValid ? 0 : 1;
+  process.exitCode = report.valid ? 0 : 1;
 }
 
 export function registerSpecCommand(rootProgram: typeof program) {

@@ -18,6 +18,10 @@ export type DiagnosticCode =
   | 'enforcement/parse-issue'
   | 'pair/incomplete'
   | 'pair/identity-mismatch'
+  // scoped stable identity (project-wide spec IDs; pair-local requirement/scenario IDs)
+  | 'identity/duplicate-spec-id'
+  | 'identity/duplicate-requirement-id'
+  | 'identity/duplicate-scenario-id'
   // coverage / drift
   | 'coverage/hanging-requirement'
   | 'coverage/uncovered-scenario'
