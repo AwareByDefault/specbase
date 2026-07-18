@@ -17,7 +17,8 @@ import { readProjectConfig, validateConfigRules, type ProjectConfig } from '../p
 import type { ReferenceIndexEntry } from '../references.js';
 import type { PlanningHome } from '../planning-home.js';
 import type { ChangeMetadata } from '../change-metadata/index.js';
-import type { Artifact, CompletedSet } from './types.js';
+import type { Artifact, CompletedSet, SpecModel } from './types.js';
+import type { GovernedWorkflowContext } from './governed-context.js';
 
 // Session-level cache for validation warnings (avoid repeating same warnings)
 const shownWarnings = new Set<string>();
@@ -98,6 +99,17 @@ export interface ArtifactInstructions {
   dependencies: DependencyInfo[];
   /** Artifacts that become available after completing this one */
   unlocks: string[];
+  /**
+   * Resolved spec model. Governed-only additive field: present (and always
+   * `kind: "governed"`) under the governed schema so agents can confirm the
+   * model from CLI output; omitted for legacy so legacy output is unchanged.
+   */
+  specModel?: SpecModel;
+  /**
+   * Governed pair + plane context (target roots, delta pairs, corresponding
+   * current pairs). Governed-only additive field; omitted for legacy schemas.
+   */
+  governed?: GovernedWorkflowContext;
 }
 
 /**
@@ -153,6 +165,17 @@ export interface ChangeStatus {
   applyRequires: string[];
   /** Status of each artifact */
   artifacts: ArtifactStatus[];
+  /**
+   * Resolved spec model. Governed-only additive field: present (and always
+   * `kind: "governed"`) under the governed schema so agents can confirm the
+   * model from `status --json`; omitted for legacy so legacy output is unchanged.
+   */
+  specModel?: SpecModel;
+  /**
+   * Governed pair + plane context (target roots, delta pairs, corresponding
+   * current pairs). Governed-only additive field; omitted for legacy schemas.
+   */
+  governed?: GovernedWorkflowContext;
 }
 
 export interface ArtifactPathSummary {

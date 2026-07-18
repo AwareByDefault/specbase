@@ -11,6 +11,9 @@ import * as fs from 'fs';
 import {
   loadChangeContext,
   generateInstructions,
+  withGovernedInstructions,
+  loadGovernedContext,
+  collectCurrentPairFiles,
   resolveSchema,
   resolveArtifactOutputs,
   type ArtifactInstructions,
@@ -149,10 +152,14 @@ export async function instructionsCommand(
     }
 
     const { projectConfig, references } = await loadRootConfigContext(root);
-    const instructions = generateInstructions(context, artifactId, projectRoot, {
+    const baseInstructions = generateInstructions(context, artifactId, projectRoot, {
       projectConfig,
       references,
     });
+    // Governed-only: attach spec model + pair context (target roots, delta pairs
+    // with paired spec.md/enforcement.md, corresponding current pairs). No-op
+    // under the legacy model, so legacy instruction output is unchanged.
+    const instructions = await withGovernedInstructions(baseInstructions, context);
     const isBlocked = instructions.dependencies.some((d) => !d.done);
 
     spinner?.stop();
@@ -372,6 +379,18 @@ export async function generateApplyInstructions(
     }
   }
 
+  // Governed-only: expose the governed pair + plane context, and add the
+  // corresponding current pair source files to apply context so implementation
+  // reads the permanent pairs a change modifies. No-op under the legacy model,
+  // so legacy apply output (contextFiles keyed by artifact id) is unchanged.
+  const governedContext = await loadGovernedContext(context);
+  if (governedContext) {
+    const currentPairFiles = collectCurrentPairFiles(governedContext.governed);
+    if (currentPairFiles.length > 0) {
+      contextFiles.current = currentPairFiles;
+    }
+  }
+
   // Parse tasks if tracking file exists
   let tasks: TaskItem[] = [];
   let tracksFileExists = false;
@@ -429,6 +448,7 @@ export async function generateApplyInstructions(
     missingArtifacts: missingArtifacts.length > 0 ? missingArtifacts : undefined,
     instruction,
     ...(references !== undefined ? { references } : {}),
+    ...(governedContext ? { governed: governedContext.governed } : {}),
   };
 }
 
