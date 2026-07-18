@@ -18,6 +18,16 @@ import {
   writeUpdatedSpec,
   type SpecUpdate,
 } from './specs-apply.js';
+import { loadChangeContext } from './artifact-graph/instruction-loader.js';
+import { resolveSchema } from './artifact-graph/resolver.js';
+import { resolveSpecModel, LEGACY_SPEC_MODEL, type SpecModel } from './artifact-graph/types.js';
+import { renderDiagnostics } from './governed/index.js';
+import {
+  prepareGovernedArchive,
+  writeGovernedArchivePairs,
+  type GovernedArchivePlan,
+  type PreparedGovernedPair,
+} from './governed-archive.js';
 
 function isMissingPathError(error: unknown): boolean {
   return (
@@ -64,6 +74,22 @@ interface ArchiveResult {
   path: string;
   specsUpdated: boolean;
   totals?: { added: number; modified: number; removed: number; renamed: number };
+  governed?: GovernedArchiveReport;
+}
+
+/** Governed archive reporting: updated locators, op counts, retired targets, verification. */
+interface GovernedArchiveReport {
+  /** `verified` for a validated archive; `unverified-bypass` when validation was skipped. */
+  verification: 'verified' | 'unverified-bypass';
+  pairs: Array<{
+    locator: string;
+    specId: string | null;
+    moved: boolean;
+    previousLocator: string | null;
+    normativeOps: PreparedGovernedPair['normativeOps'];
+    bindingOps: PreparedGovernedPair['bindingOps'];
+    retiredTargets: PreparedGovernedPair['retiredTargets'];
+  }>;
 }
 
 /**
@@ -238,6 +264,14 @@ export class ArchiveCommand {
     }
 
     const skipValidation = options.validate === false || options.noValidate === true;
+
+    // Governed spec model routes through pair-aware preparation; the legacy flat
+    // model keeps every step below byte-for-byte unchanged. Any failure to
+    // positively resolve a governed model falls back to the legacy path.
+    const specModel = this.resolveSpecModelForChange(root.path, changeName, changeDir);
+    if (specModel.kind === 'governed') {
+      return await this.runGoverned(changeName, changeDir, options, root, json, skipValidation);
+    }
 
     // Validate specs and change before archiving
     if (!skipValidation) {
@@ -522,6 +556,315 @@ export class ArchiveCommand {
       specsUpdated,
       ...(totals ? { totals } : {}),
     };
+  }
+
+  /**
+   * Resolve the change's spec model, defaulting to legacy on ANY failure so the
+   * legacy archive path can never be affected by governed resolution. Core
+   * dispatches on the resolved model, never on the schema name (design decision 6).
+   */
+  private resolveSpecModelForChange(
+    projectRoot: string,
+    changeName: string,
+    changeDir: string
+  ): SpecModel {
+    try {
+      const context = loadChangeContext(projectRoot, changeName, undefined, {
+        changeDir,
+      });
+      return resolveSpecModel(resolveSchema(context.schemaName, projectRoot));
+    } catch {
+      return LEGACY_SPEC_MODEL;
+    }
+  }
+
+  /**
+   * Governed archive: pair-aware preparation, readiness enforcement, coherent
+   * pair writes, retired-target reporting, and honest bypass reporting. The
+   * legacy flat archive path is never reached here.
+   */
+  private async runGoverned(
+    changeName: string,
+    changeDir: string,
+    options: ArchiveOptions,
+    root: ResolvedOpenSpecRoot,
+    json: boolean,
+    skipValidation: boolean
+  ): Promise<ArchiveResult | null> {
+    const changesDir = root.changesDir;
+    const archiveDir = root.archiveDir;
+    const openspecRoot = path.resolve(changeDir, '..', '..');
+    const projectRoot = root.path;
+
+    // Bypass confirmation semantics mirror the legacy path exactly.
+    if (skipValidation) {
+      if (json) {
+        if (!options.yes) {
+          throw new ArchiveBlockedError(
+            'archive_confirmation_required',
+            'Skipping validation requires confirmation: rerun with --yes.',
+            withStoreFlag(root, 'openspec archive <change-name> --json --no-validate --yes')
+          );
+        }
+      } else {
+        const timestamp = new Date().toISOString();
+        if (!options.yes) {
+          const { confirm } = await import('@inquirer/prompts');
+          const proceed = await confirm({
+            message: chalk.yellow('⚠️  WARNING: Skipping validation may archive unverified governed enforcement. Continue? (y/N)'),
+            default: false,
+          });
+          if (!proceed) {
+            console.log('Archive cancelled.');
+            return null;
+          }
+        } else {
+          console.log(chalk.yellow('\n⚠️  WARNING: Skipping validation may archive unverified governed enforcement.'));
+        }
+        console.log(chalk.yellow(`[${timestamp}] Validation skipped for change: ${changeName}`));
+        console.log(chalk.yellow(`Affected files: ${changeDir}`));
+      }
+    }
+
+    // Prepare the governed archive plan (no writes) BEFORE any current-spec write.
+    const plan = await prepareGovernedArchive({ changeDir, openspecRoot, projectRoot });
+
+    // Block on structural + semantic problems unless validation is bypassed.
+    if (!skipValidation) {
+      const ok = this.enforceGovernedReadiness(plan, changeName, root, json);
+      if (!ok) return null;
+    }
+
+    // Task progress + incomplete-task confirmation (legacy semantics).
+    const proceed = await this.checkTaskProgress(changesDir, changeName, options, json);
+    if (!proceed) return null;
+
+    // Write each validated pair coherently unless --skip-specs is set.
+    let appliedPairs: PreparedGovernedPair[] = [];
+    if (options.skipSpecs) {
+      if (!json) console.log('Skipping spec updates (--skip-specs flag provided).');
+    } else if (plan.pairs.length > 0) {
+      if (!json) {
+        console.log('\nGoverned pairs to update:');
+        for (const p of plan.pairs) {
+          const label = p.moved ? `${p.previousLocator} → ${p.locator} (moved)` : p.locator;
+          console.log(`  ${label}`);
+        }
+      }
+
+      let shouldWrite = true;
+      if (!options.yes) {
+        if (json) {
+          throw new ArchiveBlockedError(
+            'archive_confirmation_required',
+            `Updating ${plan.pairs.length} governed pair(s) requires confirmation: rerun with --yes.`,
+            withStoreFlag(root, 'openspec archive <change-name> --json --yes')
+          );
+        }
+        const { confirm } = await import('@inquirer/prompts');
+        shouldWrite = await confirm({ message: 'Proceed with governed pair updates?', default: true });
+        if (!shouldWrite) {
+          console.log('Skipping spec updates. Proceeding with archive.');
+        }
+      }
+
+      if (shouldWrite) {
+        await writeGovernedArchivePairs(plan.pairs);
+        appliedPairs = plan.pairs;
+        if (!json) this.printGovernedPairSummary(appliedPairs);
+      }
+    }
+
+    // Move the change to archive only after every pair update succeeds.
+    const archiveName = `${this.getArchiveDate()}-${changeName}`;
+    const archivePath = path.join(archiveDir, archiveName);
+    let archiveExists = false;
+    try {
+      await fs.access(archivePath);
+      archiveExists = true;
+    } catch (error: any) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    if (archiveExists) {
+      throw new ArchiveBlockedError('archive_target_exists', `Archive '${archiveName}' already exists.`);
+    }
+    await fs.mkdir(archiveDir, { recursive: true });
+    await moveDirectory(changeDir, archivePath);
+
+    const verification: GovernedArchiveReport['verification'] = skipValidation
+      ? 'unverified-bypass'
+      : 'verified';
+
+    if (!json) {
+      console.log(`Change '${changeName}' archived as '${archiveName}'.`);
+      if (verification === 'unverified-bypass') {
+        console.log(chalk.yellow('Governed enforcement was not fully verified (validation bypassed).'));
+      }
+    }
+
+    return {
+      change: changeName,
+      archivedAs: archiveName,
+      path: archivePath,
+      specsUpdated: appliedPairs.length > 0,
+      governed: {
+        verification,
+        pairs: appliedPairs.map((p) => ({
+          locator: p.locator,
+          specId: p.specId,
+          moved: p.moved,
+          previousLocator: p.previousLocator,
+          normativeOps: p.normativeOps,
+          bindingOps: p.bindingOps,
+          retiredTargets: p.retiredTargets,
+        })),
+      },
+    };
+  }
+
+  /**
+   * Enforce governed archive readiness. Returns true when nothing blocks; in
+   * human mode prints the blockers, sets a non-zero exit code, and returns false
+   * so the caller aborts before any write; in JSON mode throws a machine-readable
+   * blocked error instead.
+   */
+  private enforceGovernedReadiness(
+    plan: GovernedArchivePlan,
+    changeName: string,
+    root: ResolvedOpenSpecRoot,
+    json: boolean
+  ): boolean {
+    if (plan.incompletePairs.length > 0) {
+      const detail = plan.incompletePairs
+        .map((p) => `${p.locator} is missing ${p.missingMember}`)
+        .join('; ');
+      if (json) {
+        throw new ArchiveBlockedError(
+          'archive_governed_incomplete_pair',
+          `Incomplete governed delta pair(s) in change '${changeName}': ${detail}.`,
+          'Author both spec.md and enforcement.md for each affected pair, then rerun.'
+        );
+      }
+      console.log(chalk.red(`\nIncomplete governed delta pair(s) (aborting before any spec write):`));
+      for (const p of plan.incompletePairs) {
+        console.log(chalk.red(`  ✗ ${p.locator} is missing ${p.missingMember}`));
+      }
+      process.exitCode = 1;
+      return false;
+    }
+
+    if (plan.unsafeLocators.length > 0) {
+      const detail = plan.unsafeLocators.map((u) => u.message).join('; ');
+      if (json) {
+        throw new ArchiveBlockedError('archive_governed_unsafe_locator', `Unsafe governed locator(s): ${detail}.`);
+      }
+      console.log(chalk.red(`\nUnsafe governed locator(s) (aborting):`));
+      for (const u of plan.unsafeLocators) console.log(chalk.red(`  ✗ ${u.message}`));
+      process.exitCode = 1;
+      return false;
+    }
+
+    const validationErrors = (plan.validation?.specs ?? [])
+      .flatMap((s) => s.diagnostics)
+      .filter((d) => d.severity === 'error');
+    const blocked = !plan.ready;
+    if (blocked) {
+      const readinessDetail = plan.notReady
+        .map((n) => `${n.locator}: ${n.blockers.join(', ')}`)
+        .join('; ');
+      if (json) {
+        throw new ArchiveBlockedError(
+          'archive_governed_not_ready',
+          `Governed pair(s) are not ready to archive in change '${changeName}'.`,
+          `Resolve blockers (${[
+            ...validationErrors.map((d) => d.code),
+            ...plan.notReady.flatMap((n) => n.blockers),
+          ].join(', ')}) or rerun with --no-validate --yes to bypass. ` +
+            `Run ${withStoreFlag(root, `openspec validate ${changeName}`)} for details.`
+        );
+      }
+      console.log(chalk.red(`\nGoverned pair(s) are not ready to archive (aborting before any spec write):`));
+      if (validationErrors.length > 0) {
+        console.log(renderDiagnostics(validationErrors));
+      }
+      if (readinessDetail) {
+        console.log(chalk.red(`  Readiness blockers — ${readinessDetail}`));
+      }
+      console.log(chalk.yellow('To bypass validation (not recommended), use --no-validate --yes.'));
+      process.exitCode = 1;
+      return false;
+    }
+
+    return true;
+  }
+
+  /** Print the applied governed pair operation counts and retired-target candidates. */
+  private printGovernedPairSummary(pairs: PreparedGovernedPair[]): void {
+    for (const p of pairs) {
+      const n = p.normativeOps;
+      const b = p.bindingOps;
+      console.log(`Updated ${p.locator}${p.moved ? ` (moved from ${p.previousLocator})` : ''}:`);
+      console.log(
+        `  normative: + ${n.added}, ~ ${n.modified}, - ${n.removed}, → ${n.renamed}` +
+          `  |  bindings: + ${b.added}, ~ ${b.modified}, - ${b.removed}`
+      );
+      for (const candidate of p.retiredTargets) {
+        const status = candidate.stillReferenced
+          ? `still shared by ${candidate.survivingBindingIds.join(', ')}`
+          : 'no surviving binding references it';
+        console.log(
+          chalk.yellow(
+            `  retired-target candidate: ${candidate.path} (was ${candidate.fromBindingIds.join(', ')}; ${status}) — not deleted`
+          )
+        );
+      }
+    }
+  }
+
+  /**
+   * Task-progress gate shared with the legacy semantics: prints status (human),
+   * and on incomplete tasks either throws (JSON, no --yes), prompts (human, no
+   * --yes), or warns (--yes). Returns false when a human declines.
+   */
+  private async checkTaskProgress(
+    changesDir: string,
+    changeName: string,
+    options: ArchiveOptions,
+    json: boolean
+  ): Promise<boolean> {
+    const progress = await getTaskProgressForChange(
+      changesDir,
+      changeName,
+      path.resolve(changesDir, '..', '..')
+    );
+    if (!json) {
+      console.log(`Task status: ${formatTaskStatus(progress)}`);
+    }
+    const incompleteTasks = Math.max(progress.total - progress.completed, 0);
+    if (incompleteTasks > 0) {
+      if (json) {
+        if (!options.yes) {
+          throw new ArchiveBlockedError(
+            'archive_tasks_incomplete',
+            `${incompleteTasks} incomplete task(s) found for change '${changeName}'.`,
+            'Complete the tasks or rerun with --yes.'
+          );
+        }
+      } else if (!options.yes) {
+        const { confirm } = await import('@inquirer/prompts');
+        const proceed = await confirm({
+          message: `Warning: ${incompleteTasks} incomplete task(s) found. Continue?`,
+          default: false,
+        });
+        if (!proceed) {
+          console.log('Archive cancelled.');
+          return false;
+        }
+      } else {
+        console.log(`Warning: ${incompleteTasks} incomplete task(s) found. Continuing due to --yes flag.`);
+      }
+    }
+    return true;
   }
 
   private async selectChange(changesDir: string): Promise<string | null> {
