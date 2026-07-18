@@ -240,6 +240,71 @@ your process tools.
 Legacy changes (\`specModel.kind == "legacy"\`) retain the heuristic requirement /
 scenario / design verification described above unchanged.`;
 
+/** archive (task 6.5 / Requirements: Artifact Completion Check, Spec Sync Prompt, Archive Process). */
+export const GOVERNED_ARCHIVE_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Archiving a governed change (governed)
+
+Governed archive promotes a change into durable truth only when its complete
+spec/enforcement PAIRS are verified, reconciled together, and free of unresolved
+enforcement. The legacy artifact/task/delta prompts above still apply; the
+governed gate below is ADDITIONAL and authoritative.
+
+- **Require governed readiness BEFORE archiving.** Do not archive until the
+  affected \`spec.md\`/\`enforcement.md\` PAIRS validate together (\`openspec
+  validate\` / \`openspec spec validate\`), coverage is satisfied (no **hanging**
+  mandatory SHALL/MUST claims, no **stale** or uncovered bindings), every active
+  binding's declared \`targets\` exist, and NO \`planned\`, unenforced, unresolved,
+  **broken**, or failing-mandatory bindings remain. Reuse the \`/opsx:verify\`
+  results as the readiness evidence; if verification has not been run or does not
+  pass, block ordinary archive readiness and direct the user to \`/opsx:verify\`
+  or the explicit validation-bypass command. Interactive confirmation is NOT
+  enforcement evidence - never treat a "proceed anyway" answer as proof the pair
+  is enforced.
+- **Treat governed deltas as an inseparable pair on sync.** When a governed change
+  has complete paired deltas, show ONE combined summary of the normative, binding,
+  and retired-target operations that archive will apply, then invoke **pair-aware
+  governed synchronization** (the governed archive CLI path) so \`spec.md\` and
+  \`enforcement.md\` reconcile together by stable identity. Never promote a
+  spec-only or enforcement-only half. If only ONE member of a governed delta pair
+  exists, report a blocking validation error rather than offering partial
+  synchronization.
+- **Archive through the schema-aware CLI path.** Run the archive via the governed
+  archive command so pair validation, current-state pair updates, archive-root
+  selection, and bypass reporting stay authoritative - do not hand-move governed
+  pair files. On success, report the dated archive location, the updated current
+  locators, the resulting enforcement status, and any cleanup candidates.
+- **Report retired-target CLEANUP candidates; never auto-delete project code.**
+  When reconciliation retires a binding or a normative ID it covered, surface the
+  binding's former \`targets\` (tests, rules, fixtures, review procedures) as
+  **cleanup candidates**. Before any manual removal, assess whether a surviving
+  binding still references each candidate; never delete a shared or intentionally
+  retained target, and never auto-delete project code from this workflow.
+- **Report an explicit BYPASS honestly.** If the user deliberately chooses the
+  supported validation bypass, invoke the CLI with its required confirmation flags
+  (e.g. \`--no-validate\`) and report the result as **unverified (validation
+  bypassed)** - state that the archive was NOT fully verified rather than claiming
+  governed readiness.`;
+
+/**
+ * bulk archive (task 6.5). Reuses the single-change governed archive gate verbatim
+ * so both projections stay identical, then adds per-change batch reporting.
+ */
+export const GOVERNED_BULK_ARCHIVE_GUIDANCE = `${GOVERNED_ARCHIVE_GUIDANCE}
+
+### Applying the governed gate across a batch (governed)
+
+- **Apply the governed readiness gate PER change.** Evaluate every selected
+  governed change against the readiness gate above independently - one change's
+  passing pairs never satisfy another's. A change whose pairs are unverified,
+  hanging, stale, broken, or carry \`planned\`/unresolved bindings is **blocked**
+  for ordinary archive, not archived alongside ready changes.
+- **Report each change's outcome explicitly.** In the batch summary, state for
+  every selected change whether it was **archived** (verified), **blocked**
+  (readiness gate failed - name the failing pair and reason), or **bypassed**
+  (archived with the explicit validation bypass, reported as unverified). Never
+  fold a blocked or bypassed change into the archived count.`;
+
 /** apply (task 6.3 / Requirement: Apply resolves enforcement bindings). */
 export const GOVERNED_APPLY_GUIDANCE = `${GOVERNED_PRIMER}
 

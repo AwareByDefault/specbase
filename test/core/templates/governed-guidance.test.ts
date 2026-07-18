@@ -9,6 +9,8 @@ import {
   getFfChangeSkillTemplate,
   getSyncSpecsSkillTemplate,
   getVerifyChangeSkillTemplate,
+  getArchiveChangeSkillTemplate,
+  getBulkArchiveChangeSkillTemplate,
   getOpsxProposeSkillTemplate,
   getOpsxExploreCommandTemplate,
   getOpsxNewCommandTemplate,
@@ -18,6 +20,8 @@ import {
   getOpsxFfCommandTemplate,
   getOpsxSyncCommandTemplate,
   getOpsxVerifyCommandTemplate,
+  getOpsxArchiveCommandTemplate,
+  getOpsxBulkArchiveCommandTemplate,
   getOpsxProposeCommandTemplate,
 } from '../../../src/core/templates/skill-templates.js';
 import { getSkillTemplates, getCommandContents } from '../../../src/core/shared/skill-generation.js';
@@ -40,6 +44,8 @@ const SKILL_GETTERS = {
   ff: getFfChangeSkillTemplate,
   sync: getSyncSpecsSkillTemplate,
   verify: getVerifyChangeSkillTemplate,
+  archive: getArchiveChangeSkillTemplate,
+  'bulk-archive': getBulkArchiveChangeSkillTemplate,
   propose: getOpsxProposeSkillTemplate,
 } as const;
 
@@ -52,6 +58,8 @@ const COMMAND_GETTERS = {
   ff: getOpsxFfCommandTemplate,
   sync: getOpsxSyncCommandTemplate,
   verify: getOpsxVerifyCommandTemplate,
+  archive: getOpsxArchiveCommandTemplate,
+  'bulk-archive': getOpsxBulkArchiveCommandTemplate,
   propose: getOpsxProposeCommandTemplate,
 } as const;
 
@@ -246,6 +254,77 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
         // Automated enforcement fails -> CRITICAL + not ready to archive.
         expect(surface).toContain('mark the change **not ready to');
       }
+    });
+  });
+
+  // Unit 6.5 (archive): governed archive requires pair readiness before archiving,
+  // performs pair-aware synchronization through the schema-aware CLI, reports
+  // retired-target cleanup candidates without auto-deleting code, and reports an
+  // explicit validation bypass honestly. None of this appears under legacy.
+  describe('governed archive guidance (opsx-archive-skill)', () => {
+    const ARCHIVE_MARKERS = [
+      'Archiving a governed change (governed)',
+      'Require governed readiness BEFORE archiving',
+      'no **hanging**\n  mandatory SHALL/MUST claims',
+      'every active\n  binding\'s declared \\`targets\\` exist',
+      'NO \\`planned\\`, unenforced, unresolved,\n  **broken**, or failing-mandatory bindings remain',
+      'Reuse the \\`/opsx:verify\\`\n  results as the readiness evidence',
+      'Interactive confirmation is NOT\n  enforcement evidence',
+      'Treat governed deltas as an inseparable pair on sync',
+      'invoke **pair-aware\n  governed synchronization**',
+      'Never promote a\n  spec-only or enforcement-only half',
+      'report a blocking validation error rather than offering partial\n  synchronization',
+      'Archive through the schema-aware CLI path',
+      'report the dated archive location',
+      'Report retired-target CLEANUP candidates; never auto-delete project code',
+      'never auto-delete project code from this workflow',
+      'Report an explicit BYPASS honestly',
+      'the archive was NOT fully verified rather than claiming\n  governed readiness',
+    ]
+      // Source strings use single backticks; markers escape them for readability.
+      .map((m) => m.replace(/\\`/g, '`'));
+
+    for (const marker of ARCHIVE_MARKERS) {
+      it(`teaches archive guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
+        // Both single-change and bulk archive carry the shared readiness gate.
+        const surfaces = [
+          getArchiveChangeSkillTemplate(GOVERNED).instructions,
+          getOpsxArchiveCommandTemplate(GOVERNED).content,
+          getBulkArchiveChangeSkillTemplate(GOVERNED).instructions,
+          getOpsxBulkArchiveCommandTemplate(GOVERNED).content,
+        ];
+        for (const surface of surfaces) expect(surface).toContain(marker);
+
+        expect(getArchiveChangeSkillTemplate().instructions).not.toContain(marker);
+        expect(getOpsxArchiveCommandTemplate().content).not.toContain(marker);
+        expect(getBulkArchiveChangeSkillTemplate().instructions).not.toContain(marker);
+        expect(getOpsxBulkArchiveCommandTemplate().content).not.toContain(marker);
+      });
+    }
+
+    it('bulk archive applies the readiness gate per change and reports each outcome', () => {
+      const bulkOnly = [
+        'Applying the governed gate across a batch (governed)',
+        'Apply the governed readiness gate PER change',
+        'whether it was **archived**',
+        '**blocked**',
+        '**bypassed**',
+        'Never\n  fold a blocked or bypassed change into the archived count',
+      ];
+      for (const surface of [
+        getBulkArchiveChangeSkillTemplate(GOVERNED).instructions,
+        getOpsxBulkArchiveCommandTemplate(GOVERNED).content,
+      ]) {
+        for (const marker of bulkOnly) expect(surface).toContain(marker);
+      }
+      // The batch-specific section is unique to bulk archive, not single archive.
+      expect(getArchiveChangeSkillTemplate(GOVERNED).instructions).not.toContain(
+        'Applying the governed gate across a batch (governed)'
+      );
+      // And it never leaks into legacy bulk output.
+      expect(getBulkArchiveChangeSkillTemplate().instructions).not.toContain(
+        'Applying the governed gate across a batch (governed)'
+      );
     });
   });
 });

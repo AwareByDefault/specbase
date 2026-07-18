@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_BULK_ARCHIVE_GUIDANCE } from './governed-guidance.js';
 
-export function getBulkArchiveChangeSkillTemplate(): SkillTemplate {
+export function getBulkArchiveChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-bulk-archive-change',
     description: 'Archive multiple completed changes at once. Use when archiving several parallel changes.',
-    instructions: `Archive multiple completed changes in a single operation.
+    instructions: withGovernedGuidance(`Archive multiple completed changes in a single operation.
 
 This skill allows you to batch-archive changes, handling spec conflicts intelligently by checking the codebase to determine what's actually implemented.
 
@@ -247,20 +249,20 @@ No active changes found. Create a new change to get started.
 - Track and report all outcomes (success/skip/fail)
 - Preserve .openspec.yaml when moving to archive
 - Archive directory target uses current date: YYYY-MM-DD-<name>
-- If archive target exists, fail that change but continue with others`,
+- If archive target exists, fail that change but continue with others`, specModel, GOVERNED_BULK_ARCHIVE_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxBulkArchiveCommandTemplate(): CommandTemplate {
+export function getOpsxBulkArchiveCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Bulk Archive',
     description: 'Archive multiple completed changes at once',
     category: 'Workflow',
     tags: ['workflow', 'archive', 'experimental', 'bulk'],
-    content: `Archive multiple completed changes in a single operation.
+    content: withGovernedGuidance(`Archive multiple completed changes in a single operation.
 
 This skill allows you to batch-archive changes, handling spec conflicts intelligently by checking the codebase to determine what's actually implemented.
 
@@ -496,6 +498,6 @@ No active changes found. Create a new change to get started.
 - Track and report all outcomes (success/skip/fail)
 - Preserve .openspec.yaml when moving to archive
 - Archive directory target uses current date: YYYY-MM-DD-<name>
-- If archive target exists, fail that change but continue with others`
+- If archive target exists, fail that change but continue with others`, specModel, GOVERNED_BULK_ARCHIVE_GUIDANCE)
   };
 }

@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_ARCHIVE_GUIDANCE } from './governed-guidance.js';
 
-export function getArchiveChangeSkillTemplate(): SkillTemplate {
+export function getArchiveChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-archive-change',
     description: 'Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.',
-    instructions: `Archive a completed change in the experimental workflow.
+    instructions: withGovernedGuidance(`Archive a completed change in the experimental workflow.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -116,20 +118,20 @@ All artifacts complete. All tasks complete.
 - Preserve .openspec.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened
 - If sync is requested, use openspec-sync-specs approach (agent-driven)
-- If delta specs exist, always run the sync assessment and show the combined summary before prompting`,
+- If delta specs exist, always run the sync assessment and show the combined summary before prompting`, specModel, GOVERNED_ARCHIVE_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxArchiveCommandTemplate(): CommandTemplate {
+export function getOpsxArchiveCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Archive',
     description: 'Archive a completed change in the experimental workflow',
     category: 'Workflow',
     tags: ['workflow', 'archive', 'experimental'],
-    content: `Archive a completed change in the experimental workflow.
+    content: withGovernedGuidance(`Archive a completed change in the experimental workflow.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -281,6 +283,6 @@ Target archive directory already exists.
 - Preserve .openspec.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened
 - If sync is requested, use the Skill tool to invoke \`openspec-sync-specs\` (agent-driven)
-- If delta specs exist, always run the sync assessment and show the combined summary before prompting`
+- If delta specs exist, always run the sync assessment and show the combined summary before prompting`, specModel, GOVERNED_ARCHIVE_GUIDANCE)
   };
 }
