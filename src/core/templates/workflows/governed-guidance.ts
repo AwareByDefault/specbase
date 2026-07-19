@@ -75,8 +75,47 @@ are unique only within their pair, and stay fixed when titles or locators move.
 - A change stores its \`spec.md\` and \`enforcement.md\` deltas under the SAME
   plane-qualified locator as the target current pair, so both members move together.`;
 
-/** explore (task 6.1 / Requirement: Explore classifies durable insights). */
+/**
+ * explore (opsx-explore-skill spec): staged behavior -> architecture ->
+ * enforcement exploration, the dual-plane classifier, coverage-informed health
+ * awareness, and the durable-insight classification table.
+ */
 export const GOVERNED_EXPLORE_GUIDANCE = `${GOVERNED_PRIMER}
+
+### Health check first (governed)
+
+Open a governed explore session by consulting the aggregated coverage view:
+run \`openspec coverage --json\` and read the per-spec states and orphan
+classes. Mention any rot or gaps in the areas the idea touches - hanging
+claims, stale bindings, **degraded** specs (covered only by review/manual
+evidence), broken targets, or orphaned enforcement - and factor that health
+into the discussion. When the idea touches a spec whose state is hanging,
+stale, or degraded, surface that state and suggest addressing it or explicitly
+deferring it in the proposal.
+
+### Staged exploration: behavior -> architecture -> enforcement (governed)
+
+Walk a new idea through three named stages. Stay a conversational thinking
+partner - the stages order the discussion, they are not a rigid script:
+
+1. **Desired behavior.** What observable outcome does the user want, and which
+   **behavioral spec pair** (\`specs/behavior/...\`) would own it?
+2. **Supporting architecture.** What structure must remain true to build it -
+   packages, responsibilities, boundaries, invariants - and which
+   **architectural spec pair** (\`specs/architecture/...\`) would own each
+   invariant?
+3. **Enforcement.** As behavioral or architectural claims crystallize, how will
+   each claim be proven - test, lint, static-analysis, command, review, or
+   manual - and at what evidence strength? Explore this before proposing
+   artifacts.
+
+**Dual-plane classifier:** explicitly classify whether the idea changes what
+the system DOES, how the system must be STRUCTURED, or both:
+- If it changes user-observable behavior AND requires a new structural boundary
+  or responsibility, say the idea needs a behavioral spec pair AND an
+  architectural spec pair, and name a candidate locator in EACH plane.
+- If it only alters observable behavior within the existing structure, plan a
+  behavioral spec pair only and say why no architectural spec is needed.
 
 ### Classifying durable insights (governed)
 
@@ -236,6 +275,9 @@ your process tools.
   affected binding, label its evidence as **automated**, **review**, **manual**, or
   **unenforced**. Block archive-readiness while any affected binding is \`planned\`,
   unenforced, unresolved, stale, broken, or missing its target.
+- **Consult \`openspec coverage\` (and \`openspec coverage --json\`) as the
+  aggregated enforcement-coverage view backing this assessment** - per-spec
+  states, strength mix, and orphaned enforcement in one health signal.
 
 Legacy changes (\`specModel.kind == "legacy"\`) retain the heuristic requirement /
 scenario / design verification described above unchanged.`;
@@ -324,7 +366,10 @@ Apply implements BOTH the product/architecture change and its declared evidence:
   appropriate behavioral spec pair.
 - **Assess retired-target cleanup safely.** When reconciliation reports a retired
   test, rule, fixture, or review target, check surviving bindings and project usage
-  before removing it. Never auto-delete a shared or intentionally retained target.`;
+  before removing it. Never auto-delete a shared or intentionally retained target.
+- **Consult \`openspec coverage\` (and \`openspec coverage --json\`) for the
+  aggregated coverage health signal** while resolving bindings - the same view
+  exploration and verification consume.`;
 
 /** onboard (task 6.6 / Requirements: Guided Artifact Creation, Guided
  * Implementation, Archive with Explanation). */
