@@ -13,7 +13,23 @@ Under the governed spec model, the explore skill SHALL structure exploration of 
 
 #### Scenario: Enforcement stage closes the loop
 - **WHEN** behavioral or architectural claims crystallize
-- **THEN** the agent explores how each claim will be proven — test, lint, static-analysis, command, review, or manual — and at what evidence strength, before proposing artifacts
+- **THEN** the agent explores how the most important claims would be proven — test, lint, static-analysis, command, review, or manual — as an approach, before proposing artifacts
+
+### Requirement: Enforcement approach without premature certainty
+Because requirements and scenarios do not exist until the proposal, the explore skill's enforcement stage SHALL explore a testing approach for the most important architectural invariants and behavioral outcomes without enumerating concrete bindings, and SHALL reserve concrete binding, target, and coverage decisions for the proposal.
+
+#### Scenario: Enforcement stage stays general
+- **WHEN** the enforcement stage is reached during exploration
+- **THEN** the agent names the most important claims and, for each, the highest-leverage way it could be verified
+- **AND** it does not enumerate concrete bindings, target files, or `covers` lists
+
+#### Scenario: Certainty reserved for the proposal
+- **WHEN** exploration concludes and a proposal is created
+- **THEN** concrete enforcement bindings, targets, and coverage are decided against the now-existing requirements and scenarios
+
+#### Scenario: Leverage-first, honest evidence
+- **WHEN** the skill discusses how a claim would be enforced
+- **THEN** it prefers the highest-leverage check — one fitness function or property test over many example tests — and treats review and manual as first-class honest evidence rather than a coverage quota to maximize
 
 ### Requirement: Dual-plane classification
 The explore skill SHALL explicitly classify whether an idea changes what the system does, how the system must be structured, or both, and SHALL state when specs are needed in both planes. It SHALL treat named structural triggers — a new port or adapter, a new package/module/layer, a new dependency edge or boundary rule, or a new cross-cutting invariant — as requiring an architectural spec, not as implementation detail.
