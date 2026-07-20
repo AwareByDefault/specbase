@@ -76,6 +76,9 @@ const WORKFLOW_TO_SKILL_DIR: Record<string, string> = {
   'verify': 'openspec-verify-change',
   'onboard': 'openspec-onboard',
   'propose': 'openspec-propose',
+  // Governed-only, not a profile workflow; present here so delivery switches can
+  // still sweep its skill directory.
+  'review-panel': 'openspec-review-panel',
 };
 
 // -----------------------------------------------------------------------------
@@ -686,8 +689,18 @@ export class InitCommand {
       const delivery: Delivery = globalConfig.delivery ?? 'both';
       const workflows = getProfileWorkflows(profile, globalConfig.workflows);
       const toolDirs = [...new Set(successfulTools.map((t) => t.skillsDir))].join(', ');
-      const skillCount = delivery !== 'commands' ? getSkillTemplates(workflows).length : 0;
-      const commandCount = delivery !== 'skills' ? getCommandContents(workflows).length : 0;
+      // Resolve the spec model here too: under the governed model an extra
+      // governed-only skill/command (review-panel) is written, so counting
+      // without it would under-report what was just generated.
+      const reportedSpecModel = resolveProjectSpecModel(projectPath);
+      const skillCount =
+        delivery !== 'commands'
+          ? getSkillTemplates(workflows, reportedSpecModel).length
+          : 0;
+      const commandCount =
+        delivery !== 'skills'
+          ? getCommandContents(workflows, reportedSpecModel).length
+          : 0;
       if (skillCount > 0 && commandCount > 0) {
         console.log(`${skillCount} skills and ${commandCount} commands in ${toolDirs}/`);
       } else if (skillCount > 0) {
@@ -767,7 +780,10 @@ export class InitCommand {
   private async removeSkillDirs(skillsDir: string): Promise<number> {
     let removed = 0;
 
-    for (const workflow of ALL_WORKFLOWS) {
+    // `review-panel` is governed-only and deliberately absent from ALL_WORKFLOWS
+    // (see skill-generation.ts), so it must be swept explicitly — otherwise
+    // switching delivery to `commands` would strand its skill directory.
+    for (const workflow of [...ALL_WORKFLOWS, 'review-panel']) {
       const dirName = WORKFLOW_TO_SKILL_DIR[workflow];
       if (!dirName) continue;
 
@@ -790,7 +806,8 @@ export class InitCommand {
     const adapter = CommandAdapterRegistry.get(toolId);
     if (!adapter) return 0;
 
-    for (const workflow of ALL_WORKFLOWS) {
+    // Governed-only `review-panel` swept explicitly; see removeSkillDirs.
+    for (const workflow of [...ALL_WORKFLOWS, 'review-panel']) {
       const cmdPath = adapter.getFilePath(workflow);
       const fullPath = path.isAbsolute(cmdPath) ? cmdPath : path.join(projectPath, cmdPath);
 

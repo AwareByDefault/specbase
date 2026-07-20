@@ -204,7 +204,33 @@ belongs to - they are not interchangeable:
   (its own outputs, flags, or errors), that behavior is **behavioral truth** -
   specify it in a behavioral spec pair. Bind the architectural requirement to that
   tool through an **enforcement binding**; do NOT embed the tool's implementation
-  inside the architectural spec.`;
+  inside the architectural spec.
+
+### Non-deterministic claims: point at a lens or propose one (governed)
+
+When a claim is genuinely **non-deterministic** - no automated check meaningfully
+proves it (does the code actually PRODUCE the behavior? does it DEVIATE from the
+architecture? does this test EXERCISE the claim or just import it?) - it is a
+\`review\` binding executed by the **review panel**, a growing per-codebase panel of
+blind per-lens reviewers.
+
+- **Point the claim at an existing lens.** Name the review-panel \`lens\` that owns
+  its concern: \`architectural\` (deviations from \`architecture/**\`), \`behavioural\`
+  (does the code produce \`behavior/**\`), \`enforcement\` (does the bound check
+  actually exercise the claim), or \`code-quality\` (cleanliness). A lens's scope is
+  a spec-tree subtree, resolved most-specific-first.
+- **Or propose a new/scoped lens - never auto-create one.** If no existing lens
+  fits, PROPOSE adding a new lens, or splitting a broad lens into a scoped one over
+  a nested subtree (e.g. \`architecture/rings/boundaries\`), as a normal change.
+  Growth is by proposal: the panel never adds or splits a lens on its own.
+- **Name the deterministic residue.** When sibling automated bindings already own
+  part of the territory, list them in the review binding's \`covered_by\` so the
+  lens reviews only the residue above the gate - the review surface shrinks as you
+  harden, with no lens edit.
+- **Coverage makes the pressure visible.** \`openspec coverage\` reports each lens's
+  review-claim load, un-lensed review claims, and split candidates - use it to
+  decide when to grow a lens, split one, or harden a claim to automated. The tool
+  surfaces the case; the human makes the call.`;
 
 /**
  * new / propose / ff / continue (task 6.2 / Requirement: Proposal and artifact
@@ -348,6 +374,29 @@ your process tools.
 - **Consult \`openspec coverage\` (and \`openspec coverage --json\`) as the
   aggregated enforcement-coverage view backing this assessment** - per-spec
   states, strength mix, and orphaned enforcement in one health signal.
+
+### Run the review panel for review bindings (governed)
+
+The \`review\` procedure step is EXECUTED by the review panel, not a static
+read-through. For the affected \`review\`/\`manual\` bindings:
+
+- **Route each affected review binding to its lens** - the \`lens\` it declares,
+  or the most-specific default lens for its subtree (\`architectural\` for
+  \`architecture/**\`, \`behavioural\` for \`behavior/**\`, plus the cross-cutting
+  \`enforcement\` and \`code-quality\` lenses). Run the panel over the lenses whose
+  subtrees the change touches.
+- **Review only the residue above the gate.** Pass each lens the deterministic
+  bindings named in that review binding's \`covered_by\` as its blind list, so it
+  reports only what the automated layer does not already prove.
+- **Report findings as \`review\`-strength, attributed by lens and severity.**
+  Panel findings are weaker evidence by construction: they DO NOT by themselves
+  mark the change ready or not-ready, do NOT flip verification readiness, and
+  NEVER block archive or \`openspec coverage --strict\` - those gate on structural
+  rot only. High-severity findings are refute-verified before being reported.
+- **Flag un-lensed review claims.** When an affected \`review\`/\`manual\` binding
+  resolves to no defined lens, report it as an **un-lensed review** gap (the same
+  class \`openspec coverage\` surfaces) and suggest pointing it at an existing lens
+  or proposing a new/scoped one - never invent a lens on the fly.
 
 Legacy changes (\`specModel.kind == "legacy"\`) retain the heuristic requirement /
 scenario / design verification described above unchanged.`;

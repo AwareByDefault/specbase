@@ -17,6 +17,8 @@ import {
   getVerifyChangeSkillTemplate,
   getOnboardSkillTemplate,
   getOpsxProposeSkillTemplate,
+  getReviewPanelSkillTemplate,
+  getReviewPanelCommandTemplate,
   getOpsxExploreCommandTemplate,
   getOpsxNewCommandTemplate,
   getOpsxContinueCommandTemplate,
@@ -37,6 +39,7 @@ import { LEGACY_SPEC_MODEL, resolveSpecModel } from '../artifact-graph/types.js'
 import { resolveSchema } from '../artifact-graph/resolver.js';
 import { readProjectConfig } from '../project-config.js';
 import { OPENSPEC_CLI_ALLOWED_TOOLS } from './allowed-tools.js';
+import { isGovernedModel } from '../templates/workflows/governed-guidance.js';
 
 /** The project default schema when config declares none. */
 const DEFAULT_SCHEMA_NAME = 'spec-driven';
@@ -98,10 +101,29 @@ export function getSkillTemplates(
     { template: getOpsxProposeSkillTemplate(specModel), dirName: 'openspec-propose', workflowId: 'propose' },
   ];
 
-  if (!workflowFilter) return all;
+  const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
+  const selected = filterSet
+    ? all.filter(entry => filterSet.has(entry.workflowId))
+    : all;
 
-  const filterSet = new Set(workflowFilter);
-  return all.filter(entry => filterSet.has(entry.workflowId));
+  // The review-panel orchestration skill is GOVERNED-ONLY: it appears only under
+  // the governed spec model, so legacy generation (and the hash-locked/iterating
+  // parity tests, which run with no model) stay byte-identical.
+  //
+  // It is appended AFTER the profile filter on purpose: review-panel is a
+  // capability of the governed spec model, not a user-toggleable workflow, so it
+  // is deliberately absent from ALL_WORKFLOWS (see profiles.ts). Filtering it
+  // would drop it from every real `init`/`update`, which pass a profile-derived
+  // filter — leaving it unreachable dead template code.
+  if (isGovernedModel(specModel)) {
+    selected.push({
+      template: getReviewPanelSkillTemplate(),
+      dirName: 'openspec-review-panel',
+      workflowId: 'review-panel',
+    });
+  }
+
+  return selected;
 }
 
 /**
@@ -128,10 +150,17 @@ export function getCommandTemplates(
     { template: getOpsxProposeCommandTemplate(specModel), id: 'propose' },
   ];
 
-  if (!workflowFilter) return all;
+  const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
+  const selected = filterSet ? all.filter(entry => filterSet.has(entry.id)) : all;
 
-  const filterSet = new Set(workflowFilter);
-  return all.filter(entry => filterSet.has(entry.id));
+  // Governed-only and appended after the filter, matching the skill projection
+  // (parity: skill == command). See getSkillTemplates for why it bypasses the
+  // profile filter.
+  if (isGovernedModel(specModel)) {
+    selected.push({ template: getReviewPanelCommandTemplate(), id: 'review-panel' });
+  }
+
+  return selected;
 }
 
 /**

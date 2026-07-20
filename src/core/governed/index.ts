@@ -61,6 +61,17 @@ export {
 } from './enforcement-parser.js';
 
 export {
+  DEFAULT_LENSES,
+  scopeCovers,
+  scopeDepth,
+  resolveDefaultLens,
+  resolveLensForBinding,
+  type LensDefinition,
+  type LensResolution,
+  type LensResolutionVia,
+} from './lenses.js';
+
+export {
   mergeGovernedSpec,
   mergeEnforcement,
   type SpecMergeResult,

@@ -12,7 +12,11 @@ import path from 'node:path';
 import fg from 'fast-glob';
 import {
   loadGovernedRepository,
+  DEFAULT_LENSES,
+  scopeDepth,
+  resolveLensForBinding,
   type GovernedRepository,
+  type LensDefinition,
 } from '../governed/index.js';
 import { SPEC_PLANES, type SpecPlane } from './types.js';
 import {
@@ -128,6 +132,75 @@ export interface RepoCoverageOrphans {
 export interface RepoCoverageOptions {
   /** Opt-in unbound-evidence scan: fast-glob patterns under the project root. */
   evidenceGlobs?: string[];
+  /**
+   * A subtree carrying MORE review claims than this under a single broad lens is
+   * a split candidate. Informational only; defaults to {@link SPLIT_THRESHOLD}.
+   */
+  splitThreshold?: number;
+}
+
+/**
+ * The default lens-split threshold: a subtree one level below a broad lens's
+ * scope that carries more than this many review claims under that one lens is
+ * flagged as a split candidate. A floor, never a gate.
+ */
+export const SPLIT_THRESHOLD = 4;
+
+/** One lens's review-claim allocation within its scope. */
+export interface LensRollupEntry {
+  /** The lens id (a default or, once grown, a project lens). */
+  lens: string;
+  /** The lens's scope prefix (`''` = whole tree). */
+  scope: string;
+  /** True for whole-tree/every-pair lenses (not a plane-subtree default). */
+  crossCutting: boolean;
+  /** How many review/manual bindings the router routes to this lens. */
+  reviewClaims: number;
+}
+
+/**
+ * A review/manual binding whose claim resolves to no defined lens — the review
+ * analog of a hanging claim. Informational only; never gates.
+ */
+export interface UnlensedReview {
+  locator: string;
+  specId: string | null;
+  bindingId: string;
+  /** The declared lens that failed to resolve, or null when none was declared. */
+  declaredLens: string | null;
+  /**
+   * `undefined-lens` — a declared `lens` names no defined lens; `no-covering-lens`
+   * — no lens (declared or default) covers the claim.
+   */
+  reason: 'undefined-lens' | 'no-covering-lens';
+}
+
+/** A subtree carrying more review claims under one broad lens than the threshold. */
+export interface SplitCandidate {
+  /** The broad lens under pressure. */
+  lens: string;
+  /** The subtree (one level below the lens scope) carrying the excess. */
+  subtree: string;
+  /** Review claims routed to that lens within the subtree. */
+  reviewClaims: number;
+  /** The threshold this exceeded. */
+  threshold: number;
+}
+
+/**
+ * The review-panel lens views over the repository. NONE of these affect
+ * `--strict`; they surface the human decisions (grow a lens, split a lens,
+ * harden a claim) without gating. Every array is deterministically sorted.
+ */
+export interface RepoCoverageLenses {
+  /** Per-lens review-claim allocation, sorted by lens id. */
+  rollup: LensRollupEntry[];
+  /** Review claims with no resolvable lens, sorted by locator then binding ID. */
+  unlensedReviews: UnlensedReview[];
+  /** Lens split candidates, sorted by lens then subtree. */
+  splitCandidates: SplitCandidate[];
+  /** The split threshold in effect. */
+  threshold: number;
 }
 
 /** The full aggregated repository coverage view. */
@@ -141,6 +214,8 @@ export interface RepoCoverage {
   /** Reverse index: sorted by target, then locator, then binding ID. */
   targetIndex: TargetBindingRef[];
   orphans: RepoCoverageOrphans;
+  /** Review-panel lens views (rollup, un-lensed gaps, split candidates). */
+  lenses: RepoCoverageLenses;
   /** The loaded repository, for target resolution without a second traversal. */
   repository: GovernedRepository;
   /** Per-pair analyses by locator, for drill-down without re-analysis. */
@@ -293,6 +368,89 @@ function deriveSpecRecord(analysis: GovernedPairAnalysis): SpecCoverageRecord {
   };
 }
 
+/** A resolved review/manual binding awaiting lens aggregation. */
+interface ReviewClaim {
+  locator: string;
+  specId: string | null;
+  bindingId: string;
+  declaredLens: string | null;
+  resolution: ReturnType<typeof resolveLensForBinding>;
+}
+
+/** The subtree one level below `scope` that `locator` falls under. */
+function subtreeBelowScope(locator: string, scope: string): string {
+  const depth = scopeDepth(scope);
+  return locator.split('/').slice(0, depth + 1).join('/');
+}
+
+/**
+ * Derive the lens views from the collected review claims: the per-lens rollup
+ * (over every defined lens, so a zero-claim lens still appears), the un-lensed
+ * gap list, and the split candidates. Pure and deterministically sorted.
+ */
+function deriveLenses(
+  claims: ReviewClaim[],
+  definedLenses: readonly LensDefinition[],
+  threshold: number
+): RepoCoverageLenses {
+  const claimsByLens = new Map<string, ReviewClaim[]>();
+  const unlensedReviews: UnlensedReview[] = [];
+
+  for (const claim of claims) {
+    if (!claim.resolution.resolved || claim.resolution.definition === null) {
+      unlensedReviews.push({
+        locator: claim.locator,
+        specId: claim.specId,
+        bindingId: claim.bindingId,
+        declaredLens: claim.declaredLens,
+        reason:
+          claim.declaredLens !== null ? 'undefined-lens' : 'no-covering-lens',
+      });
+      continue;
+    }
+    const lensId = claim.resolution.definition.id;
+    const bucket = claimsByLens.get(lensId);
+    if (bucket) bucket.push(claim);
+    else claimsByLens.set(lensId, [claim]);
+  }
+
+  const rollup: LensRollupEntry[] = definedLenses.map((lens) => ({
+    lens: lens.id,
+    scope: lens.scope,
+    crossCutting: lens.crossCutting,
+    reviewClaims: claimsByLens.get(lens.id)?.length ?? 0,
+  }));
+  rollup.sort((a, b) => compareStrings(a.lens, b.lens));
+
+  // Split pressure: for each broad lens, group its claims by the subtree one
+  // level below its scope; a subtree over the threshold is a split candidate.
+  const splitCandidates: SplitCandidate[] = [];
+  for (const lens of definedLenses) {
+    const lensClaims = claimsByLens.get(lens.id) ?? [];
+    if (lensClaims.length === 0) continue;
+    const bySubtree = new Map<string, number>();
+    for (const claim of lensClaims) {
+      const subtree = subtreeBelowScope(claim.locator, lens.scope);
+      bySubtree.set(subtree, (bySubtree.get(subtree) ?? 0) + 1);
+    }
+    for (const [subtree, count] of bySubtree) {
+      if (count > threshold) {
+        splitCandidates.push({ lens: lens.id, subtree, reviewClaims: count, threshold });
+      }
+    }
+  }
+  splitCandidates.sort(
+    (a, b) => compareStrings(a.lens, b.lens) || compareStrings(a.subtree, b.subtree)
+  );
+
+  unlensedReviews.sort(
+    (a, b) =>
+      compareStrings(a.locator, b.locator) || compareStrings(a.bindingId, b.bindingId)
+  );
+
+  return { rollup, unlensedReviews, splitCandidates, threshold };
+}
+
 /**
  * The opt-in unbound-evidence scan: files under the project root matching the
  * evidence globs that appear in no binding's targets. Matching is by
@@ -334,6 +492,7 @@ export async function computeRepoCoverage(
   const enforcementOnlyPairs: EnforcementOnlyOrphan[] = [];
   const brokenTargets: BrokenTargetOrphan[] = [];
   const targetIndex: TargetBindingRef[] = [];
+  const reviewClaims: ReviewClaim[] = [];
 
   // Pairs are independent; the only real I/O is each pair's target existence
   // checks, so analyze them concurrently. Deterministic ordering is restored by
@@ -381,6 +540,18 @@ export async function computeRepoCoverage(
           bindingId: binding.id,
         });
       }
+
+      // A review claim is a non-deterministic (review/manual) binding: it names
+      // (or defaults to) a lens the panel runs. Route it now for the lens views.
+      if (binding.strength === 'review' || binding.strength === 'manual') {
+        reviewClaims.push({
+          locator: record.locator,
+          specId: analysis.analysis.specId,
+          bindingId: binding.id,
+          declaredLens: binding.lens ?? null,
+          resolution: resolveLensForBinding(binding.lens, record.locator),
+        });
+      }
     }
   }
 
@@ -417,6 +588,16 @@ export async function computeRepoCoverage(
     boundTargets
   );
 
+  const lenses = deriveLenses(
+    reviewClaims,
+    DEFAULT_LENSES,
+    options.splitThreshold ?? SPLIT_THRESHOLD
+  );
+
+  // The strict gate is UNCHANGED: lens rollup, un-lensed reviews, and split
+  // candidates never affect validity — they surface human decisions, they do not
+  // gate. Anti-rot for a `lens`/`covered_by` pointing at a missing target stays
+  // owned by the existing orphan detection above.
   const failingSpecs = specs.filter((spec) => isRotState(spec.state));
   const valid =
     failingSpecs.length === 0 &&
@@ -430,6 +611,7 @@ export async function computeRepoCoverage(
     planes,
     targetIndex,
     orphans: { staleBindings, enforcementOnlyPairs, brokenTargets, unboundEvidence },
+    lenses,
     repository,
     analyses,
     failingSpecs,

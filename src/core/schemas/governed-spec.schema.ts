@@ -111,6 +111,15 @@ export const BindingSchema = z.object({
   procedure: z.string().min(1).optional(),
   rationale: z.string().min(1).optional(),
   limitations: z.string().min(1).optional(),
+  // Review-panel vocabulary (add-review-panel-enforcement). Both are OPTIONAL and
+  // additive: when absent the binding parses byte-for-byte as before and coverage
+  // and drift are unchanged. `lens` names the review-panel lens that executes a
+  // non-deterministic (`review`/`manual`) binding; `covered_by` lists sibling
+  // binding IDs whose deterministic checks already own part of its territory, so
+  // the executing lens reviews only the residue above them. Core parses and
+  // surfaces them; it never runs a reviewer (workflows do).
+  lens: LocalSlugSchema.optional(),
+  covered_by: z.array(LocalSlugSchema).optional(),
 });
 
 /** The authoritative fenced YAML document inside an `enforcement.md`. */

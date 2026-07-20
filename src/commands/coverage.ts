@@ -243,6 +243,14 @@ export class CoverageCommand {
         },
         states: coverage.totals.states,
         strengths: coverage.totals.strengths,
+        // Review-panel lens views. Additive and informational: none affect
+        // `strict`/`valid`, which gate on structural rot only.
+        review: {
+          threshold: coverage.lenses.threshold,
+          lenses: coverage.lenses.rollup,
+          unlensed: coverage.lenses.unlensedReviews,
+          splitCandidates: coverage.lenses.splitCandidates,
+        },
       },
       specs: records.map((record) =>
         this.specJson(record, record.locator === targetLocator ? detail : undefined)
@@ -300,9 +308,52 @@ export class CoverageCommand {
           `   scenarios ${t.counts.coveredScenarios}/${t.counts.scenarios}` +
           `   states: ${stateSummary || '(none)'}`
       );
+
+      this.printLenses(coverage);
     }
 
     if (view.orphans) this.printOrphans(coverage, view.evidence);
+  }
+
+  /**
+   * Render the review-panel lens views: the per-lens rollup (always), then any
+   * un-lensed review gaps and lens split candidates. All informational — the
+   * banner states they never gate, mirroring the aggregator contract.
+   */
+  private printLenses(coverage: RepoCoverage): void {
+    const { rollup, unlensedReviews, splitCandidates, threshold } = coverage.lenses;
+
+    console.log('');
+    console.log('Lenses (review-panel; informational, never gates):');
+    const lensWidth = Math.max(...rollup.map((entry) => entry.lens.length), 'code-quality'.length);
+    for (const entry of rollup) {
+      const scope = entry.scope === '' ? '(whole tree)' : entry.scope;
+      console.log(
+        `  ${entry.lens.padEnd(lensWidth)}   review claims ${entry.reviewClaims}   scope ${scope}`
+      );
+    }
+
+    if (unlensedReviews.length > 0) {
+      console.log('');
+      console.log('Un-lensed review claims (informational, never gates):');
+      for (const gap of unlensedReviews) {
+        const why =
+          gap.reason === 'undefined-lens'
+            ? `lens '${gap.declaredLens}' is not a defined lens`
+            : 'no covering lens';
+        console.log(`  - ${gap.locator} binding ${gap.bindingId} (${why})`);
+      }
+    }
+
+    if (splitCandidates.length > 0) {
+      console.log('');
+      console.log('Lens split candidates (informational, never gates):');
+      for (const candidate of splitCandidates) {
+        console.log(
+          `  - ${candidate.subtree} under '${candidate.lens}': ${candidate.reviewClaims} review claims (threshold ${threshold})`
+        );
+      }
+    }
   }
 
   private printOrphans(coverage: RepoCoverage, evidence: boolean): void {
