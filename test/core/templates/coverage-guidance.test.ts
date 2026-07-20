@@ -40,6 +40,10 @@ describe('governed explore staged flow and coverage awareness', () => {
     'Dual-plane classifier:',
     'name a candidate locator in EACH plane',
     'say why no architectural spec is needed',
+    // Named structural triggers force the architectural spec (the port/adapter case).
+    'structural trigger',
+    'a new **port or adapter**',
+    'architecture/persistence-port',
     // The five-homes classification table is folded in, not lost.
     'Classifying durable insights (governed)',
     '| User/client-visible capability that must stay true | Behavioral spec pair',

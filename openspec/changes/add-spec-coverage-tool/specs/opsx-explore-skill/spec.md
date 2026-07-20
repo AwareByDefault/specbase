@@ -16,14 +16,18 @@ Under the governed spec model, the explore skill SHALL structure exploration of 
 - **THEN** the agent explores how each claim will be proven — test, lint, static-analysis, command, review, or manual — and at what evidence strength, before proposing artifacts
 
 ### Requirement: Dual-plane classification
-The explore skill SHALL explicitly classify whether an idea changes what the system does, how the system must be structured, or both, and SHALL state when specs are needed in both planes.
+The explore skill SHALL explicitly classify whether an idea changes what the system does, how the system must be structured, or both, and SHALL state when specs are needed in both planes. It SHALL treat named structural triggers — a new port or adapter, a new package/module/layer, a new dependency edge or boundary rule, or a new cross-cutting invariant — as requiring an architectural spec, not as implementation detail.
+
+#### Scenario: Structural trigger requires an architectural spec
+- **WHEN** building an idea introduces a new port or adapter, a new package or layer, a new dependency edge, or a new cross-cutting invariant
+- **THEN** the agent states the idea needs an architectural spec pair in addition to any behavioral one, naming a candidate architectural locator
 
 #### Scenario: Idea spans both planes
-- **WHEN** an idea changes user-observable behavior AND requires a new structural boundary or responsibility
+- **WHEN** an idea changes user-observable behavior AND hits a structural trigger
 - **THEN** the agent says the idea needs a behavioral spec pair AND an architectural spec pair, naming a candidate locator for each
 
 #### Scenario: Single-plane idea
-- **WHEN** an idea only alters observable behavior within the existing structure
+- **WHEN** an idea only alters observable behavior within the existing structure, with no new port, package, dependency edge, or invariant
 - **THEN** the agent plans a behavioral spec pair only and says why no architectural spec is needed
 
 ### Requirement: Coverage-informed health awareness

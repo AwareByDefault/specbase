@@ -103,19 +103,38 @@ partner - the stages order the discussion, they are not a rigid script:
 2. **Supporting architecture.** What structure must remain true to build it -
    packages, responsibilities, boundaries, invariants - and which
    **architectural spec pair** (\`specs/architecture/...\`) would own each
-   invariant?
+   invariant? Actively ask whether building this introduces any **structural
+   trigger** (see the classifier below); a "yes" to any means an architectural
+   spec is in scope, not optional.
 3. **Enforcement.** As behavioral or architectural claims crystallize, how will
    each claim be proven - test, lint, static-analysis, command, review, or
    manual - and at what evidence strength? Explore this before proposing
    artifacts.
 
 **Dual-plane classifier:** explicitly classify whether the idea changes what
-the system DOES, how the system must be STRUCTURED, or both:
-- If it changes user-observable behavior AND requires a new structural boundary
-  or responsibility, say the idea needs a behavioral spec pair AND an
-  architectural spec pair, and name a candidate locator in EACH plane.
-- If it only alters observable behavior within the existing structure, plan a
-  behavioral spec pair only and say why no architectural spec is needed.
+the system DOES, how the system must be STRUCTURED, or both. The idea needs an
+architectural spec pair (in addition to the behavioral one) when building it hits
+any **structural trigger** - do not treat these as mere implementation detail:
+- a new **port or adapter**, or any new seam between the core and the outside
+  world (persistence, network, filesystem, clock, external service);
+- a new **package, module, or layer**, or a shift of responsibility between
+  existing ones;
+- a new **dependency edge or boundary rule** (who may import/depend on whom), or
+  a change to an existing one;
+- a new **cross-cutting invariant** the code must uphold (purity, determinism,
+  dependency injection, isolation, error-handling policy).
+
+- If the idea changes user-observable behavior AND hits any structural trigger,
+  say plainly it needs a behavioral spec pair AND an architectural spec pair, and
+  name a candidate locator in EACH plane. Example: "add persistent history" is a
+  behavioral capability (\`behavior/history\`: save-on-write, list) AND an
+  architectural change (\`architecture/persistence-port\`: a new store port +
+  adapter, with the core-stays-pure invariant that persistence only enters
+  through the port) - author both, and bind the invariant to the check that
+  protects it.
+- If it only alters observable behavior within the existing structure - no new
+  port, package, dependency edge, or invariant - plan a behavioral spec pair only
+  and say why no architectural spec is needed.
 
 ### Classifying durable insights (governed)
 
