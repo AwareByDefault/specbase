@@ -1,28 +1,32 @@
+<h1 align="center">Specbase</h1>
+
 <p align="center">
-  <a href="https://github.com/Fission-AI/OpenSpec">
-    <picture>
-      <source srcset="assets/openspec_bg.png">
-      <img src="assets/openspec_bg.png" alt="OpenSpec logo">
-    </picture>
-  </a>
+  <strong>Governed specs — an enforced source of truth.</strong><br>
+  Spec-vs-code drift detection, coverage, and an AI review panel, treated as first-class enforcement.
 </p>
 
 <p align="center">
-  <a href="https://github.com/Fission-AI/OpenSpec/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Fission-AI/OpenSpec/actions/workflows/ci.yml/badge.svg" /></a>
-  <a href="https://www.npmjs.com/package/@fission-ai/openspec"><img alt="npm version" src="https://img.shields.io/npm/v/@fission-ai/openspec?style=flat-square" /></a>
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" /></a>
-  <a href="https://discord.gg/YctCnvvshC"><img alt="Discord" src="https://img.shields.io/discord/1411657095639601154?style=flat-square&logo=discord&logoColor=white&label=Discord&suffix=%20online" /></a>
+  <a href="https://github.com/AwareByDefault/specbase"><img alt="Repo" src="https://img.shields.io/badge/AwareByDefault-specbase-181717?style=flat-square&logo=github" /></a>
 </p>
 
-<details>
-<summary><strong>The most loved spec framework.</strong></summary>
+> [!NOTE]
+> **Specbase is built on [OpenSpec](https://github.com/Fission-AI/OpenSpec) by Fission-AI** (MIT), and owes it enormous credit.
+> OpenSpec is deliberately *fluid, not rigid* — a lightweight thinking aid. Specbase adds the opposite gravity for teams that need it: it turns specs into an **enforced** source of truth. If you want the unopinionated upstream framework, [use OpenSpec directly](https://github.com/Fission-AI/OpenSpec) — it's excellent. See [NOTICE.md](NOTICE.md) for full attribution.
 
-[![Stars](https://img.shields.io/github/stars/Fission-AI/OpenSpec?style=flat-square&label=Stars)](https://github.com/Fission-AI/OpenSpec/stargazers)
-[![Downloads](https://img.shields.io/npm/dm/@fission-ai/openspec?style=flat-square&label=Downloads/mo)](https://www.npmjs.com/package/@fission-ai/openspec)
-[![Contributors](https://img.shields.io/github/contributors/Fission-AI/OpenSpec?style=flat-square&label=Contributors)](https://github.com/Fission-AI/OpenSpec/graphs/contributors)
+## What Specbase adds
 
-</details>
-<p></p>
+On top of everything OpenSpec does, Specbase layers a governance and enforcement plane:
+
+- **Drift engine** — continuously checks the code against the spec and surfaces where they've diverged.
+- **Coverage tooling** — shows which requirements are actually backed by implementation.
+- **Dual spec-planes** — separates governed (enforced) specs from exploratory ones.
+- **AI review panel** — a first-class enforcement gate for the non-deterministic parts of "is this correct?"
+
+Everything below documents the shared OpenSpec foundation these build on.
+
+---
+
 Our philosophy:
 
 ```text

@@ -1,21 +1,28 @@
 {
-  "name": "@fission-ai/openspec",
+  "name": "@awarebydefault/specbase",
   "version": "1.6.0",
-  "description": "AI-native system for spec-driven development",
+  "description": "Governed specs: an enforced source of truth with drift detection, coverage, and an AI review panel. Built on OpenSpec.",
   "keywords": [
+    "specbase",
     "openspec",
     "specs",
+    "spec-driven",
+    "governance",
+    "enforcement",
     "cli",
     "ai",
     "development"
   ],
-  "homepage": "https://github.com/Fission-AI/OpenSpec",
+  "homepage": "https://github.com/AwareByDefault/specbase",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Fission-AI/OpenSpec"
+    "url": "https://github.com/AwareByDefault/specbase"
   },
   "license": "MIT",
-  "author": "OpenSpec Contributors",
+  "author": "AwareByDefault",
+  "contributors": [
+    "OpenSpec Contributors (https://github.com/Fission-AI/OpenSpec)"
+  ],
   "type": "module",
   "packageManager": "pnpm@9.15.9",
   "publishConfig": {
