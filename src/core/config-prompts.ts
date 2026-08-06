@@ -2,6 +2,29 @@ import { stringify as stringifyYaml } from 'yaml';
 import type { ProjectConfig } from './project-config.js';
 
 /**
+ * Reduce a plane record to the fields that carry meaning in a resolved config,
+ * in a stable key order: `id`, `purpose`, `enforcementFlavor`, `reviewLens`
+ * (only when declared), and `crossCutting` (only when true). The picker-only
+ * `defaultSelected` flag and a `crossCutting: false` default are dropped so a
+ * seeded config stays clean; resolution tolerates both being absent.
+ */
+function cleanPlaneRecord(plane: unknown): Record<string, unknown> {
+  const p = (plane ?? {}) as Record<string, unknown>;
+  const record: Record<string, unknown> = {
+    id: p.id,
+    purpose: p.purpose,
+    enforcementFlavor: p.enforcementFlavor,
+  };
+  if (typeof p.reviewLens === 'string' && p.reviewLens.length > 0) {
+    record.reviewLens = p.reviewLens;
+  }
+  if (p.crossCutting === true) {
+    record.crossCutting = true;
+  }
+  return record;
+}
+
+/**
  * Serialize config to YAML string with helpful comments.
  *
  * @param config - Partial config object (schema required, context/rules optional)
@@ -15,19 +38,22 @@ export function serializeConfig(config: Partial<ProjectConfig>): string {
   lines.push('');
 
   // Spec-model overrides (governed init only). A `planes:` list REPLACES the
-  // schema's default plane set with exactly the planes selected at init; a
-  // `planes+:` list APPENDS to the defaults. Init writes `planes:` when the
-  // selection differs from the schema defaults, so an arbitrary subset (or an
-  // added optional plane like design-system / agents) round-trips faithfully.
+  // schema's default plane set with exactly the planes it lists — so the config
+  // is the authoritative source of truth for this project's planes: add a record
+  // to gain a plane, remove one to drop it, empty the list to go flat. A
+  // `planes+:` list instead APPENDS to the schema defaults (legacy/back-compat).
+  // Init seeds the full selected set via `planes:`.
   const planesReplace = config.specModel?.planes;
   const planesAppend = config.specModel?.planesAppend;
   if (Array.isArray(planesReplace) && planesReplace.length > 0) {
-    const block = stringifyYaml({ specModel: { planes: planesReplace } }).trimEnd();
-    lines.push('# Spec planes governing this project (selected at init).');
+    const block = stringifyYaml({ specModel: { planes: planesReplace.map(cleanPlaneRecord) } }).trimEnd();
+    lines.push('# Spec planes governing this project — the authoritative source of');
+    lines.push('# truth. Add a record to gain a plane, remove one to drop it, empty');
+    lines.push('# the list to go flat.');
     lines.push(block);
     lines.push('');
   } else if (Array.isArray(planesAppend) && planesAppend.length > 0) {
-    const block = stringifyYaml({ specModel: { 'planes+': planesAppend } }).trimEnd();
+    const block = stringifyYaml({ specModel: { 'planes+': planesAppend.map(cleanPlaneRecord) } }).trimEnd();
     lines.push('# Planes this project opted into at init, appended to the schema defaults.');
     lines.push(block);
     lines.push('');
