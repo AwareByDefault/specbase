@@ -699,10 +699,11 @@ export class InitCommand {
     try {
       const schema = selection.governed ? GOVERNED_SCHEMA : DEFAULT_SCHEMA;
       const config: Partial<ProjectConfig> = { schema };
-      // Persist the selection as an explicit `planes:` replace-set UNLESS it
-      // exactly matches the schema's default-selected planes (then the schema
-      // defaults already resolve to it and the config stays minimal).
-      if (selection.governed && !this.selectionIsSchemaDefault(schema, selection.selectedIds)) {
+      // Seed the full selected plane set into config as an authoritative
+      // `planes:` replace-list, so config.yaml alone describes this project's
+      // governed planes (no reliance on the schema's defaults staying implicit).
+      // A zero-plane (flat) selection writes no plane list.
+      if (selection.governed && selection.planes.length > 0) {
         config.specModel = { planes: selection.planes };
       }
       const yamlContent = serializeConfig(config);
@@ -711,19 +712,6 @@ export class InitCommand {
     } catch {
       return 'skipped';
     }
-  }
-
-  /** True when the selected plane ids equal the schema's `defaultSelected` set. */
-  private selectionIsSchemaDefault(schema: string, selectedIds: string[]): boolean {
-    const defaultIds = getOfferedPlanes(schema)
-      .filter((p) => p.defaultSelected)
-      .map((p) => p.id)
-      .sort();
-    const selected = [...selectedIds].sort();
-    return (
-      defaultIds.length === selected.length &&
-      defaultIds.every((id, i) => id === selected[i])
-    );
   }
 
   /**
