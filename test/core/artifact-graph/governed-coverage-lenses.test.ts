@@ -54,12 +54,14 @@ describe('coverage lens rollup', () => {
 
     const coverage = await computeRepoCoverage(openspecRoot, tempDir);
     const byLens = new Map(coverage.lenses.rollup.map((e) => [e.lens, e.reviewClaims]));
-    // All four defaults always appear (even at zero).
+    // All default lenses always appear (even at zero).
     expect([...byLens.keys()].sort()).toEqual([
       'architectural',
       'behavioural',
       'code-quality',
+      'design',
       'enforcement',
+      'ops',
     ]);
     expect(byLens.get('behavioural')).toBe(1);
     expect(byLens.get('code-quality')).toBe(1);

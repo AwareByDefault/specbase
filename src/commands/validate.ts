@@ -106,7 +106,8 @@ export class ValidateCommand {
     options: ExecuteOptions
   ): Promise<void> {
     const projectRoot = root.path;
-    const repository = await loadGovernedRepository(path.join(projectRoot, 'openspec'));
+    const planes = resolveProjectSpecModel(projectRoot).planes.map((p) => p.id);
+    const repository = await loadGovernedRepository(path.join(projectRoot, 'openspec'), planes);
 
     const bulk = !!options.all || !!options.specs || !!options.changes;
 
@@ -128,6 +129,7 @@ export class ValidateCommand {
       records,
       projectRoot,
       includeUnsafeLocators: !targeted,
+      planes,
     });
 
     if (options.json) {
@@ -188,7 +190,8 @@ export class ValidateCommand {
     // governed "spec not found" diagnostic is preserved.
     if (itemName) {
       const repository = await loadGovernedRepository(
-        path.join(root.path, 'openspec')
+        path.join(root.path, 'openspec'),
+        resolveProjectSpecModel(root.path).planes.map((p) => p.id)
       );
       const resolution = resolveGovernedShowTarget(repository, itemName);
       if (resolution.kind === 'resolved') return 'governed';

@@ -48,6 +48,9 @@ import { getGlobalConfig, type Delivery, type Profile } from './global-config.js
 import { getProfileWorkflows, CORE_WORKFLOWS, ALL_WORKFLOWS } from './profiles.js';
 import { getAvailableTools } from './available-tools.js';
 import { migrateIfNeeded } from './migration.js';
+import { resolveSchema, getSchemaDir } from './artifact-graph/resolver.js';
+import { resolveSpecModel, type Plane } from './artifact-graph/types.js';
+import type { ProjectConfig } from './project-config.js';
 
 const require = createRequire(import.meta.url);
 const { version: OPENSPEC_VERSION } = require('../../package.json');
@@ -57,6 +60,38 @@ const { version: OPENSPEC_VERSION } = require('../../package.json');
 // -----------------------------------------------------------------------------
 
 const DEFAULT_SCHEMA = 'spec-driven';
+// The governed schema a user opts into via the `openspec init` governed-model
+// prompt. The global DEFAULT_SCHEMA stays flat; only an explicit yes writes this.
+const GOVERNED_SCHEMA = 'spec-driven-governed';
+
+// Result of the init plane picker. Governance is emergent: `governed` is simply
+// whether at least one plane was selected. `planes` are the selected records.
+interface PlaneSelection {
+  governed: boolean;
+  planes: Plane[];
+  selectedIds: string[];
+}
+
+/**
+ * The governed schema's single OFFER-ABLE plane list (every plane a project may
+ * select at init, each carrying `defaultSelected`). Returns an empty list if the
+ * schema or its spec model is absent. `projectRoot` lets a project-local schema
+ * override the built-in.
+ */
+function getOfferedPlanes(schemaName: string, projectRoot?: string): Plane[] {
+  try {
+    return resolveSpecModel(resolveSchema(schemaName, projectRoot)).planes;
+  } catch {
+    return [];
+  }
+}
+
+/** A one-line summary of a plane purpose for the picker (first sentence). */
+function planeSummary(purpose: string): string {
+  const oneLine = purpose.replace(/\s+/g, ' ').trim();
+  const firstSentence = oneLine.split(/(?<=[.:])\s/)[0];
+  return firstSentence.length > 72 ? `${firstSentence.slice(0, 69)}...` : firstSentence;
+}
 
 const PROGRESS_SPINNER = {
   interval: 80,
@@ -175,14 +210,28 @@ export class InitCommand {
     // Validate selected tools
     const validatedTools = this.validateTools(selectedToolIds, toolStates);
 
-    // Create directory structure and config
+    // Create directory structure
     await this.createDirectoryStructure(openspecPath, extendMode);
+
+    // Plane picker (fresh, interactive init only). Selecting one or more planes
+    // makes the project governed; selecting none keeps the flat setup
+    // byte-identical to before. The selection determines the schema written to
+    // config and which baseline specs are planted.
+    const planeSelection = await this.promptPlaneSelection(extendMode);
+
+    // Create config.yaml BEFORE generating skills: skill generation reads the
+    // resolved spec model from the on-disk config, so the governed schema must
+    // be written first for governed skills/commands to be emitted.
+    const configStatus = await this.createConfig(openspecPath, extendMode, planeSelection);
 
     // Generate skills and commands for each tool
     const results = await this.generateSkillsAndCommands(projectPath, validatedTools);
 
-    // Create config.yaml if needed
-    const configStatus = await this.createConfig(openspecPath, extendMode);
+    // Plant agents-plane baseline specs as bootstrap scaffolding when the agents
+    // plane was selected (idempotent; never overwrites a customized baseline).
+    if (planeSelection.governed && planeSelection.selectedIds.includes('agents')) {
+      await this.plantAgentsBaseline(projectPath, true);
+    }
 
     // Display success message
     this.displaySuccessMessage(projectPath, validatedTools, results, configStatus);
@@ -632,7 +681,11 @@ export class InitCommand {
   // CONFIG FILE
   // ═══════════════════════════════════════════════════════════
 
-  private async createConfig(openspecPath: string, extendMode: boolean): Promise<'created' | 'exists' | 'skipped'> {
+  private async createConfig(
+    openspecPath: string,
+    extendMode: boolean,
+    selection: PlaneSelection = { governed: false, planes: [], selectedIds: [] }
+  ): Promise<'created' | 'exists' | 'skipped'> {
     const configPath = path.join(openspecPath, 'config.yaml');
     const configYmlPath = path.join(openspecPath, 'config.yml');
     const configYamlExists = fs.existsSync(configPath);
@@ -644,11 +697,83 @@ export class InitCommand {
 
 
     try {
-      const yamlContent = serializeConfig({ schema: DEFAULT_SCHEMA });
+      const schema = selection.governed ? GOVERNED_SCHEMA : DEFAULT_SCHEMA;
+      const config: Partial<ProjectConfig> = { schema };
+      // Persist the selection as an explicit `planes:` replace-set UNLESS it
+      // exactly matches the schema's default-selected planes (then the schema
+      // defaults already resolve to it and the config stays minimal).
+      if (selection.governed && !this.selectionIsSchemaDefault(schema, selection.selectedIds)) {
+        config.specModel = { planes: selection.planes };
+      }
+      const yamlContent = serializeConfig(config);
       await FileSystemUtils.writeFile(configPath, yamlContent);
       return 'created';
     } catch {
       return 'skipped';
+    }
+  }
+
+  /** True when the selected plane ids equal the schema's `defaultSelected` set. */
+  private selectionIsSchemaDefault(schema: string, selectedIds: string[]): boolean {
+    const defaultIds = getOfferedPlanes(schema)
+      .filter((p) => p.defaultSelected)
+      .map((p) => p.id)
+      .sort();
+    const selected = [...selectedIds].sort();
+    return (
+      defaultIds.length === selected.length &&
+      defaultIds.every((id, i) => id === selected[i])
+    );
+  }
+
+  /**
+   * Present the schema's offered planes as one multi-select (Space toggles,
+   * `a` toggles all). Selecting one or more planes makes the project governed;
+   * selecting none leaves it flat. Only offered on a fresh, interactive init
+   * (extend mode keeps the existing config; non-interactive/force keeps the flat
+   * default), so a non-prompting init returns the empty (flat) selection.
+   */
+  private async promptPlaneSelection(extendMode: boolean): Promise<PlaneSelection> {
+    const none: PlaneSelection = { governed: false, planes: [], selectedIds: [] };
+    if (extendMode || this.force || !this.canPromptInteractively()) return none;
+
+    const offered = getOfferedPlanes(GOVERNED_SCHEMA);
+    if (offered.length === 0) return none;
+
+    const { checkbox } = await import('@inquirer/prompts');
+    const selectedIds = await checkbox({
+      message:
+        'Select spec planes to govern (Space toggles, a toggles all). Select none for a plain flat project:',
+      choices: offered.map((p) => ({
+        name: `${p.id} — ${planeSummary(p.purpose)}`,
+        value: p.id,
+        checked: p.defaultSelected,
+      })),
+    });
+
+    const planes = offered.filter((p) => selectedIds.includes(p.id));
+    return { governed: planes.length > 0, planes, selectedIds };
+  }
+
+  /**
+   * Plant the agents-plane baseline specs as bootstrap scaffolding: the
+   * `spec-driven` self-hosting spec always, and `review-panel` when agentic
+   * review was accepted. Copies each spec+enforcement pair from the governed
+   * schema's baseline templates directly under `specs/agents/`, with no change
+   * entry. Idempotent: an existing file is left untouched (never overwritten).
+   */
+  private async plantAgentsBaseline(projectPath: string, agenticReview: boolean): Promise<void> {
+    const locators = agenticReview ? ['spec-driven', 'review-panel'] : ['spec-driven'];
+    const schemaDir = getSchemaDir(GOVERNED_SCHEMA, projectPath);
+    if (!schemaDir) return;
+    const baselineRoot = path.join(schemaDir, 'templates', 'baseline', 'agents');
+    for (const locator of locators) {
+      for (const file of ['spec.md', 'enforcement.md']) {
+        const src = path.join(baselineRoot, locator, file);
+        const dest = path.join(projectPath, 'openspec', 'specs', 'agents', locator, file);
+        if (fs.existsSync(dest) || !fs.existsSync(src)) continue;
+        await FileSystemUtils.writeFile(dest, fs.readFileSync(src, 'utf-8'));
+      }
     }
   }
 
@@ -728,7 +853,9 @@ export class InitCommand {
 
     // Config status
     if (configStatus === 'created') {
-      console.log(`Config: openspec/config.yaml (schema: ${DEFAULT_SCHEMA})`);
+      const createdSchema =
+        resolveProjectSpecModel(projectPath).kind === 'governed' ? GOVERNED_SCHEMA : DEFAULT_SCHEMA;
+      console.log(`Config: openspec/config.yaml (schema: ${createdSchema})`);
     } else if (configStatus === 'exists') {
       // Show actual filename (config.yaml or config.yml)
       const configYaml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yaml');

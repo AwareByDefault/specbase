@@ -19,23 +19,28 @@
 import type { SpecModel } from '../../artifact-graph/types.js';
 
 /** True only when a governed spec model is resolved. Core dispatches on the
- * declared model, never on a schema name. */
-export function isGovernedModel(specModel?: SpecModel): boolean {
+ * declared model, never on a schema name. Doubles as a type guard so callers
+ * can narrow `SpecModel | undefined` to `SpecModel` after the check. */
+export function isGovernedModel(specModel?: SpecModel): specModel is SpecModel {
   return specModel?.kind === 'governed';
 }
 
 /**
  * Append governed guidance to a base template body when (and only when) the
  * resolved model is governed. Returns the base unchanged otherwise, which keeps
- * legacy output identical down to the byte.
+ * legacy output identical down to the byte. `guidance` may be a static string
+ * (for plane-agnostic guidance) or a function of the resolved spec model (so
+ * plane-aware guidance interpolates the project's declared planes at generation
+ * time rather than baking a static plane roster into the prompt).
  */
 export function withGovernedGuidance(
   base: string,
   specModel: SpecModel | undefined,
-  guidance: string
+  guidance: string | ((specModel: SpecModel) => string)
 ): string {
   if (!isGovernedModel(specModel)) return base;
-  return `${base}\n\n${guidance}`;
+  const body = typeof guidance === 'function' ? guidance(specModel) : guidance;
+  return `${base}\n\n${body}`;
 }
 
 /**
@@ -43,37 +48,162 @@ export function withGovernedGuidance(
  * durable truth lives. Reused verbatim by every affected workflow so skill and
  * command projections carry identical governed semantics (parity requirement).
  */
-const GOVERNED_PRIMER = `## Governed spec model
+/**
+ * The curated per-plane trigger lists for the four default planes. These are
+ * hand-written pedagogy (the same quality as the original architectural
+ * structural-trigger list) so explore on the defaults is crisp; user-added
+ * planes beyond the defaults get the plane-agnostic procedure instead.
+ */
+const DEFAULT_PLANE_TRIGGERS: Record<string, string> = {
+  behavior: [
+    'Outcome triggers (it is behavioral truth when the claim is about):',
+    '- a user- or client-visible outcome (what the system DOES, observable),',
+    '- a change to inputs the user provides or outputs the user/client sees,',
+    '- a public contract (HTTP/CLI/UI response shape, error, or flag).',
+  ].join('\n'),
+  architecture: [
+    'Structural triggers (it is architectural truth when building it hits):',
+    '- a new port or adapter, or any new seam between the core and the outside',
+    '  world (persistence, network, filesystem, clock, external service);',
+    '- a new package, module, or layer, or a shift of responsibility between',
+    '  existing ones;',
+    '- a new dependency edge or boundary rule (who may import/depend on whom),',
+    '  or a change to an existing one;',
+    '- a new cross-cutting invariant the code must uphold (purity, determinism,',
+    '  dependency injection, isolation, error-handling policy).',
+  ].join('\n'),
+  ops: [
+    'Selection/run triggers (it is ops truth when the claim is about):',
+    '- adopting, replacing, or removing a dependency, runtime, or tool;',
+    '- how the dev environment boots or what it must mirror;',
+    '- infrastructure declared as state (Terraform/IaC) rather than ad-hoc scripts;',
+    '- how the system is deployed or where it runs in production.',
+  ].join('\n'),
+  'code-quality': [
+    'Smell/quality triggers (it is code-quality truth when the claim is about):',
+    '- a code smell to prohibit (ambient time, hidden coupling, deep nesting);',
+    '- a clean-code quality the code must uphold (names reveal intent, no cruft);',
+    '- what makes a good test (assert behavior not implementation, no mock-call',
+    '  order assertions).',
+  ].join('\n'),
+  agents: [
+    'Instrument triggers (it is agents truth when the claim is about one of the',
+    'repo’s OWN agentic instruments, NOT how an agent should behave):',
+    '- a review panel / lens set the repo runs over its own code;',
+    '- a repo-specific skill, subagent, or command the repo builds for agents;',
+    '- a hook (commit, CI, or tool hook) the repo installs as an agent guardrail;',
+    '- the repo’s use of the spec-driven workflow itself (opsx, its plane roster).',
+    'NOT a tool/language preference or safety rule for generated code — those ride',
+    'on the plane whose subject they constrain (ops, code-quality, behavior).',
+    'Each agents spec DESCRIBES an operational artifact (config.yaml, the lens set,',
+    'a SKILL.md, a hook) and is enforced by a conformance/drift check against it —',
+    'the artifact stays the runtime source of truth; the spec never generates it.',
+  ].join('\n'),
+};
 
-This project may use the governed spec model (two permanent truth planes with
-paired enforcement). Do NOT assume the flat \`specs/<capability>/spec.md\` layout.
+/**
+ * Shared primer: how to recognize the governed model at runtime and where its
+ * durable truth lives. Generated from the resolved plane set so a project's
+ * declared planes (and their purposes) are baked into its prompts at write time
+ * rather than enumerated as a static two-plane constant. Reused by every affected
+ * workflow so skill and command projections carry identical governed semantics
+ * (parity requirement).
+ */
+export function buildGovernedPrimer(specModel: SpecModel): string {
+  const planes = specModel.kind === 'governed' ? specModel.planes : [];
+  const planeLines = planes.map(
+    (p) => `- ${p.id}: ${p.purpose} (enforcement: ${p.enforcementFlavor}) \u2192 \`specs/${p.id}/<locator>/{spec.md,enforcement.md}\``
+  );
+  const planeIds = planes.map((p) => p.id);
+  const defaultIds = ['behavior', 'architecture', 'ops', 'code-quality'];
+  const defaultsCovered = defaultIds.filter((id) => planeIds.includes(id));
+  const userAdded = planes.filter((p) => !defaultIds.includes(p.id));
+  const firstPlane = planes[0]?.id ?? 'behavior';
+  // Opt-in agents plane: append its distinct conventions only when the project
+  // declares it, so a project without it gets byte-identical guidance.
+  const agentsConventions = planeIds.includes('agents')
+    ? `
+
+**Agents plane (this project declares it):** its members are the repo's OWN
+agentic instruments (review panel, repo-specific skills, subagents, hooks), NOT
+guardrails on agent behavior — those ride on the plane whose subject they
+constrain. Each agents \`spec.md\` **describes** an agent-operational artifact
+(\`config.yaml\`, the lens set, a \`SKILL.md\`, a hook) and its \`enforcement.md\`
+binds a **conformance/drift check** to that artifact using the ordinary
+mechanisms (\`command\`, \`test\`) — no new mechanism, and the spec never generates
+the artifact (the runtime keeps the artifact as its source of truth). \`openspec
+init\` may PLANT baseline agents specs (\`agents/spec-driven\`, \`agents/review-panel\`)
+directly as scaffolding — the one exception to the proposal→spec→archive flow;
+edit a planted baseline through a change, never by re-running init.`
+    : '';
+  return `## Governed spec model
+
+This project uses the governed spec model (${planes.length} permanent truth plane${planes.length === 1 ? '' : 's'} with paired enforcement). Do NOT assume the flat \`specs/<capability>/spec.md\` layout.
 
 **Confirm the model from the CLI, do not guess:**
 - Run \`openspec status --change "<name>" --json\` and read \`specModel\`.
 - The governed model reports \`specModel.kind == "governed"\` with
-  \`planes: [behavior, architecture]\` and \`pairedEnforcement: true\`.
+  \`planes: [${planeIds.join(', ')}]\` and \`pairedEnforcement: true\`.
 - If \`specModel.kind\` is \`legacy\` (or absent), follow the flat-spec guidance
   above unchanged.
 
 **Under the governed model, derive concrete paths from CLI output** (\`status\`
 \`artifactPaths\` and \`openspec instructions <artifact> --change ... --json\`),
-never hardcode them. Durable truth lives in two planes:
-- Behavioral truth: \`specs/behavior/<locator>/{spec.md,enforcement.md}\`
-- Architectural truth: \`specs/architecture/<locator>/{spec.md,enforcement.md}\`
+never hardcode them. Durable truth lives in the declared planes:
+${planeLines.join('\n')}
 
 Every governed \`spec.md\` is PAIRED with an \`enforcement.md\`. Stable identity is
-scoped narrowly: the frontmatter \`id\` (e.g. \`architecture.domain\`) is the only
-project-unique governed ID; requirement, scenario, and binding \`**ID:**\` slugs
-are unique only within their pair, and stay fixed when titles or locators move.
+scoped narrowly: the frontmatter \`id\` (e.g. \`${firstPlane}.<locator>\`) is the only project-unique governed ID; requirement, scenario, and binding \`**ID:**\` slugs are unique only within their pair, and stay fixed when titles or locators move.
+
+**Plane classification:** match each proposed claim to the plane whose declared
+purpose best fits the claim's nature. The shipped defaults are ${defaultsCovered.length ? defaultsCovered.join(', ') : 'none'};${userAdded.length ? ` this project also declares ${userAdded.map((p) => p.id).join(', ')} (read its purpose from the CLI).` : ''} a single initiative may touch several planes \u2014 list one spec per plane touched, never mix planes in one spec.
 
 **Structure conventions (governed):**
-- Locators may nest to arbitrary safe depth (e.g. \`architecture/platforms/desktop\`);
+- Locators may nest to arbitrary safe depth (e.g. \`${firstPlane}/platforms/desktop\`);
   JSON reports normalized slash-separated locators, filesystem access is native.
 - A directory that only GROUPS child pairs is a **namespace** and needs no pair of
   its own. Only a directory that contains \`spec.md\` must also contain
   \`enforcement.md\`; ancestry provides navigation, never inherited requirements.
 - A change stores its \`spec.md\` and \`enforcement.md\` deltas under the SAME
-  plane-qualified locator as the target current pair, so both members move together.`;
+  plane-qualified locator as the target current pair, so both members move together.${agentsConventions}`;
+}
+
+/**
+ * The trigger-list block for the explore classifier: curated prose for each
+ * default plane the project declares, plus a plane-agnostic procedure for any
+ * user-added planes beyond the defaults.
+ */
+export function buildPlaneTriggers(specModel: SpecModel): string {
+  const planes = specModel.kind === 'governed' ? specModel.planes : [];
+  const blocks: string[] = [];
+  for (const plane of planes) {
+    const triggers = DEFAULT_PLANE_TRIGGERS[plane.id];
+    if (triggers) {
+      blocks.push(`**${plane.id} plane** \u2014 ${triggers}`);
+    } else {
+      blocks.push(
+        `**${plane.id} plane** \u2014 match claims to this plane by its declared purpose: "${plane.purpose}". Enforcement flavor: ${plane.enforcementFlavor}.`
+      );
+    }
+  }
+  return blocks.join('\n\n');
+}
+
+/**
+ * Back-compat alias for callers that still reference the static primer; returns
+ * the two-plane primer shape so legacy tests and any unmigrated callers keep
+ * working. New callers should use {@link buildGovernedPrimer} with a resolved
+ * spec model so the project's planes are interpolated.
+ */
+const GOVERNED_PRIMER = buildGovernedPrimer({
+  kind: 'governed',
+  version: 1,
+  planes: [
+    { id: 'behavior', purpose: 'User/client-visible outcomes', enforcementFlavor: 'tests / property tests', crossCutting: false, defaultSelected: true },
+    { id: 'architecture', purpose: 'Package responsibilities, boundaries, and structural invariants', enforcementFlavor: 'lint / static-analysis / conformance', crossCutting: false, defaultSelected: true },
+  ],
+  pairedEnforcement: true,
+});
 
 /**
  * The distilled enforcement/testing philosophy, shared verbatim by the explore
@@ -111,7 +241,7 @@ coverage quota. Aim for deliberate, honest evidence, not a wall of tests:
  * enforcement exploration, the dual-plane classifier, coverage-informed health
  * awareness, and the durable-insight classification table.
  */
-export const GOVERNED_EXPLORE_GUIDANCE = `${GOVERNED_PRIMER}
+export const GOVERNED_EXPLORE_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Health check first (governed)
 
@@ -124,14 +254,14 @@ into the discussion. When the idea touches a spec whose state is hanging,
 stale, or degraded, surface that state and suggest addressing it or explicitly
 deferring it in the proposal.
 
-### Staged exploration: behavior -> architecture -> enforcement (governed)
+### Staged exploration: behavior -> structure -> enforcement (governed)
 
 Walk a new idea through three named stages. Stay a conversational thinking
 partner - the stages order the discussion, they are not a rigid script:
 
 1. **Desired behavior.** What observable outcome does the user want, and which
    **behavioral spec pair** (\`specs/behavior/...\`) would own it?
-2. **Supporting architecture.** What structure must remain true to build it -
+2. **Supporting structure.** What structure must remain true to build it -
    packages, responsibilities, boundaries, invariants - and which
    **architectural spec pair** (\`specs/architecture/...\`) would own each
    invariant? Actively ask whether building this introduces any **structural
@@ -148,30 +278,23 @@ partner - the stages order the discussion, they are not a rigid script:
    targets, and coverage decisions for the proposal - where the requirements will
    exist to bind against.
 
-**Dual-plane classifier:** explicitly classify whether the idea changes what
-the system DOES, how the system must be STRUCTURED, or both. The idea needs an
-architectural spec pair (in addition to the behavioral one) when building it hits
-any **structural trigger** - do not treat these as mere implementation detail:
-- a new **port or adapter**, or any new seam between the core and the outside
-  world (persistence, network, filesystem, clock, external service);
-- a new **package, module, or layer**, or a shift of responsibility between
-  existing ones;
-- a new **dependency edge or boundary rule** (who may import/depend on whom), or
-  a change to an existing one;
-- a new **cross-cutting invariant** the code must uphold (purity, determinism,
-  dependency injection, isolation, error-handling policy).
+**Plane classifier:** explicitly classify which plane(s) the idea touches. For
+EACH declared plane, match the claim to its trigger list below; a "yes" to any
+trigger means a spec in that plane is in scope, not optional:
 
-- If the idea changes user-observable behavior AND hits any structural trigger,
-  say plainly it needs a behavioral spec pair AND an architectural spec pair, and
-  name a candidate locator in EACH plane. Example: "add persistent history" is a
-  behavioral capability (\`behavior/history\`: save-on-write, list) AND an
-  architectural change (\`architecture/persistence-port\`: a new store port +
-  adapter, with the core-stays-pure invariant that persistence only enters
-  through the port) - author both, and bind the invariant to the check that
-  protects it.
-- If it only alters observable behavior within the existing structure - no new
-  port, package, dependency edge, or invariant - plan a behavioral spec pair only
-  and say why no architectural spec is needed.
+${buildPlaneTriggers(specModel)}
+
+- For user-added planes beyond the defaults, fetch \`specModel.planes\` from
+  \`openspec status --json\` and match the claim to the plane whose declared
+  \`purpose\` best fits the claim's nature. Do not force a claim into a plane
+  whose purpose it does not match.
+- If the idea touches several planes, name a candidate locator in EACH touched
+  plane and author one spec pair per plane. Example: "add persistent history" is
+  behavioral (\`behavior/history\`: save-on-write, list) AND architectural
+  (\`architecture/persistence-port\`: a new store port + adapter) - author both,
+  and bind each invariant to the check that protects it.
+- If it only alters one plane's concerns within the existing others, plan a spec
+  pair in that plane only and say why no other plane is needed.
 
 ${GOVERNED_ENFORCEMENT_PHILOSOPHY}
 
@@ -188,6 +311,8 @@ belongs to - they are not interchangeable:
 |---|---|
 | User/client-visible capability that must stay true | Behavioral spec pair (\`specs/behavior/...\`) |
 | Package responsibility or dependency invariant that must stay true | Architectural spec pair (\`specs/architecture/...\`) |
+| Repo/ops selection or run-time invariant | Ops spec pair (\`specs/ops/...\`) |
+| Code smell, quality, or rule | Code-quality spec pair (\`specs/code-quality/...\`) |
 | How a claim is proven (test/lint/review mechanism) | Paired \`enforcement.md\` binding |
 | Why THIS change is being made a certain way | \`design.md\` / \`proposal.md\` (change design) |
 | Historical rationale for a past transition | The dated change archive |
@@ -216,9 +341,10 @@ blind per-lens reviewers.
 
 - **Point the claim at an existing lens.** Name the review-panel \`lens\` that owns
   its concern: \`architectural\` (deviations from \`architecture/**\`), \`behavioural\`
-  (does the code produce \`behavior/**\`), \`enforcement\` (does the bound check
-  actually exercise the claim), or \`code-quality\` (cleanliness). A lens's scope is
-  a spec-tree subtree, resolved most-specific-first.
+  (does the code produce \`behavior/**\`), \`ops\` (does the repo use what the ops
+  specs declare), \`enforcement\` (does the bound check actually exercise the claim),
+  or \`code-quality\` (cleanliness). A lens's scope is a spec-tree subtree, resolved
+  most-specific-first.
 - **Or propose a new/scoped lens - never auto-create one.** If no existing lens
   fits, PROPOSE adding a new lens, or splitting a broad lens into a scoped one over
   a nested subtree (e.g. \`architecture/rings/boundaries\`), as a normal change.

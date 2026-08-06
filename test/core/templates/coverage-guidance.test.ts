@@ -15,7 +15,12 @@ import type { SpecModel } from '../../../src/core/artifact-graph/types.js';
 const GOVERNED: SpecModel = {
   kind: 'governed',
   version: 1,
-  planes: ['behavior', 'architecture'],
+  planes: [
+    { id: 'behavior', purpose: 'User/client-visible outcomes', enforcementFlavor: 'tests', crossCutting: false },
+    { id: 'architecture', purpose: 'Package boundaries', enforcementFlavor: 'lint', crossCutting: false },
+    { id: 'ops', purpose: 'What we use and how it runs', enforcementFlavor: 'lockfile audit', crossCutting: false },
+    { id: 'code-quality', purpose: 'What good code looks like', enforcementFlavor: 'smell-lint', crossCutting: false },
+  ],
   pairedEnforcement: true,
 };
 
@@ -34,17 +39,18 @@ describe('governed explore staged flow and coverage awareness', () => {
     'hanging\nclaims, stale bindings, **degraded** specs',
     'surface that state and suggest addressing it or explicitly\ndeferring it in the proposal',
     // The three named stages.
-    'Staged exploration: behavior -> architecture -> enforcement (governed)',
+    'Staged exploration: behavior -> structure -> enforcement (governed)',
     '**Desired behavior.**',
-    '**Supporting architecture.**',
+    '**Supporting structure.**',
     '**Enforcement approach',
-    // Dual-plane classifier: both planes -> a candidate locator in each.
-    'Dual-plane classifier:',
-    'name a candidate locator in EACH plane',
-    'say why no architectural spec is needed',
+    // Plane classifier: touched planes -> a candidate locator in each.
+    '**Plane classifier:**',
+    'name a candidate locator in EACH touched',
+    'plan a spec',
+    'pair in that plane only and say why no other plane is needed',
     // Named structural triggers force the architectural spec (the port/adapter case).
-    'structural trigger',
-    'a new **port or adapter**',
+    'Structural triggers',
+    'a new port or adapter',
     'architecture/persistence-port',
     // Enforcement stage stays general; certainty is reserved for the proposal.
     'stay general; certainty is the proposal',
@@ -69,6 +75,30 @@ describe('governed explore staged flow and coverage awareness', () => {
       expect(getOpsxExploreCommandTemplate().content).not.toContain(marker);
     });
   }
+
+  it('bakes the four default plane trigger lists into the governed explore guidance', () => {
+    const skill = getExploreSkillTemplate(GOVERNED).instructions;
+    expect(skill).toContain('behavior plane');
+    expect(skill).toContain('architecture plane');
+    expect(skill).toContain('ops plane');
+    expect(skill).toContain('code-quality plane');
+    expect(skill).toContain('a new port or adapter');
+    expect(skill).toContain('adopting, replacing, or removing a dependency');
+    expect(skill).toContain('a code smell to prohibit');
+  });
+
+  it('emits a plane-agnostic procedure for user-added planes beyond the defaults', () => {
+    const model: SpecModel = {
+      ...GOVERNED,
+      planes: [
+        ...GOVERNED.planes,
+        { id: 'security', purpose: 'Authn/authz', enforcementFlavor: 'static-analysis', crossCutting: false },
+      ],
+    };
+    const skill = getExploreSkillTemplate(model).instructions;
+    expect(skill).toContain('security plane');
+    expect(skill).toContain('match claims to this plane by its declared purpose');
+  });
 });
 
 describe('coverage pointers in governed verify and apply guidance', () => {

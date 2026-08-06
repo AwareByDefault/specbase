@@ -15,6 +15,11 @@ const baseSchema: SchemaYaml = {
   ],
 };
 
+const defaultPlanes = [
+  { id: 'behavior', purpose: 'User/client-visible outcomes', enforcementFlavor: 'tests' },
+  { id: 'architecture', purpose: 'Package boundaries', enforcementFlavor: 'lint' },
+];
+
 describe('artifact-graph/types spec model', () => {
   describe('resolveSpecModel', () => {
     it('defaults to the legacy model when no specModel is declared', () => {
@@ -28,13 +33,13 @@ describe('artifact-graph/types spec model', () => {
         specModel: {
           kind: 'governed',
           version: 1,
-          planes: ['behavior', 'architecture'],
+          planes: defaultPlanes,
           pairedEnforcement: true,
         },
       };
       const model = resolveSpecModel(schema);
       expect(model.kind).toBe('governed');
-      expect(model.planes).toEqual(['behavior', 'architecture']);
+      expect(model.planes).toEqual(defaultPlanes);
       expect(model.pairedEnforcement).toBe(true);
     });
   });
@@ -44,7 +49,7 @@ describe('artifact-graph/types spec model', () => {
       const parsed = SpecModelSchema.parse({
         kind: 'governed',
         version: 1,
-        planes: ['behavior', 'architecture'],
+        planes: defaultPlanes,
         pairedEnforcement: true,
       });
       expect(parsed.kind).toBe('governed');
@@ -56,15 +61,36 @@ describe('artifact-graph/types spec model', () => {
       expect(parsed.pairedEnforcement).toBe(false);
     });
 
-    it('rejects an unknown plane', () => {
+    it('rejects a non-kebab plane id', () => {
       expect(() =>
         SpecModelSchema.parse({
           kind: 'governed',
           version: 1,
-          planes: ['behavior', 'nonsense'],
+          planes: [{ id: 'Not-Kebab', purpose: 'x', enforcementFlavor: 'x' }],
           pairedEnforcement: true,
         })
       ).toThrow();
+    });
+
+    it('rejects a plane missing a purpose', () => {
+      expect(() =>
+        SpecModelSchema.parse({
+          kind: 'governed',
+          version: 1,
+          planes: [{ id: 'behavior', enforcementFlavor: 'x' }],
+          pairedEnforcement: true,
+        })
+      ).toThrow();
+    });
+
+    it('accepts an arbitrary user-declared plane id', () => {
+      const parsed = SpecModelSchema.parse({
+        kind: 'governed',
+        version: 1,
+        planes: [{ id: 'security', purpose: 'Authn/authz', enforcementFlavor: 'static-analysis' }],
+        pairedEnforcement: true,
+      });
+      expect(parsed.planes[0].id).toBe('security');
     });
   });
 
@@ -77,7 +103,7 @@ describe('artifact-graph/types spec model', () => {
         specModel: {
           kind: 'governed',
           version: 1,
-          planes: ['behavior', 'architecture'],
+          planes: defaultPlanes,
           pairedEnforcement: true,
         },
       });

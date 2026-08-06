@@ -154,7 +154,8 @@ export class SpecCommand {
     options: ShowOptions,
     projectRoot: string
   ): Promise<void> {
-    const repository = await loadGovernedRepository(join(projectRoot, 'openspec'));
+    const planes = resolveProjectSpecModel(projectRoot).planes.map((p) => p.id);
+    const repository = await loadGovernedRepository(join(projectRoot, 'openspec'), planes);
 
     if (!specId) {
       const canPrompt = isInteractive(options);
@@ -217,7 +218,8 @@ async function validateGovernedSpec(
   options: { json?: boolean; noInteractive?: boolean },
   projectRoot: string
 ): Promise<void> {
-  const repository = await loadGovernedRepository(join(projectRoot, 'openspec'));
+  const planes = resolveProjectSpecModel(projectRoot).planes.map((p) => p.id);
+  const repository = await loadGovernedRepository(join(projectRoot, 'openspec'), planes);
 
   let records = repository.discovery.pairs;
   let targeted = false;
@@ -249,6 +251,7 @@ async function validateGovernedSpec(
     records,
     projectRoot,
     includeUnsafeLocators: !targeted,
+    planes,
   });
 
   if (options.json) {

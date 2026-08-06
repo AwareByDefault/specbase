@@ -8,19 +8,26 @@ import {
 } from '../../../src/core/governed/lenses.js';
 
 describe('lens vocabulary — defaults', () => {
-  it('ships the four structural defaults with the model scopes', () => {
+  it('ships the structural defaults with the model scopes', () => {
     const byId = new Map(DEFAULT_LENSES.map((l) => [l.id, l]));
     expect([...byId.keys()].sort()).toEqual([
       'architectural',
       'behavioural',
       'code-quality',
+      'design',
       'enforcement',
+      'ops',
     ]);
     expect(byId.get('architectural')!.scope).toBe('architecture');
     expect(byId.get('behavioural')!.scope).toBe('behavior');
-    // enforcement and code-quality are cross-cutting (whole tree / every pair).
+    expect(byId.get('ops')!.scope).toBe('ops');
+    expect(byId.get('code-quality')!.scope).toBe('code-quality');
+    expect(byId.get('design')!.scope).toBe('design-system');
+    expect(byId.get('design')!.crossCutting).toBe(false);
+    // enforcement is cross-cutting (whole tree / every pair); the plane-bound
+    // lenses scope to their plane subtree.
     expect(byId.get('enforcement')!.crossCutting).toBe(true);
-    expect(byId.get('code-quality')!.crossCutting).toBe(true);
+    expect(byId.get('code-quality')!.crossCutting).toBe(false);
   });
 });
 

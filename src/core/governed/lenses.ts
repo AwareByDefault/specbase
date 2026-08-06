@@ -5,11 +5,12 @@
  * the others. Its scope is a plane-qualified locator subtree; the router assigns
  * each governed pair to the MOST-SPECIFIC lens whose subtree covers it, falling
  * back up the tree to a plane-wide default — the same most-specific-wins rule as
- * locator resolution. The four defaults fall out of the governed model's own
- * structure (two planes + an enforcement layer + a cleanliness concern):
+ * locator resolution. The defaults fall out of the governed model's own plane
+ * structure (a per-plane lens plus a cross-cutting enforcement layer):
  *
- *   architectural → architecture/**   behavioural → behavior/**
- *   enforcement   → every pair        code-quality → whole tree
+ *   architectural → architecture/**   behavioural  → behavior/**
+ *   ops           → ops/**            code-quality → code-quality/**
+ *   design        → design-system/**  enforcement  → every pair
  *
  * This module is PURE and never runs a reviewer: it only defines the defaults
  * and resolves a binding's declared/default lens so coverage and the workflows
@@ -37,7 +38,7 @@ export interface LensDefinition {
   crossCutting: boolean;
 }
 
-/** The four default lenses, always available under the governed model. */
+/** The default lenses, always available under the governed model. */
 export const DEFAULT_LENSES: readonly LensDefinition[] = [
   {
     id: 'architectural',
@@ -52,14 +53,26 @@ export const DEFAULT_LENSES: readonly LensDefinition[] = [
     crossCutting: false,
   },
   {
-    id: 'enforcement',
-    question: 'Do the bound checks actually exercise the claim rather than merely running?',
-    scope: '',
-    crossCutting: true,
+    id: 'ops',
+    question: 'Does the repo use what the ops specs declare and run it as declared?',
+    scope: 'ops',
+    crossCutting: false,
   },
   {
     id: 'code-quality',
     question: 'Is the code clean, simple, and free of cruft?',
+    scope: 'code-quality',
+    crossCutting: false,
+  },
+  {
+    id: 'design',
+    question: 'Does the UI and copy honor the design tokens, principles, and voice?',
+    scope: 'design-system',
+    crossCutting: false,
+  },
+  {
+    id: 'enforcement',
+    question: 'Do the bound checks actually exercise the claim rather than merely running?',
     scope: '',
     crossCutting: true,
   },

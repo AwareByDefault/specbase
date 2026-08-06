@@ -18,7 +18,7 @@ import {
   type GovernedRepository,
   type LensDefinition,
 } from '../governed/index.js';
-import { SPEC_PLANES, type SpecPlane } from './types.js';
+import { type SpecPlane } from './types.js';
 import {
   analyzeGovernedPair,
   type GovernedPairAnalysis,
@@ -209,7 +209,7 @@ export interface RepoCoverage {
   specs: SpecCoverageRecord[];
   /** Repository rollup over every spec. */
   totals: CoverageRollup;
-  /** Per-plane rollups (every plane present, even when empty). */
+  /** Per-plane rollups, keyed by plane id. Only planes with specs appear, to avoid empty noise. */
   planes: Record<SpecPlane, CoverageRollup>;
   /** Reverse index: sorted by target, then locator, then binding ID. */
   targetIndex: TargetBindingRef[];
@@ -574,7 +574,7 @@ export async function computeRepoCoverage(
 
   const totals = emptyRollup();
   const planes = Object.fromEntries(
-    SPEC_PLANES.map((plane) => [plane, emptyRollup()])
+    specs.map((r) => r.plane).filter((v, i, a) => a.indexOf(v) === i).map((plane) => [plane, emptyRollup()])
   ) as Record<SpecPlane, CoverageRollup>;
   for (const record of specs) {
     addToRollup(totals, record);

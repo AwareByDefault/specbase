@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { SPEC_PLANES, type SpecPlane } from '../artifact-graph/types.js';
+import type { SpecPlane } from '../artifact-graph/types.js';
 
 /**
  * Plane-qualified locator handling for the governed repository.
@@ -109,9 +109,16 @@ export function locatorFromSegments(plane: SpecPlane, segments: string[]): strin
   return [plane, ...segments].join('/');
 }
 
-/** True when `value` is one of the two governed planes. */
-export function isSpecPlane(value: string): value is SpecPlane {
-  return (SPEC_PLANES as readonly string[]).includes(value);
+/**
+ * True when `value` is a declared plane id. Pass the resolved plane set when
+ * available for membership validation; without it, any kebab id is accepted
+ * (membership is then a validation concern, not a parsing concern).
+ */
+export function isSpecPlane(value: string, planes?: readonly SpecPlane[]): value is SpecPlane {
+  if (planes !== undefined) {
+    return planes.includes(value);
+  }
+  return /^[a-z][a-z0-9-]*$/u.test(value);
 }
 
 export interface ParsedLocator {
@@ -124,11 +131,13 @@ export interface ParsedLocator {
  * Parse a plane-qualified locator string (e.g. `behavior/session-loop`) into its
  * plane and sub-segments, applying the same safety rules as discovery. Returns
  * null when the plane is unknown, the sub-path is empty, or any segment is unsafe.
+ * Pass the resolved plane set to validate membership; without it any kebab plane
+ * is accepted (membership is a validation concern).
  */
-export function parseLocator(locator: string): ParsedLocator | null {
+export function parseLocator(locator: string, planes?: readonly SpecPlane[]): ParsedLocator | null {
   const parts = locator.split('/');
   const plane = parts[0];
-  if (!isSpecPlane(plane)) {
+  if (!isSpecPlane(plane, planes)) {
     return null;
   }
   const rest = parts.slice(1);

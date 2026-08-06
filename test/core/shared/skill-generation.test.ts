@@ -4,7 +4,9 @@ import {
   getCommandTemplates,
   getCommandContents,
   generateSkillContent,
+  mergeProjectPlanes,
 } from '../../../src/core/shared/skill-generation.js';
+import type { SpecModel, Plane } from '../../../src/core/artifact-graph/types.js';
 
 describe('skill-generation', () => {
   describe('getSkillTemplates', () => {
@@ -298,6 +300,106 @@ describe('skill-generation', () => {
 
       expect(content).toContain('Some REPLACED text here.');
       expect(content).not.toContain('PLACEHOLDER');
+    });
+  });
+
+  describe('mergeProjectPlanes', () => {
+    const baseModel: SpecModel = {
+      kind: 'governed',
+      version: 1,
+      planes: [
+        { id: 'behavior', purpose: 'outcomes', enforcementFlavor: 'tests', crossCutting: false },
+        { id: 'architecture', purpose: 'boundaries', enforcementFlavor: 'lint', crossCutting: false },
+      ],
+      pairedEnforcement: true,
+    };
+
+    it('appends project planes to the schema defaults', () => {
+      const merged = mergeProjectPlanes(baseModel, {
+        schema: 'spec-driven-governed',
+        specModel: {
+          planesAppend: [
+            { id: 'security', purpose: 'authn', enforcementFlavor: 'static-analysis' },
+          ],
+        },
+      });
+      expect(merged.planes.map((p) => p.id)).toEqual([
+        'behavior',
+        'architecture',
+        'security',
+      ]);
+    });
+
+    it('replaces the schema defaults with the declared list', () => {
+      const merged = mergeProjectPlanes(baseModel, {
+        schema: 'spec-driven-governed',
+        specModel: {
+          planes: [
+            { id: 'ops', purpose: 'runs', enforcementFlavor: 'audit' },
+          ],
+        },
+      });
+      expect(merged.planes.map((p) => p.id)).toEqual(['ops']);
+    });
+
+    it('returns the model unchanged for legacy projects', () => {
+      const legacy: SpecModel = { ...baseModel, kind: 'legacy', planes: [] };
+      const merged = mergeProjectPlanes(legacy, {
+        schema: 'spec-driven',
+        specModel: { planesAppend: [{ id: 'security', purpose: 'x', enforcementFlavor: 'x' }] },
+      });
+      expect(merged.planes).toEqual([]);
+    });
+
+    it('ignores malformed plane overrides (keeps schema defaults)', () => {
+      const merged = mergeProjectPlanes(baseModel, {
+        schema: 'spec-driven-governed',
+        specModel: {
+          planesAppend: [{ id: 'Not-Kebab', purpose: 'x', enforcementFlavor: 'x' }],
+        },
+      });
+      expect(merged.planes.map((p) => p.id)).toEqual(['behavior', 'architecture']);
+    });
+
+    it('resolves the default set to the defaultSelected offered planes', () => {
+      // Offered list carries an opt-out plane; with no override the resolved
+      // default set excludes it.
+      const offered: SpecModel = {
+        ...baseModel,
+        planes: [
+          { id: 'behavior', purpose: 'outcomes', enforcementFlavor: 'tests', crossCutting: false, defaultSelected: true },
+          { id: 'design-system', purpose: 'identity', enforcementFlavor: 'token-lint', crossCutting: false, defaultSelected: false },
+        ],
+      };
+      const merged = mergeProjectPlanes(offered, null);
+      expect(merged.planes.map((p) => p.id)).toEqual(['behavior']);
+      expect(merged.kind).toBe('governed');
+    });
+
+    it('appends onto the defaultSelected base, not the full offered list', () => {
+      const offered: SpecModel = {
+        ...baseModel,
+        planes: [
+          { id: 'behavior', purpose: 'outcomes', enforcementFlavor: 'tests', crossCutting: false, defaultSelected: true },
+          { id: 'design-system', purpose: 'identity', enforcementFlavor: 'token-lint', crossCutting: false, defaultSelected: false },
+        ],
+      };
+      const merged = mergeProjectPlanes(offered, {
+        schema: 'spec-driven-governed',
+        specModel: {
+          planesAppend: [{ id: 'agents', purpose: 'instruments', enforcementFlavor: 'conformance' }],
+        },
+      });
+      expect(merged.planes.map((p) => p.id)).toEqual(['behavior', 'agents']);
+    });
+
+    it('derives legacy kind when the resolved plane set is empty (emergent governance)', () => {
+      const merged = mergeProjectPlanes(baseModel, {
+        schema: 'spec-driven-governed',
+        specModel: { planes: [] },
+      });
+      expect(merged.planes).toEqual([]);
+      expect(merged.kind).toBe('legacy');
     });
   });
 });

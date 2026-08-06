@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import type { SpecPlane } from '../artifact-graph/types.js';
 import { discoverGovernedPairs, type GovernedDiscovery } from './discovery.js';
 import { parseGovernedSpec, type ParsedGovernedSpec } from './spec-parser.js';
 import {
@@ -32,12 +33,14 @@ export interface GovernedRepository {
 /**
  * Discover, parse, and index every governed pair beneath `openspecRoot`. Reads
  * each pair's `spec.md` when present; incomplete/enforcement-only pairs are kept
- * with an empty parsed spec so callers can still report them.
+ * with an empty parsed spec so callers can still report them. `planes` is the
+ * resolved plane set; when omitted, the historical two-plane set is assumed.
  */
 export async function loadGovernedRepository(
-  openspecRoot: string
+  openspecRoot: string,
+  planes?: readonly SpecPlane[]
 ): Promise<GovernedRepository> {
-  const discovery = await discoverGovernedPairs(openspecRoot);
+  const discovery = await discoverGovernedPairs(openspecRoot, planes);
 
   const indexedPairs: IndexedPair[] = [];
   const duplicateLocalIds = new Map<string, DuplicateLocalId[]>();

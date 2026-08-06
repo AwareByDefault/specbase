@@ -21,6 +21,8 @@ import {
 import { loadChangeContext } from './artifact-graph/instruction-loader.js';
 import { resolveSchema } from './artifact-graph/resolver.js';
 import { resolveSpecModel, LEGACY_SPEC_MODEL, type SpecModel } from './artifact-graph/types.js';
+import { mergeProjectPlanes } from './shared/skill-generation.js';
+import { readProjectConfig } from './project-config.js';
 import { renderDiagnostics } from './governed/index.js';
 import {
   prepareGovernedArchive,
@@ -572,7 +574,10 @@ export class ArchiveCommand {
       const context = loadChangeContext(projectRoot, changeName, undefined, {
         changeDir,
       });
-      return resolveSpecModel(resolveSchema(context.schemaName, projectRoot));
+      return mergeProjectPlanes(
+        resolveSpecModel(resolveSchema(context.schemaName, projectRoot)),
+        readProjectConfig(projectRoot)
+      );
     } catch {
       return LEGACY_SPEC_MODEL;
     }

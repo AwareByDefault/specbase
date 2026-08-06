@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { SPEC_PLANES } from '../artifact-graph/types.js';
 import {
   SPEC_ID_REGEX,
   SPEC_ID_DESCRIPTION,
@@ -26,8 +25,15 @@ export const LocalSlugSchema = z
   .string()
   .regex(KEBAB_ID_REGEX, { error: `ID ${KEBAB_ID_DESCRIPTION}` });
 
-/** The plane a governed pair lives under. */
-export const SpecPlaneSchema = z.enum(SPEC_PLANES);
+/**
+ * The plane a governed pair lives under. Planes are schema-declared data
+ * (not a closed enum), so this accepts any kebab plane id; the resolved plane
+ * set validates membership at discovery/validation time.
+ */
+export const SpecPlaneSchema = z
+  .string()
+  .min(1, { error: 'Plane is required' })
+  .regex(/^[a-z][a-z0-9-]*$/, { error: 'Plane must be kebab-case' });
 
 /**
  * Minimal governed spec frontmatter. Type comes from the containing plane, so

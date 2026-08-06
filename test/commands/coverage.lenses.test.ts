@@ -112,7 +112,7 @@ describe('coverage — lens views (JSON)', () => {
       'root',
     ]);
     expect(parsed.summary.review.threshold).toBe(4);
-    expect(parsed.summary.review.lenses).toHaveLength(4);
+    expect(parsed.summary.review.lenses).toHaveLength(6);
     expect(parsed.summary.review.unlensed).toEqual([
       {
         locator: 'architecture/domain',

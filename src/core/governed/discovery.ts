@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { SPEC_PLANES, type SpecPlane } from '../artifact-graph/types.js';
+import type { SpecPlane } from '../artifact-graph/types.js';
 import type { GovernedPairRecord } from '../schemas/governed-spec.schema.js';
 import {
   GOVERNED_SPECS_DIRNAME,
@@ -10,14 +10,18 @@ import {
 } from './locator.js';
 
 /**
- * Safe recursive discovery of governed pairs beneath the `behavior` and
- * `architecture` planes. Uses native path operations throughout and only
- * exposes normalized slash-separated locators.
+ * Safe recursive discovery of governed pairs beneath the specs root. Uses
+ * native path operations throughout and only exposes normalized
+ * slash-separated locators.
  *
- * A directory is a *pair* when it holds `spec.md` and/or `enforcement.md`.
- * A directory with neither is a *namespace* (design decision 2) — it is walked
- * for children but is not itself a pair. Directory ancestry provides navigation
- * only; nothing here inherits requirements.
+ * Discovery is FILESYSTEM-DRIVEN: every top-level directory under `specs/`
+ * is treated as a plane root and walked for pairs. Plane membership (whether a
+ * discovered plane id is in the project's resolved set) is a VALIDATION
+ * concern, not a discovery concern, so an unknown plane is still discovered
+ * and surfaced to validation rather than silently dropped. A directory is a
+ * *pair* when it holds spec.md and/or enforcement.md. A directory with
+ * neither is a *namespace* — it is walked for children but is not itself a pair.
+ * Directory ancestry provides navigation only; nothing here inherits requirements.
  */
 
 const SPEC_FILENAME = 'spec.md';
@@ -127,16 +131,31 @@ async function walkPlane(
 }
 
 /**
- * Discover every governed pair beneath the given openspec root. Missing plane
- * directories are treated as empty, not errors, so a project on one plane only
- * still works.
+ * Discover every governed pair beneath the given openspec root by walking
+ * every top-level directory under `specs/` as a plane root. Missing plane
+ * directories are treated as empty, not errors. The optional `planes` filter,
+ * when provided, RESTRICTS discovery to the named plane roots; when omitted,
+ * every top-level directory under specs is walked so unknown planes are still surfaced.
  */
 export async function discoverGovernedPairs(
-  openspecRoot: string
+  openspecRoot: string,
+  planes?: readonly SpecPlane[]
 ): Promise<GovernedDiscovery> {
   const out = { pairs: [] as GovernedPairRecord[], unsafe: [] as UnsafeLocator[] };
 
-  for (const plane of SPEC_PLANES) {
+  const specsRoot = governedSpecsRoot(openspecRoot);
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = await fs.readdir(specsRoot, { withFileTypes: true });
+  } catch {
+    entries = [];
+  }
+  const planeDirs = entries
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+    .map((e) => e.name);
+  const selected = planes && planes.length > 0 ? planeDirs.filter((p) => planes.includes(p)) : planeDirs;
+
+  for (const plane of selected) {
     const root = planeRoot(openspecRoot, plane);
     await walkPlane(plane, root, [], root, out);
   }

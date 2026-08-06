@@ -49,15 +49,116 @@ const DEFAULT_SCHEMA_NAME = 'spec-driven';
  * generation can gate governed guidance on the declared model rather than a
  * schema name. Any failure (missing config, unknown/invalid schema) falls back
  * to the legacy model, keeping generation resilient and legacy output unchanged.
+ *
+ * Plane overrides declared in the project config (`specModel.planes+` to append
+ * or `specModel.planes:` to replace) are merged into the resolved model so the
+ * returned `specModel.planes` is the single source of truth for the plane set.
  */
 export function resolveProjectSpecModel(projectRoot: string): SpecModel {
   try {
     const config = readProjectConfig(projectRoot);
     const schemaName = config?.schema ?? DEFAULT_SCHEMA_NAME;
-    return resolveSpecModel(resolveSchema(schemaName, projectRoot));
+    const schema = resolveSchema(schemaName, projectRoot);
+    const model = resolveSpecModel(schema);
+    return mergeProjectPlanes(model, config);
   } catch {
     return LEGACY_SPEC_MODEL;
   }
+}
+
+/**
+ * Resolve the project's plane set from the schema's single OFFER-ABLE plane list
+ * (`model.planes`, every offer-able plane, each carrying `defaultSelected`) plus
+ * any project-level override, then derive `kind` from the result.
+ *
+ * Resolution:
+ * - No override → the `defaultSelected: true` subset (the resolved default set),
+ *   so an existing governed project keeps its historical plane roster.
+ * - `planes+` (append) → the default subset plus the appended records.
+ * - `planes:` (replace) → exactly the declared records.
+ *
+ * Governance is emergent: if the resolved set is empty the model resolves to
+ * `legacy` (flat); otherwise `governed`. Declared overrides are validated for
+ * kebab ids and non-collision; an invalid override is ignored with the default
+ * subset retained so a malformed config never silently empties the plane set.
+ */
+export function mergeProjectPlanes(
+  model: SpecModel,
+  config: ReturnType<typeof readProjectConfig>
+): SpecModel {
+  if (model.kind !== 'governed') return model;
+  // `defaultSelected` defaults to true (PlaneSchema), so a plane resolves into
+  // the default set unless it explicitly opts out with `defaultSelected: false`.
+  const defaults = model.planes.filter((p) => p.defaultSelected !== false);
+  const withPlanes = (planes: SpecModel['planes']): SpecModel => ({
+    ...model,
+    kind: planes.length > 0 ? 'governed' : 'legacy',
+    planes,
+  });
+  const override = (config as Record<string, unknown> | null)?.specModel as
+    | Record<string, unknown>
+    | undefined;
+  if (!override) return withPlanes(defaults);
+  const replace = override.planes;
+  const append = (override.planesAppend ?? override['planes+']) as unknown;
+  if (replace !== undefined && append !== undefined) {
+    return withPlanes(defaults); // ambiguous: ignore overrides, keep defaults
+  }
+  if (replace !== undefined) {
+    const planes = normalizePlanes(replace);
+    return planes ? withPlanes(planes) : withPlanes(defaults);
+  }
+  if (append !== undefined) {
+    const extra = normalizePlanes(append);
+    if (!extra) return withPlanes(defaults);
+    const byId = new Map(defaults.map((p) => [p.id, p]));
+    for (const plane of extra) byId.set(plane.id, plane); // last wins, but dups across append are validated below
+    return withPlanes(Array.from(byId.values()));
+  }
+  return withPlanes(defaults);
+}
+
+const PLANE_ID_RE = /^[a-z][a-z0-9-]*$/;
+const RESERVED_PLANE_IDS = new Set(['spec', 'specs', 'enforcement']);
+
+function normalizePlanes(
+  value: unknown
+): SpecModel['planes'] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const planes: SpecModel['planes'] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') return undefined;
+    const id = (entry as { id?: unknown }).id;
+    const purpose = (entry as { purpose?: unknown }).purpose;
+    const enforcementFlavor = (entry as { enforcementFlavor?: unknown }).enforcementFlavor;
+    if (typeof id !== 'string' || !PLANE_ID_RE.test(id) || RESERVED_PLANE_IDS.has(id)) {
+      return undefined;
+    }
+    if (typeof purpose !== 'string' || purpose.length === 0) return undefined;
+    if (typeof enforcementFlavor !== 'string' || enforcementFlavor.length === 0) {
+      return undefined;
+    }
+    if (seen.has(id)) return undefined;
+    seen.add(id);
+    planes.push({
+      id,
+      purpose,
+      enforcementFlavor,
+      reviewLens: (entry as { reviewLens?: string }).reviewLens,
+      crossCutting: (entry as { crossCutting?: boolean }).crossCutting ?? false,
+      // A project-declared plane is, by definition, selected for that project;
+      // `defaultSelected` only steers the init picker for schema-offered planes.
+      defaultSelected: (entry as { defaultSelected?: boolean }).defaultSelected ?? true,
+    });
+  }
+  return planes;
+}
+
+/** The resolved plane ids for a project, or the historical two-plane default. */
+export function resolvedPlaneIds(projectRoot: string): string[] {
+  const model = resolveProjectSpecModel(projectRoot);
+  return model.kind === 'governed' ? model.planes.map((p) => p.id) : ['behavior', 'architecture'];
 }
 
 /**

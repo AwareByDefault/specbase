@@ -83,7 +83,7 @@ afterEach(() => {
 });
 
 describe('loadGovernedContext (governed schema)', () => {
-  it('exposes both plane roots (behavior + architecture) with delta and current roots', async () => {
+  it('exposes every declared plane root with delta and current roots', async () => {
     writePair('delta', 'behavior/session-loop', {
       spec: specDoc('behavior.session-loop'),
       enforcement: enforcementDoc,
@@ -95,6 +95,8 @@ describe('loadGovernedContext (governed schema)', () => {
     expect(planes.map((p) => p.plane).sort()).toEqual([
       'architecture',
       'behavior',
+      'code-quality',
+      'ops',
     ]);
     const behavior = planes.find((p) => p.plane === 'behavior')!;
     expect(behavior.deltaRoot).toBe(
@@ -207,7 +209,7 @@ describe('governed status / instructions wrappers', () => {
     const enriched = await withGovernedStatus(base, ctx);
     expect(enriched.specModel?.kind).toBe('governed');
     expect(enriched.governed?.deltaPairs).toHaveLength(1);
-    expect(enriched.governed?.planeRoots).toHaveLength(2);
+    expect(enriched.governed?.planeRoots).toHaveLength(4);
   });
 
   it('withGovernedInstructions attaches the governed spec model and pair context', async () => {

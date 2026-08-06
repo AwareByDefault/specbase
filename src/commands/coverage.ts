@@ -237,10 +237,9 @@ export class CoverageCommand {
     const output = {
       summary: {
         totals: { specs: coverage.totals.specs, ...coverage.totals.counts },
-        planes: {
-          behavior: rollupJson(coverage.planes.behavior),
-          architecture: rollupJson(coverage.planes.architecture),
-        },
+        planes: Object.fromEntries(
+          Object.entries(coverage.planes).map(([plane, rollup]) => [plane, rollupJson(rollup)])
+        ),
         states: coverage.totals.states,
         strengths: coverage.totals.strengths,
         // Review-panel lens views. Additive and informational: none affect
@@ -288,10 +287,12 @@ export class CoverageCommand {
 
       console.log('');
       console.log('Planes:');
-      for (const plane of ['behavior', 'architecture'] as const) {
+      const planeIds = Object.keys(coverage.planes).sort();
+      const planeWidth = Math.max('plane'.length, ...planeIds.map((p) => p.length));
+      for (const plane of planeIds) {
         const rollup = coverage.planes[plane];
         console.log(
-          `  ${plane.padEnd('architecture'.length)}   specs ${rollup.specs}` +
+          `  ${plane.padEnd(planeWidth)}   specs ${rollup.specs}` +
             `   requirements ${rollup.counts.coveredRequirements}/${rollup.counts.requirements}` +
             `   [${this.formatStrengths(rollup.strengths)}]`
         );

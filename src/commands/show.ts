@@ -125,7 +125,7 @@ export class ShowCommand {
     // are unchanged under the governed model, so `--type change` stays legacy.
     const specModel = resolveProjectSpecModel(root.path);
     if (specModel.kind === 'governed' && params.typeOverride !== 'change') {
-      await this.showGovernedDirect(itemName, params);
+      await this.showGovernedDirect(itemName, params, specModel.planes.map((p) => p.id));
       return;
     }
 
@@ -220,11 +220,12 @@ export class ShowCommand {
    */
   private async showGovernedDirect(
     itemName: string,
-    params: { typeOverride?: ItemType; options: ShowExecuteOptions; root: ResolvedOpenSpecRoot }
+    params: { typeOverride?: ItemType; options: ShowExecuteOptions; root: ResolvedOpenSpecRoot },
+    planes?: string[]
   ): Promise<void> {
     const { typeOverride, options, root } = params;
     const openspecRoot = path.join(root.path, 'openspec');
-    const repository = await loadGovernedRepository(openspecRoot);
+    const repository = await loadGovernedRepository(openspecRoot, planes);
 
     // Change detection is unchanged under the governed model.
     let changes: string[] = [];

@@ -27,6 +27,14 @@ import type { GovernedPairRecord } from '../schemas/governed-spec.schema.js';
 import type { SpecPlane } from './types.js';
 import { analyzeGovernedPair } from './governed-show.js';
 
+/** A repo-level validation issue (e.g. an unknown plane root). */
+export interface GovernedValidationIssue {
+  severity: 'error' | 'warning';
+  code: string;
+  message: string;
+  sourcePath: string;
+}
+
 /** One governed pair's validation verdict with its deterministic diagnostics. */
 export interface GovernedPairValidation {
   locator: string;
@@ -46,6 +54,8 @@ export interface GovernedValidationReport {
    * makes the report invalid. Only populated for whole-repository validation.
    */
   unsafeLocators: UnsafeLocator[];
+  /** Pairs discovered under a plane id not in the resolved set (unknown planes). */
+  unknownPlanes?: GovernedValidationIssue[];
 }
 
 /** Deterministic diagnostic ordering, matching the Unit 2 collector's keys. */
@@ -171,10 +181,28 @@ export async function validateGovernedPairs(input: {
   projectRoot: string;
   /** Include repo-level unsafe locators (whole-repository validation only). */
   includeUnsafeLocators?: boolean;
+  /** Resolved plane ids; pairs under an id not in this set are reported unknown. */
+  planes?: readonly string[];
 }): Promise<GovernedValidationReport> {
-  const { repository, records, projectRoot, includeUnsafeLocators } = input;
+  const { repository, records, projectRoot, includeUnsafeLocators, planes } = input;
 
   const specs: GovernedPairValidation[] = [];
+  const unknownPlanes: GovernedValidationIssue[] = [];
+  if (planes) {
+    const declared = new Set(planes);
+    const seenUnknown = new Set<string>();
+    for (const record of records) {
+      if (!declared.has(record.plane) && !seenUnknown.has(record.plane)) {
+        seenUnknown.add(record.plane);
+        unknownPlanes.push({
+          severity: 'error',
+          code: 'unknown-plane',
+          message: `Pair under plane '${record.plane}' which is not in the resolved plane set (declared: ${[...declared].sort().join(', ')}).`,
+          sourcePath: record.specPath ?? record.enforcementPath ?? record.dir,
+        });
+      }
+    }
+  }
   for (const record of records) {
     specs.push(await validateGovernedPair({ repository, record, projectRoot }));
   }
@@ -184,6 +212,9 @@ export async function validateGovernedPairs(input: {
     ? repository.discovery.unsafeLocators
     : [];
 
-  const valid = specs.every((s) => s.valid) && unsafeLocators.length === 0;
-  return { valid, specs, unsafeLocators };
+  const valid =
+    specs.every((s) => s.valid) &&
+    unsafeLocators.length === 0 &&
+    unknownPlanes.length === 0;
+  return { valid, specs, unsafeLocators, unknownPlanes };
 }

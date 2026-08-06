@@ -78,10 +78,16 @@ describe('governed/locator', () => {
   });
 
   describe('isSpecPlane', () => {
-    it('recognizes the two planes and rejects others', () => {
+    it('recognizes declared planes when a set is provided and rejects others', () => {
+      expect(isSpecPlane('behavior', ['behavior', 'architecture'])).toBe(true);
+      expect(isSpecPlane('architecture', ['behavior', 'architecture'])).toBe(true);
+      expect(isSpecPlane('nonsense', ['behavior', 'architecture'])).toBe(false);
+    });
+
+    it('accepts any kebab id when no set is provided (membership is a validation concern)', () => {
       expect(isSpecPlane('behavior')).toBe(true);
-      expect(isSpecPlane('architecture')).toBe(true);
-      expect(isSpecPlane('nonsense')).toBe(false);
+      expect(isSpecPlane('security')).toBe(true);
+      expect(isSpecPlane('Not-Kebab')).toBe(false);
     });
   });
 
@@ -100,8 +106,15 @@ describe('governed/locator', () => {
       });
     });
 
-    it('returns null for an unknown plane', () => {
-      expect(parseLocator('unknown/thing')).toBeNull();
+    it('returns null for an unknown plane when a set is provided', () => {
+      expect(parseLocator('unknown/thing', ['behavior', 'architecture'])).toBeNull();
+    });
+
+    it('accepts a declared non-default plane when a set is provided', () => {
+      expect(parseLocator('security/secret-handling', ['security'])).toEqual({
+        plane: 'security',
+        segments: ['secret-handling'],
+      });
     });
 
     it('returns null for a bare plane with no sub-path', () => {

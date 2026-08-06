@@ -221,7 +221,7 @@ export class ListCommand {
     // pairs; legacy projects keep the flat capability listing byte-for-byte.
     const specModel = resolveProjectSpecModel(targetPath);
     if (specModel.kind === 'governed') {
-      await this.listGovernedSpecs(targetPath, { json, root });
+      await this.listGovernedSpecs(targetPath, { json, root }, specModel.planes.map((p) => p.id));
       return;
     }
 
@@ -287,11 +287,12 @@ export class ListCommand {
    */
   private async listGovernedSpecs(
     projectRoot: string,
-    output: { json: boolean; root?: RootOutput }
+    output: { json: boolean; root?: RootOutput },
+    planes?: string[]
   ): Promise<void> {
     const { json, root } = output;
     const openspecRoot = path.join(projectRoot, 'openspec');
-    const repository = await loadGovernedRepository(openspecRoot);
+    const repository = await loadGovernedRepository(openspecRoot, planes);
 
     if (repository.indexedPairs.length === 0) {
       if (json) {

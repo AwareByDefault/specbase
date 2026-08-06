@@ -24,15 +24,30 @@ describe('bundled governed schema (task 1.3)', () => {
     expect(listSchemas()).toContain('spec-driven');
   });
 
-  it('declares the versioned governed spec model with both planes and paired enforcement', () => {
+  it('declares the versioned governed spec model with the offered planes and paired enforcement', () => {
     const schema = resolveSchema(SCHEMA_NAME);
     const model = resolveSpecModel(schema);
-    expect(model).toEqual({
-      kind: 'governed',
-      version: 1,
-      planes: ['behavior', 'architecture'],
-      pairedEnforcement: true,
-    });
+    expect(model.kind).toBe('governed');
+    expect(model.version).toBe(1);
+    expect(model.pairedEnforcement).toBe(true);
+    // The schema's `planes` is the single OFFER-ABLE list presented at init.
+    const planeIds = model.planes.map((p) => p.id);
+    expect(planeIds).toEqual([
+      'behavior',
+      'architecture',
+      'ops',
+      'code-quality',
+      'design-system',
+      'agents',
+    ]);
+    // The default-selected subset (pre-checked at init, and the resolved default
+    // for a project with no plane override) is the core four.
+    const defaultIds = model.planes.filter((p) => p.defaultSelected).map((p) => p.id);
+    expect(defaultIds).toEqual(['behavior', 'architecture', 'ops', 'code-quality']);
+    for (const plane of model.planes) {
+      expect(typeof plane.purpose).toBe('string');
+      expect(typeof plane.enforcementFlavor).toBe('string');
+    }
   });
 
   it('encodes the governed artifact-graph dependencies', () => {
@@ -74,6 +89,9 @@ describe('bundled governed templates (task 1.4)', () => {
     'spec.md',
     'behavioral-spec.md',
     'architectural-spec.md',
+    'ops-spec.md',
+    'code-quality-spec.md',
+    'design-system-spec.md',
     'enforcement.md',
     'design.md',
     'tasks.md',

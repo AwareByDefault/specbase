@@ -23,10 +23,11 @@ import * as path from 'node:path';
 import { resolveSchema } from './resolver.js';
 import {
   resolveSpecModel,
-  SPEC_PLANES,
   type SpecModel,
   type SpecPlane,
 } from './types.js';
+import { mergeProjectPlanes } from '../shared/skill-generation.js';
+import { readProjectConfig } from '../project-config.js';
 import type {
   ArtifactInstructions,
   ChangeContext,
@@ -117,7 +118,10 @@ export async function loadGovernedContext(
   context: ChangeContext
 ): Promise<GovernedContextResult | undefined> {
   const schema = resolveSchema(context.schemaName, context.projectRoot);
-  const specModel = resolveSpecModel(schema);
+  const specModel = mergeProjectPlanes(
+    resolveSpecModel(schema),
+    readProjectConfig(context.projectRoot)
+  );
   if (specModel.kind !== 'governed') {
     return undefined;
   }
@@ -127,9 +131,10 @@ export async function loadGovernedContext(
 
   // Change deltas live under `<changeDir>/specs/<plane>/...`; permanent pairs
   // under `<openspecRoot>/specs/<plane>/...`. Both use the governed discovery.
+  const planes = specModel.planes.map((p) => p.id);
   const [deltaDiscovery, repository] = await Promise.all([
-    discoverGovernedPairs(changeDir),
-    loadGovernedRepository(openspecRoot),
+    discoverGovernedPairs(changeDir, planes),
+    loadGovernedRepository(openspecRoot, planes),
   ]);
 
   const currentByLocator = new Map<string, IndexedPair>();
@@ -173,7 +178,7 @@ export async function loadGovernedContext(
     deltaPairs.push(deltaPair);
   }
 
-  const planeRoots: GovernedPlaneRoot[] = SPEC_PLANES.map((plane) => ({
+  const planeRoots: GovernedPlaneRoot[] = planes.map((plane) => ({
     plane,
     deltaRoot: planeRoot(changeDir, plane),
     currentRoot: planeRoot(openspecRoot, plane),
