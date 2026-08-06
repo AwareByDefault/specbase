@@ -256,9 +256,9 @@ No active changes found. Create a new change to get started.
   };
 }
 
-export function getOpsxBulkArchiveCommandTemplate(specModel?: SpecModel): CommandTemplate {
+export function getSpcbBulkArchiveCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
-    name: 'OPSX: Bulk Archive',
+    name: 'SPCB: Bulk Archive',
     description: 'Archive multiple completed changes at once',
     category: 'Workflow',
     tags: ['workflow', 'archive', 'experimental', 'bulk'],

@@ -16,21 +16,21 @@ import {
   getBulkArchiveChangeSkillTemplate,
   getVerifyChangeSkillTemplate,
   getOnboardSkillTemplate,
-  getOpsxProposeSkillTemplate,
+  getSpcbProposeSkillTemplate,
   getReviewPanelSkillTemplate,
   getReviewPanelCommandTemplate,
-  getOpsxExploreCommandTemplate,
-  getOpsxNewCommandTemplate,
-  getOpsxContinueCommandTemplate,
-  getOpsxApplyCommandTemplate,
-  getOpsxUpdateCommandTemplate,
-  getOpsxFfCommandTemplate,
-  getOpsxSyncCommandTemplate,
-  getOpsxArchiveCommandTemplate,
-  getOpsxBulkArchiveCommandTemplate,
-  getOpsxVerifyCommandTemplate,
-  getOpsxOnboardCommandTemplate,
-  getOpsxProposeCommandTemplate,
+  getSpcbExploreCommandTemplate,
+  getSpcbNewCommandTemplate,
+  getSpcbContinueCommandTemplate,
+  getSpcbApplyCommandTemplate,
+  getSpcbUpdateCommandTemplate,
+  getSpcbFfCommandTemplate,
+  getSpcbSyncCommandTemplate,
+  getSpcbArchiveCommandTemplate,
+  getSpcbBulkArchiveCommandTemplate,
+  getSpcbVerifyCommandTemplate,
+  getSpcbOnboardCommandTemplate,
+  getSpcbProposeCommandTemplate,
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
@@ -174,7 +174,7 @@ export interface SkillTemplateEntry {
  * Command template with ID mapping.
  */
 export interface CommandTemplateEntry {
-  template: ReturnType<typeof getOpsxExploreCommandTemplate>;
+  template: ReturnType<typeof getSpcbExploreCommandTemplate>;
   id: string;
 }
 
@@ -199,7 +199,7 @@ export function getSkillTemplates(
     { template: getBulkArchiveChangeSkillTemplate(specModel), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
     { template: getVerifyChangeSkillTemplate(specModel), dirName: 'openspec-verify-change', workflowId: 'verify' },
     { template: getOnboardSkillTemplate(specModel), dirName: 'openspec-onboard', workflowId: 'onboard' },
-    { template: getOpsxProposeSkillTemplate(specModel), dirName: 'openspec-propose', workflowId: 'propose' },
+    { template: getSpcbProposeSkillTemplate(specModel), dirName: 'openspec-propose', workflowId: 'propose' },
   ];
 
   const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
@@ -237,18 +237,18 @@ export function getCommandTemplates(
   specModel?: SpecModel
 ): CommandTemplateEntry[] {
   const all: CommandTemplateEntry[] = [
-    { template: getOpsxExploreCommandTemplate(specModel), id: 'explore' },
-    { template: getOpsxNewCommandTemplate(specModel), id: 'new' },
-    { template: getOpsxContinueCommandTemplate(specModel), id: 'continue' },
-    { template: getOpsxApplyCommandTemplate(specModel), id: 'apply' },
-    { template: getOpsxUpdateCommandTemplate(specModel), id: 'update' },
-    { template: getOpsxFfCommandTemplate(specModel), id: 'ff' },
-    { template: getOpsxSyncCommandTemplate(specModel), id: 'sync' },
-    { template: getOpsxArchiveCommandTemplate(specModel), id: 'archive' },
-    { template: getOpsxBulkArchiveCommandTemplate(specModel), id: 'bulk-archive' },
-    { template: getOpsxVerifyCommandTemplate(specModel), id: 'verify' },
-    { template: getOpsxOnboardCommandTemplate(specModel), id: 'onboard' },
-    { template: getOpsxProposeCommandTemplate(specModel), id: 'propose' },
+    { template: getSpcbExploreCommandTemplate(specModel), id: 'explore' },
+    { template: getSpcbNewCommandTemplate(specModel), id: 'new' },
+    { template: getSpcbContinueCommandTemplate(specModel), id: 'continue' },
+    { template: getSpcbApplyCommandTemplate(specModel), id: 'apply' },
+    { template: getSpcbUpdateCommandTemplate(specModel), id: 'update' },
+    { template: getSpcbFfCommandTemplate(specModel), id: 'ff' },
+    { template: getSpcbSyncCommandTemplate(specModel), id: 'sync' },
+    { template: getSpcbArchiveCommandTemplate(specModel), id: 'archive' },
+    { template: getSpcbBulkArchiveCommandTemplate(specModel), id: 'bulk-archive' },
+    { template: getSpcbVerifyCommandTemplate(specModel), id: 'verify' },
+    { template: getSpcbOnboardCommandTemplate(specModel), id: 'onboard' },
+    { template: getSpcbProposeCommandTemplate(specModel), id: 'propose' },
   ];
 
   const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;

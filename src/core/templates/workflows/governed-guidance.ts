@@ -1,7 +1,7 @@
 /**
  * Governed-model workflow guidance (design decision 10).
  *
- * The canonical OPSX workflow templates are generated once into project-agnostic
+ * The canonical SPCB workflow templates are generated once into project-agnostic
  * skill/command files. To keep the legacy flat workflow byte-for-byte unchanged
  * while teaching governed projects the two-plane + paired-enforcement model, each
  * affected getter takes an OPTIONAL resolved spec model:
@@ -92,7 +92,7 @@ const DEFAULT_PLANE_TRIGGERS: Record<string, string> = {
     '- a review panel / lens set the repo runs over its own code;',
     '- a repo-specific skill, subagent, or command the repo builds for agents;',
     '- a hook (commit, CI, or tool hook) the repo installs as an agent guardrail;',
-    '- the repo’s use of the spec-driven workflow itself (opsx, its plane roster).',
+    '- the repo’s use of the spec-driven workflow itself (spcb, its plane roster).',
     'NOT a tool/language preference or safety rule for generated code — those ride',
     'on the plane whose subject they constrain (ops, code-quality, behavior).',
     'Each agents spec DESCRIBES an operational artifact (config.yaml, the lens set,',
@@ -237,7 +237,7 @@ coverage quota. Aim for deliberate, honest evidence, not a wall of tests:
   Use review/manual openly and first-class rather than faking automation.`;
 
 /**
- * explore (opsx-explore-skill spec): staged behavior -> architecture ->
+ * explore (spcb-explore-skill spec): staged behavior -> architecture ->
  * enforcement exploration, the dual-plane classifier, coverage-informed health
  * awareness, and the durable-insight classification table.
  */
@@ -542,9 +542,9 @@ governed gate below is ADDITIONAL and authoritative.
   validate\` / \`openspec spec validate\`), coverage is satisfied (no **hanging**
   mandatory SHALL/MUST claims, no **stale** or uncovered bindings), every active
   binding's declared \`targets\` exist, and NO \`planned\`, unenforced, unresolved,
-  **broken**, or failing-mandatory bindings remain. Reuse the \`/opsx:verify\`
+  **broken**, or failing-mandatory bindings remain. Reuse the \`/spcb:verify\`
   results as the readiness evidence; if verification has not been run or does not
-  pass, block ordinary archive readiness and direct the user to \`/opsx:verify\`
+  pass, block ordinary archive readiness and direct the user to \`/spcb:verify\`
   or the explicit validation-bypass command. Interactive confirmation is NOT
   enforcement evidence - never treat a "proceed anyway" answer as proof the pair
   is enforced.
@@ -658,7 +658,7 @@ architecture. Weave the following into the phases:
   actual \`targets\` before marking related work complete. When implementation
   removes a requirement or scenario, update its binding and assess the former
   \`targets\` for safe cleanup (never auto-delete). When all tasks are complete, run
-  governed verification (\`/opsx:verify\`) BEFORE transitioning to archive.
+  governed verification (\`/spcb:verify\`) BEFORE transitioning to archive.
 - **Archive with explanation.** Explain that specification and enforcement deltas
   update each affected pair TOGETHER, run the schema-aware governed archive, and
   show the dated archive location, the updated current locators, and any cleanup

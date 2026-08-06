@@ -12,19 +12,19 @@ import {
   getArchiveChangeSkillTemplate,
   getBulkArchiveChangeSkillTemplate,
   getOnboardSkillTemplate,
-  getOpsxProposeSkillTemplate,
-  getOpsxExploreCommandTemplate,
-  getOpsxNewCommandTemplate,
-  getOpsxContinueCommandTemplate,
-  getOpsxApplyCommandTemplate,
-  getOpsxUpdateCommandTemplate,
-  getOpsxFfCommandTemplate,
-  getOpsxSyncCommandTemplate,
-  getOpsxVerifyCommandTemplate,
-  getOpsxArchiveCommandTemplate,
-  getOpsxBulkArchiveCommandTemplate,
-  getOpsxOnboardCommandTemplate,
-  getOpsxProposeCommandTemplate,
+  getSpcbProposeSkillTemplate,
+  getSpcbExploreCommandTemplate,
+  getSpcbNewCommandTemplate,
+  getSpcbContinueCommandTemplate,
+  getSpcbApplyCommandTemplate,
+  getSpcbUpdateCommandTemplate,
+  getSpcbFfCommandTemplate,
+  getSpcbSyncCommandTemplate,
+  getSpcbVerifyCommandTemplate,
+  getSpcbArchiveCommandTemplate,
+  getSpcbBulkArchiveCommandTemplate,
+  getSpcbOnboardCommandTemplate,
+  getSpcbProposeCommandTemplate,
 } from '../../../src/core/templates/skill-templates.js';
 import { getSkillTemplates, getCommandContents } from '../../../src/core/shared/skill-generation.js';
 import { LEGACY_SPEC_MODEL, type SpecModel } from '../../../src/core/artifact-graph/types.js';
@@ -49,22 +49,22 @@ const SKILL_GETTERS = {
   archive: getArchiveChangeSkillTemplate,
   'bulk-archive': getBulkArchiveChangeSkillTemplate,
   onboard: getOnboardSkillTemplate,
-  propose: getOpsxProposeSkillTemplate,
+  propose: getSpcbProposeSkillTemplate,
 } as const;
 
 const COMMAND_GETTERS = {
-  explore: getOpsxExploreCommandTemplate,
-  new: getOpsxNewCommandTemplate,
-  continue: getOpsxContinueCommandTemplate,
-  apply: getOpsxApplyCommandTemplate,
-  update: getOpsxUpdateCommandTemplate,
-  ff: getOpsxFfCommandTemplate,
-  sync: getOpsxSyncCommandTemplate,
-  verify: getOpsxVerifyCommandTemplate,
-  archive: getOpsxArchiveCommandTemplate,
-  'bulk-archive': getOpsxBulkArchiveCommandTemplate,
-  onboard: getOpsxOnboardCommandTemplate,
-  propose: getOpsxProposeCommandTemplate,
+  explore: getSpcbExploreCommandTemplate,
+  new: getSpcbNewCommandTemplate,
+  continue: getSpcbContinueCommandTemplate,
+  apply: getSpcbApplyCommandTemplate,
+  update: getSpcbUpdateCommandTemplate,
+  ff: getSpcbFfCommandTemplate,
+  sync: getSpcbSyncCommandTemplate,
+  verify: getSpcbVerifyCommandTemplate,
+  archive: getSpcbArchiveCommandTemplate,
+  'bulk-archive': getSpcbBulkArchiveCommandTemplate,
+  onboard: getSpcbOnboardCommandTemplate,
+  propose: getSpcbProposeCommandTemplate,
 } as const;
 
 const GOVERNED_MARKER = '## Governed spec model';
@@ -161,7 +161,7 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
     // while the architectural requirement binds to it through enforcement.
     it('teaches that tool behavior is behavioral truth bound through enforcement (explore)', () => {
       const governed = getExploreSkillTemplate(GOVERNED).instructions;
-      const command = getOpsxExploreCommandTemplate(GOVERNED).content;
+      const command = getSpcbExploreCommandTemplate(GOVERNED).content;
       for (const surface of [governed, command]) {
         expect(surface).toContain('that behavior is **behavioral truth**');
         expect(surface).toContain("do NOT embed the tool's implementation");
@@ -192,18 +192,18 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
     for (const marker of SYNC_MARKERS) {
       it(`teaches sync guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
         const skill = getSyncSpecsSkillTemplate(GOVERNED).instructions;
-        const command = getOpsxSyncCommandTemplate(GOVERNED).content;
+        const command = getSpcbSyncCommandTemplate(GOVERNED).content;
         expect(skill).toContain(marker);
         expect(command).toContain(marker);
         expect(getSyncSpecsSkillTemplate().instructions).not.toContain(marker);
-        expect(getOpsxSyncCommandTemplate().content).not.toContain(marker);
+        expect(getSpcbSyncCommandTemplate().content).not.toContain(marker);
       });
     }
 
     it('does not apply legacy header-identity merging to governed pairs', () => {
       for (const surface of [
         getSyncSpecsSkillTemplate(GOVERNED).instructions,
-        getOpsxSyncCommandTemplate(GOVERNED).content,
+        getSpcbSyncCommandTemplate(GOVERNED).content,
       ]) {
         expect(surface).toContain('stable scoped identity, never by title');
         expect(surface).toContain('Discover every concrete delta from status');
@@ -215,7 +215,7 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
   // executes each affected automated binding's declared command, labels semantic
   // correspondence as review (not deterministic automation), reports retired
   // targets, and reports evidence strength. None of this appears under legacy.
-  describe('governed verify guidance (opsx-verify-skill)', () => {
+  describe('governed verify guidance (spcb-verify-skill)', () => {
     const VERIFY_MARKERS = [
       'Verifying coverage and evidence (governed)',
       'Assess enforcement COVERAGE first',
@@ -239,18 +239,18 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
     for (const marker of VERIFY_MARKERS) {
       it(`teaches verify guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
         const skill = getVerifyChangeSkillTemplate(GOVERNED).instructions;
-        const command = getOpsxVerifyCommandTemplate(GOVERNED).content;
+        const command = getSpcbVerifyCommandTemplate(GOVERNED).content;
         expect(skill).toContain(marker);
         expect(command).toContain(marker);
         expect(getVerifyChangeSkillTemplate().instructions).not.toContain(marker);
-        expect(getOpsxVerifyCommandTemplate().content).not.toContain(marker);
+        expect(getSpcbVerifyCommandTemplate().content).not.toContain(marker);
       });
     }
 
     it('raises CRITICAL with stable IDs for incomplete coverage and failed commands', () => {
       for (const surface of [
         getVerifyChangeSkillTemplate(GOVERNED).instructions,
-        getOpsxVerifyCommandTemplate(GOVERNED).content,
+        getSpcbVerifyCommandTemplate(GOVERNED).content,
       ]) {
         // Incomplete governed coverage -> CRITICAL naming stable spec/normative/binding IDs.
         expect(surface).toContain('raise a **CRITICAL** issue that');
@@ -265,14 +265,14 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
   // performs pair-aware synchronization through the schema-aware CLI, reports
   // retired-target cleanup candidates without auto-deleting code, and reports an
   // explicit validation bypass honestly. None of this appears under legacy.
-  describe('governed archive guidance (opsx-archive-skill)', () => {
+  describe('governed archive guidance (spcb-archive-skill)', () => {
     const ARCHIVE_MARKERS = [
       'Archiving a governed change (governed)',
       'Require governed readiness BEFORE archiving',
       'no **hanging**\n  mandatory SHALL/MUST claims',
       'every active\n  binding\'s declared \\`targets\\` exist',
       'NO \\`planned\\`, unenforced, unresolved,\n  **broken**, or failing-mandatory bindings remain',
-      'Reuse the \\`/opsx:verify\\`\n  results as the readiness evidence',
+      'Reuse the \\`/spcb:verify\\`\n  results as the readiness evidence',
       'Interactive confirmation is NOT\n  enforcement evidence',
       'Treat governed deltas as an inseparable pair on sync',
       'invoke **pair-aware\n  governed synchronization**',
@@ -293,16 +293,16 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
         // Both single-change and bulk archive carry the shared readiness gate.
         const surfaces = [
           getArchiveChangeSkillTemplate(GOVERNED).instructions,
-          getOpsxArchiveCommandTemplate(GOVERNED).content,
+          getSpcbArchiveCommandTemplate(GOVERNED).content,
           getBulkArchiveChangeSkillTemplate(GOVERNED).instructions,
-          getOpsxBulkArchiveCommandTemplate(GOVERNED).content,
+          getSpcbBulkArchiveCommandTemplate(GOVERNED).content,
         ];
         for (const surface of surfaces) expect(surface).toContain(marker);
 
         expect(getArchiveChangeSkillTemplate().instructions).not.toContain(marker);
-        expect(getOpsxArchiveCommandTemplate().content).not.toContain(marker);
+        expect(getSpcbArchiveCommandTemplate().content).not.toContain(marker);
         expect(getBulkArchiveChangeSkillTemplate().instructions).not.toContain(marker);
-        expect(getOpsxBulkArchiveCommandTemplate().content).not.toContain(marker);
+        expect(getSpcbBulkArchiveCommandTemplate().content).not.toContain(marker);
       });
     }
 
@@ -317,7 +317,7 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
       ];
       for (const surface of [
         getBulkArchiveChangeSkillTemplate(GOVERNED).instructions,
-        getOpsxBulkArchiveCommandTemplate(GOVERNED).content,
+        getSpcbBulkArchiveCommandTemplate(GOVERNED).content,
       ]) {
         for (const marker of bulkOnly) expect(surface).toContain(marker);
       }
@@ -334,7 +334,7 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
 
   // Unit 6.6 (onboard): governed onboarding teaches both truth planes, stable
   // scoped identity, paired enforcement, drift, and archived rationale.
-  describe('governed onboard guidance (opsx-onboard-skill)', () => {
+  describe('governed onboard guidance (spcb-onboard-skill)', () => {
     const onboardMarkers = [
       'Teaching the governed model while onboarding (governed)',
       'Two truth planes',
@@ -351,9 +351,9 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
     for (const marker of onboardMarkers) {
       it(`teaches onboard guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
         expect(getOnboardSkillTemplate(GOVERNED).instructions).toContain(marker);
-        expect(getOpsxOnboardCommandTemplate(GOVERNED).content).toContain(marker);
+        expect(getSpcbOnboardCommandTemplate(GOVERNED).content).toContain(marker);
         expect(getOnboardSkillTemplate().instructions).not.toContain(marker);
-        expect(getOpsxOnboardCommandTemplate().content).not.toContain(marker);
+        expect(getSpcbOnboardCommandTemplate().content).not.toContain(marker);
       });
     }
   });

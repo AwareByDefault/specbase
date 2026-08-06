@@ -50,7 +50,7 @@ const STORE_OPTION_DESCRIPTION = COMMON_FLAGS.store.description;
 function hiddenStorePathOption(): Option {
   return new Option(
     '--store-path <path>',
-    'Not supported; register the path with "openspec store register <path>" and use --store <id>'
+    'Not supported; register the path with "specbase store register <path>" and use --store <id>'
   ).hideHelp();
 }
 
@@ -94,19 +94,19 @@ export function getCommandPath(command: Command): string {
 
   while (current) {
     const name = current.name();
-    // Skip the root 'openspec' command
-    if (name && name !== 'openspec') {
+    // Skip the root 'specbase' command
+    if (name && name !== 'specbase') {
       names.unshift(name);
     }
     current = current.parent;
   }
 
-  return names.join(':') || 'openspec';
+  return names.join(':') || 'specbase';
 }
 
 program
-  .name('openspec')
-  .description('AI-native system for spec-driven development')
+  .name('specbase')
+  .description('Governed specs: an enforced source of truth, built on OpenSpec')
   .version(version);
 
 // Global options
@@ -186,7 +186,7 @@ program
   .option('--no-interactive', 'Disable interactive prompts')
   .action(async (options?: { tool?: string; noInteractive?: boolean }) => {
     try {
-      console.log('Note: "openspec experimental" is deprecated. Use "openspec init" instead.');
+      console.log('Note: "specbase experimental" is deprecated. Use "specbase init" instead.');
       const { InitCommand } = await import('../core/init.js');
       const initCommand = new InitCommand({
         tools: options?.tool,
@@ -269,7 +269,7 @@ const changeCmd = program
 
 // Deprecation notice for noun-based commands
 changeCmd.hook('preAction', () => {
-  console.error('Warning: The "openspec change ..." commands are deprecated. Prefer verb-first commands (e.g., "openspec list", "openspec validate --changes").');
+  console.error('Warning: The "specbase change ..." commands are deprecated. Prefer verb-first commands (e.g., "specbase list", "specbase validate --changes").');
 });
 
 changeCmd
@@ -291,12 +291,12 @@ changeCmd
 
 changeCmd
   .command('list')
-  .description('List all active changes (DEPRECATED: use "openspec list" instead)')
+  .description('List all active changes (DEPRECATED: use "specbase list" instead)')
   .option('--json', 'Output as JSON')
   .option('--long', 'Show id and title with counts')
   .action(async (options?: { json?: boolean; long?: boolean }) => {
     try {
-      console.error('Warning: "openspec change list" is deprecated. Use "openspec list".');
+      console.error('Warning: "specbase change list" is deprecated. Use "specbase list".');
       const changeCommand = new ChangeCommand();
       await changeCommand.list(options);
     } catch (error) {

@@ -6,17 +6,17 @@
 
 export type { SkillTemplate, CommandTemplate } from './types.js';
 
-export { getExploreSkillTemplate, getOpsxExploreCommandTemplate } from './workflows/explore.js';
-export { getNewChangeSkillTemplate, getOpsxNewCommandTemplate } from './workflows/new-change.js';
-export { getContinueChangeSkillTemplate, getOpsxContinueCommandTemplate } from './workflows/continue-change.js';
-export { getApplyChangeSkillTemplate, getOpsxApplyCommandTemplate } from './workflows/apply-change.js';
-export { getUpdateChangeSkillTemplate, getOpsxUpdateCommandTemplate } from './workflows/update-change.js';
-export { getFfChangeSkillTemplate, getOpsxFfCommandTemplate } from './workflows/ff-change.js';
-export { getSyncSpecsSkillTemplate, getOpsxSyncCommandTemplate } from './workflows/sync-specs.js';
-export { getArchiveChangeSkillTemplate, getOpsxArchiveCommandTemplate } from './workflows/archive-change.js';
-export { getBulkArchiveChangeSkillTemplate, getOpsxBulkArchiveCommandTemplate } from './workflows/bulk-archive-change.js';
-export { getVerifyChangeSkillTemplate, getOpsxVerifyCommandTemplate } from './workflows/verify-change.js';
-export { getOnboardSkillTemplate, getOpsxOnboardCommandTemplate } from './workflows/onboard.js';
-export { getOpsxProposeSkillTemplate, getOpsxProposeCommandTemplate } from './workflows/propose.js';
+export { getExploreSkillTemplate, getSpcbExploreCommandTemplate } from './workflows/explore.js';
+export { getNewChangeSkillTemplate, getSpcbNewCommandTemplate } from './workflows/new-change.js';
+export { getContinueChangeSkillTemplate, getSpcbContinueCommandTemplate } from './workflows/continue-change.js';
+export { getApplyChangeSkillTemplate, getSpcbApplyCommandTemplate } from './workflows/apply-change.js';
+export { getUpdateChangeSkillTemplate, getSpcbUpdateCommandTemplate } from './workflows/update-change.js';
+export { getFfChangeSkillTemplate, getSpcbFfCommandTemplate } from './workflows/ff-change.js';
+export { getSyncSpecsSkillTemplate, getSpcbSyncCommandTemplate } from './workflows/sync-specs.js';
+export { getArchiveChangeSkillTemplate, getSpcbArchiveCommandTemplate } from './workflows/archive-change.js';
+export { getBulkArchiveChangeSkillTemplate, getSpcbBulkArchiveCommandTemplate } from './workflows/bulk-archive-change.js';
+export { getVerifyChangeSkillTemplate, getSpcbVerifyCommandTemplate } from './workflows/verify-change.js';
+export { getOnboardSkillTemplate, getSpcbOnboardCommandTemplate } from './workflows/onboard.js';
+export { getSpcbProposeSkillTemplate, getSpcbProposeCommandTemplate } from './workflows/propose.js';
 export { getReviewPanelSkillTemplate, getReviewPanelCommandTemplate } from './workflows/review-panel.js';
 export { getFeedbackSkillTemplate } from './workflows/feedback.js';

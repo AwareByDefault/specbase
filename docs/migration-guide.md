@@ -1,20 +1,20 @@
-# Migrating to OPSX
+# Migrating to SPCB
 
-This guide helps you transition from the legacy OpenSpec workflow to OPSX. The migration is designed to be smooth—your existing work is preserved, and the new system offers more flexibility.
+This guide helps you transition from the legacy OpenSpec workflow to SPCB. The migration is designed to be smooth—your existing work is preserved, and the new system offers more flexibility.
 
 ## What's Changing?
 
-OPSX replaces the old phase-locked workflow with a fluid, action-based approach. Here's the key shift:
+SPCB replaces the old phase-locked workflow with a fluid, action-based approach. Here's the key shift:
 
-| Aspect | Legacy | OPSX |
+| Aspect | Legacy | SPCB |
 |--------|--------|------|
-| **Commands** | `/openspec:proposal`, `/openspec:apply`, `/openspec:archive` | Default: `/opsx:propose`, `/opsx:apply`, `/opsx:sync`, `/opsx:archive` (expanded workflow commands optional) |
+| **Commands** | `/openspec:proposal`, `/openspec:apply`, `/openspec:archive` | Default: `/spcb:propose`, `/spcb:apply`, `/spcb:sync`, `/spcb:archive` (expanded workflow commands optional) |
 | **Workflow** | Create all artifacts at once | Create incrementally or all at once—your choice |
 | **Going back** | Awkward phase gates | Natural—update any artifact anytime |
 | **Customization** | Fixed structure | Schema-driven, fully hackable |
 | **Configuration** | `CLAUDE.md` with markers + `project.md` | Clean config in `openspec/config.yaml` |
 
-**The philosophy change:** Work isn't linear. OPSX stops pretending it is.
+**The philosophy change:** Work isn't linear. SPCB stops pretending it is.
 
 ---
 
@@ -24,7 +24,7 @@ OPSX replaces the old phase-locked workflow with a fluid, action-based approach.
 
 The migration process is designed with preservation in mind:
 
-- **Active changes in `openspec/changes/`** — Completely preserved. You can continue them with OPSX commands.
+- **Active changes in `openspec/changes/`** — Completely preserved. You can continue them with SPCB commands.
 - **Archived changes** — Untouched. Your history remains intact.
 - **Main specs in `openspec/specs/`** — Untouched. These are your source of truth.
 - **Your content in CLAUDE.md, AGENTS.md, etc.** — Preserved. Only the OpenSpec marker blocks are removed; everything you wrote stays.
@@ -284,32 +284,32 @@ Command availability is profile-dependent:
 
 | Command | Purpose |
 |---------|---------|
-| `/opsx:propose` | Create a change and generate planning artifacts in one step |
-| `/opsx:explore` | Think through ideas with no structure |
-| `/opsx:apply` | Implement tasks from tasks.md |
-| `/opsx:archive` | Finalize and archive the change |
+| `/spcb:propose` | Create a change and generate planning artifacts in one step |
+| `/spcb:explore` | Think through ideas with no structure |
+| `/spcb:apply` | Implement tasks from tasks.md |
+| `/spcb:archive` | Finalize and archive the change |
 
 **Expanded workflow (custom selection):**
 
 | Command | Purpose |
 |---------|---------|
-| `/opsx:new` | Start a new change scaffold |
-| `/opsx:continue` | Create the next artifact (one at a time) |
-| `/opsx:ff` | Fast-forward—create planning artifacts at once |
-| `/opsx:verify` | Validate implementation matches specs |
-| `/opsx:sync` | Merge delta specs into main specs |
-| `/opsx:bulk-archive` | Archive multiple changes at once |
-| `/opsx:onboard` | Guided end-to-end onboarding workflow |
+| `/spcb:new` | Start a new change scaffold |
+| `/spcb:continue` | Create the next artifact (one at a time) |
+| `/spcb:ff` | Fast-forward—create planning artifacts at once |
+| `/spcb:verify` | Validate implementation matches specs |
+| `/spcb:sync` | Merge delta specs into main specs |
+| `/spcb:bulk-archive` | Archive multiple changes at once |
+| `/spcb:onboard` | Guided end-to-end onboarding workflow |
 
 Enable expanded commands with `openspec config profile`, then run `openspec update`.
 
 ### Command Mapping from Legacy
 
-| Legacy | OPSX Equivalent |
+| Legacy | SPCB Equivalent |
 |--------|-----------------|
-| `/openspec:proposal` | `/opsx:propose` (default) or `/opsx:new` then `/opsx:ff` (expanded) |
-| `/openspec:apply` | `/opsx:apply` |
-| `/openspec:archive` | `/opsx:archive` |
+| `/openspec:proposal` | `/spcb:propose` (default) or `/spcb:new` then `/spcb:ff` (expanded) |
+| `/openspec:apply` | `/spcb:apply` |
+| `/openspec:archive` | `/spcb:archive` |
 
 ### New Capabilities
 
@@ -317,13 +317,13 @@ These capabilities are part of the expanded workflow command set.
 
 **Granular artifact creation:**
 ```
-/opsx:continue
+/spcb:continue
 ```
 Creates one artifact at a time based on dependencies. Use this when you want to review each step.
 
 **Exploration mode:**
 ```
-/opsx:explore
+/spcb:explore
 ```
 Think through ideas with a partner before committing to a change.
 
@@ -345,7 +345,7 @@ If you're in implementation and realize the design is wrong?
 Too bad. Phase gates don't let you go back easily.
 ```
 
-OPSX uses actions, not phases:
+SPCB uses actions, not phases:
 
 ```
          ┌───────────────────────────────────────────────┐
@@ -381,7 +381,7 @@ Artifacts form a directed graph. Dependencies are enablers, not gates:
                      specs, design)
 ```
 
-When you run `/opsx:continue`, it checks what's ready and offers the next artifact. You can also create multiple ready artifacts in any order.
+When you run `/spcb:continue`, it checks what's ready and offers the next artifact. You can also create multiple ready artifacts in any order.
 
 ### Skills vs Commands
 
@@ -394,7 +394,7 @@ The legacy system used tool-specific command files:
 └── archive.md
 ```
 
-OPSX uses the emerging **skills** standard:
+SPCB uses the emerging **skills** standard:
 
 ```
 .claude/skills/
@@ -411,20 +411,20 @@ Skills are recognized across multiple AI coding tools and provide richer metadat
 
 ## Continuing Existing Changes
 
-Your in-progress changes work seamlessly with OPSX commands.
+Your in-progress changes work seamlessly with SPCB commands.
 
 **Have an active change from the legacy workflow?**
 
 ```
-/opsx:apply add-my-feature
+/spcb:apply add-my-feature
 ```
 
-OPSX reads the existing artifacts and continues from where you left off.
+SPCB reads the existing artifacts and continues from where you left off.
 
 **Want to add more artifacts to an existing change?**
 
 ```
-/opsx:continue add-my-feature
+/spcb:continue add-my-feature
 ```
 
 Shows what's ready to create based on what already exists.
@@ -466,7 +466,7 @@ rules:
 
 ### Schema Resolution
 
-When determining which schema to use, OPSX checks in order:
+When determining which schema to use, SPCB checks in order:
 
 1. **CLI flag**: `--schema <name>` (highest priority)
 2. **Change metadata**: `.openspec.yaml` in the change directory
@@ -557,7 +557,7 @@ project/
 │   │   └── archive/              # Unchanged
 │   └── config.yaml               # NEW: Project configuration
 ├── .claude/
-│   └── skills/                   # NEW: OPSX skills
+│   └── skills/                   # NEW: SPCB skills
 │       ├── openspec-propose/     # default core profile
 │       ├── openspec-explore/
 │       ├── openspec-apply-change/
@@ -577,14 +577,14 @@ project/
 ### Command Cheatsheet
 
 ```text
-/opsx:propose      Start quickly (default core profile)
-/opsx:apply        Implement tasks
-/opsx:archive      Finish and archive
+/spcb:propose      Start quickly (default core profile)
+/spcb:apply        Implement tasks
+/spcb:archive      Finish and archive
 
 # Expanded workflow (if enabled):
-/opsx:new          Scaffold a change
-/opsx:continue     Create next artifact
-/opsx:ff           Create planning artifacts
+/spcb:new          Scaffold a change
+/spcb:continue     Create next artifact
+/spcb:ff           Create planning artifacts
 ```
 
 ---
@@ -593,4 +593,4 @@ project/
 
 - **Discord**: [discord.gg/YctCnvvshC](https://discord.gg/YctCnvvshC)
 - **GitHub Issues**: [github.com/Fission-AI/OpenSpec/issues](https://github.com/Fission-AI/OpenSpec/issues)
-- **Documentation**: [docs/opsx.md](opsx.md) for the full OPSX reference
+- **Documentation**: [docs/spcb.md](spcb.md) for the full SPCB reference

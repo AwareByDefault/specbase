@@ -198,7 +198,7 @@ export function getReviewPanelSkillTemplate(): SkillTemplate {
 /** The review-panel COMMAND projection. Identical body to the skill (parity). */
 export function getReviewPanelCommandTemplate(): CommandTemplate {
   return {
-    name: 'OPSX: Review Panel',
+    name: 'SPCB: Review Panel',
     description: 'Run the governed review panel (read-only, review-strength, non-gating)',
     category: 'Workflow',
     tags: ['workflow', 'review', 'experimental'],

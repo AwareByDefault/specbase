@@ -179,9 +179,9 @@ Use clear markdown with:
   };
 }
 
-export function getOpsxVerifyCommandTemplate(specModel?: SpecModel): CommandTemplate {
+export function getSpcbVerifyCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
-    name: 'OPSX: Verify',
+    name: 'SPCB: Verify',
     description: 'Verify implementation matches change artifacts before archiving',
     category: 'Workflow',
     tags: ['workflow', 'verify', 'experimental'],
@@ -189,7 +189,7 @@ export function getOpsxVerifyCommandTemplate(specModel?: SpecModel): CommandTemp
 
 ${STORE_SELECTION_GUIDANCE}
 
-**Input**: Optionally specify a change name after \`/opsx:verify\` (e.g., \`/opsx:verify add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a change name after \`/spcb:verify\` (e.g., \`/spcb:verify add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
 **Steps**
 

@@ -3,9 +3,9 @@ import {
   getReviewPanelSkillTemplate,
   getReviewPanelCommandTemplate,
   getVerifyChangeSkillTemplate,
-  getOpsxVerifyCommandTemplate,
+  getSpcbVerifyCommandTemplate,
   getExploreSkillTemplate,
-  getOpsxExploreCommandTemplate,
+  getSpcbExploreCommandTemplate,
 } from '../../../src/core/templates/skill-templates.js';
 import {
   getSkillTemplates,
@@ -98,11 +98,11 @@ describe('verify guidance — review panel (governed vs legacy)', () => {
   for (const marker of VERIFY_MARKERS) {
     it(`teaches "${marker.slice(0, 34)}..." under governed, absent under legacy, in both projections`, () => {
       const skill = getVerifyChangeSkillTemplate(GOVERNED).instructions;
-      const command = getOpsxVerifyCommandTemplate(GOVERNED).content;
+      const command = getSpcbVerifyCommandTemplate(GOVERNED).content;
       expect(skill).toContain(marker);
       expect(command).toContain(marker);
       expect(getVerifyChangeSkillTemplate().instructions).not.toContain(marker);
-      expect(getOpsxVerifyCommandTemplate().content).not.toContain(marker);
+      expect(getSpcbVerifyCommandTemplate().content).not.toContain(marker);
     });
   }
 });
@@ -119,11 +119,11 @@ describe('explore guidance — lens growth (governed vs legacy)', () => {
   for (const marker of EXPLORE_MARKERS) {
     it(`teaches "${marker.slice(0, 34)}..." under governed, absent under legacy, in both projections`, () => {
       const skill = getExploreSkillTemplate(GOVERNED).instructions;
-      const command = getOpsxExploreCommandTemplate(GOVERNED).content;
+      const command = getSpcbExploreCommandTemplate(GOVERNED).content;
       expect(skill).toContain(marker);
       expect(command).toContain(marker);
       expect(getExploreSkillTemplate().instructions).not.toContain(marker);
-      expect(getOpsxExploreCommandTemplate().content).not.toContain(marker);
+      expect(getSpcbExploreCommandTemplate().content).not.toContain(marker);
     });
   }
 });

@@ -8,7 +8,7 @@ Enter explore mode. Think deeply. Visualize freely. Follow the conversation wher
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
-**Input**: The argument after `/opsx-explore` is whatever the user wants to think about. Could be:
+**Input**: The argument after `/spcb-explore` is whatever the user wants to think about. Could be:
 **Provided arguments**: $@
 - A vague idea: "real-time collaboration"
 - A specific problem: "the auth system is getting unwieldy"

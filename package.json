@@ -35,6 +35,7 @@
     }
   },
   "bin": {
+    "specbase": "./bin/specbase.js",
     "openspec": "./bin/openspec.js"
   },
   "files": [

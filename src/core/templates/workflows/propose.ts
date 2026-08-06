@@ -9,7 +9,7 @@ import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
 import type { SpecModel } from '../../artifact-graph/types.js';
 import { withGovernedGuidance, GOVERNED_AUTHORING_GUIDANCE } from './governed-guidance.js';
 
-export function getOpsxProposeSkillTemplate(specModel?: SpecModel): SkillTemplate {
+export function getSpcbProposeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-propose',
     description: 'Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.',
@@ -20,7 +20,7 @@ I'll create a change with artifacts:
 - design.md (how)
 - tasks.md (implementation steps)
 
-When ready to implement, run /opsx:apply
+When ready to implement, run /spcb:apply
 
 ---
 
@@ -97,7 +97,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run \`/opsx:apply\` or ask me to implement to start working on the tasks."
+- Prompt: "Run \`/spcb:apply\` or ask me to implement to start working on the tasks."
 
 **Artifact Creation Guidelines**
 
@@ -121,9 +121,9 @@ After completing all artifacts, summarize:
   };
 }
 
-export function getOpsxProposeCommandTemplate(specModel?: SpecModel): CommandTemplate {
+export function getSpcbProposeCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
-    name: 'OPSX: Propose',
+    name: 'SPCB: Propose',
     description: 'Propose a new change - create it and generate all artifacts in one step',
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
@@ -134,13 +134,13 @@ I'll create a change with artifacts:
 - design.md (how)
 - tasks.md (implementation steps)
 
-When ready to implement, run /opsx:apply
+When ready to implement, run /spcb:apply
 
 ---
 
 ${STORE_SELECTION_GUIDANCE}
 
-**Input**: The argument after \`/opsx:propose\` is the change name (kebab-case), OR a description of what the user wants to build.
+**Input**: The argument after \`/spcb:propose\` is the change name (kebab-case), OR a description of what the user wants to build.
 
 **Steps**
 
@@ -211,7 +211,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run \`/opsx:apply\` to start implementing."
+- Prompt: "Run \`/spcb:apply\` to start implementing."
 
 **Artifact Creation Guidelines**
 

@@ -37,9 +37,9 @@ The full list of tool IDs is in [Supported Tools](supported-tools.md). Use `--to
 
 ## Commands don't show up
 
-If `/opsx:propose` (or your tool's equivalent) doesn't appear or doesn't do anything, work down this list. They're ordered fastest-to-check first.
+If `/spcb:propose` (or your tool's equivalent) doesn't appear or doesn't do anything, work down this list. They're ordered fastest-to-check first.
 
-1. **You may be in the wrong place.** Slash commands go in your AI assistant's chat, not your terminal. If you typed `/opsx:propose` into your shell, that's the issue. See [How Commands Work](how-commands-work.md).
+1. **You may be in the wrong place.** Slash commands go in your AI assistant's chat, not your terminal. If you typed `/spcb:propose` into your shell, that's the issue. See [How Commands Work](how-commands-work.md).
 
 2. **Regenerate the files.** From your project root:
 
@@ -55,7 +55,7 @@ If `/opsx:propose` (or your tool's equivalent) doesn't appear or doesn't do anyt
 
 5. **Check you initialized this project.** Skills are written per project. If you cloned a repo or switched folders, run `openspec init` (or `openspec update`) there.
 
-6. **Confirm your tool supports command files.** A few tools (Kimi CLI, ForgeCode, Mistral Vibe) don't get generated `opsx-*` command files; they use skill-based invocations instead. The forms differ per tool: see [Supported Tools](supported-tools.md) and [How Commands Work](how-commands-work.md#slash-command-syntax-by-tool).
+6. **Confirm your tool supports command files.** A few tools (Kimi CLI, ForgeCode, Mistral Vibe) don't get generated `spcb-*` command files; they use skill-based invocations instead. The forms differ per tool: see [Supported Tools](supported-tools.md) and [How Commands Work](how-commands-work.md#slash-command-syntax-by-tool).
 
 ## Working with changes
 
@@ -65,7 +65,7 @@ The command couldn't tell which change you meant. Name it explicitly, or check w
 
 ```bash
 openspec list                    # see active changes
-/opsx:apply add-dark-mode        # name the change in chat
+/spcb:apply add-dark-mode        # name the change in chat
 ```
 
 Also confirm you're in the right project directory.
@@ -99,7 +99,7 @@ The AI didn't have enough context. A few levers help:
 - Add project context in `openspec/config.yaml` so your stack and conventions are injected into every request. See [Customization](customization.md#project-configuration).
 - Add per-artifact `rules:` for guidance that only applies to, say, specs.
 - Give a more detailed description when you propose.
-- Use the expanded `/opsx:continue` to create one artifact at a time and review each, instead of `/opsx:ff` doing them all at once.
+- Use the expanded `/spcb:continue` to create one artifact at a time and review each, instead of `/spcb:ff` doing them all at once.
 
 ### Archive won't finish, or warns about incomplete tasks
 
