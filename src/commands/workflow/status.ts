@@ -17,6 +17,7 @@ import {
 import {
   loadChangeContext,
   formatChangeStatus,
+  withGovernedStatus,
   type ChangeStatus,
 } from '../../core/artifact-graph/index.js';
 import {
@@ -102,10 +103,13 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
       changeDir: getChangeDir(planningHome, changeName),
       planningHome,
     });
-    const status = formatChangeStatus(
+    const baseStatus = formatChangeStatus(
       context,
       isStoreSelectedRoot(root) ? { storeId: root.storeId } : {}
     );
+    // Governed-only: attach spec model + pair context. No-op (returns the base
+    // object) under the legacy model, keeping legacy output unchanged.
+    const status = await withGovernedStatus(baseStatus, context);
 
     spinner?.stop();
 

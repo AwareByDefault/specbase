@@ -9,6 +9,7 @@ import chalk from 'chalk';
 import path from 'path';
 import * as fs from 'fs';
 import { getSchemaDir, listSchemas } from '../../core/artifact-graph/index.js';
+import type { GovernedWorkflowContext } from '../../core/artifact-graph/index.js';
 import type { ReferenceIndexEntry } from '../../core/references.js';
 import { isRootSelectionError } from '../../core/root-selection.js';
 import { validateChangeName } from '../../utils/change-utils.js';
@@ -47,6 +48,11 @@ export interface ApplyInstructions {
   instruction: string;
   /** Referenced-store index (read-only upstream context; omitted when none declared) */
   references?: ReferenceIndexEntry[];
+  /**
+   * Governed pair + plane context (target roots, delta pairs, corresponding
+   * current pairs). Governed-only additive field; omitted for legacy schemas.
+   */
+  governed?: GovernedWorkflowContext;
 }
 
 // -----------------------------------------------------------------------------

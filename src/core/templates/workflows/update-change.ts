@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_UPDATE_GUIDANCE } from './governed-guidance.js';
 
-export function getUpdateChangeSkillTemplate(): SkillTemplate {
+export function getUpdateChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-update-change',
     description: "Update an OpenSpec change by revising its existing planning artifacts and keeping them coherent with one another. Use when the user wants to revise a change's plan, fold new decisions into it, or reconcile its artifacts after an edit. Never edits code.",
-    instructions: `Revise a change's existing planning artifacts and keep them coherent. Never edit code.
+    instructions: withGovernedGuidance(`Revise a change's existing planning artifacts and keep them coherent. Never edit code.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -84,20 +86,20 @@ After each invocation, show:
 - Edit only the concrete files in \`existingOutputPaths\`; never write to a glob \`resolvedOutputPath\`.
 - Do not advance the build frontier: no new artifacts, no new files under glob artifacts - that is \`/opsx:continue\`'s job.
 - Confirm every edit with the user before writing.
-- If the request changes the change's *intent* rather than refining it, recommend starting fresh with \`/opsx:new\` (the "Update vs. Start Fresh" heuristic).`,
+- If the request changes the change's *intent* rather than refining it, recommend starting fresh with \`/opsx:new\` (the "Update vs. Start Fresh" heuristic).`, specModel, GOVERNED_UPDATE_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxUpdateCommandTemplate(): CommandTemplate {
+export function getOpsxUpdateCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Update',
     description: "Update a change - revise existing planning artifacts and keep them coherent (Experimental)",
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
-    content: `Revise a change's existing planning artifacts and keep them coherent. Never edit code.
+    content: withGovernedGuidance(`Revise a change's existing planning artifacts and keep them coherent. Never edit code.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -170,6 +172,6 @@ After each invocation, show:
 - Edit only the concrete files in \`existingOutputPaths\`; never write to a glob \`resolvedOutputPath\`.
 - Do not advance the build frontier: no new artifacts, no new files under glob artifacts - that is \`/opsx:continue\`'s job.
 - Confirm every edit with the user before writing.
-- If the request changes the change's *intent* rather than refining it, recommend starting fresh with \`/opsx:new\` (the "Update vs. Start Fresh" heuristic).`
+- If the request changes the change's *intent* rather than refining it, recommend starting fresh with \`/opsx:new\` (the "Update vs. Start Fresh" heuristic).`, specModel, GOVERNED_UPDATE_GUIDANCE),
   };
 }

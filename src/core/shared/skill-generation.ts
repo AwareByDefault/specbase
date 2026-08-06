@@ -17,6 +17,8 @@ import {
   getVerifyChangeSkillTemplate,
   getOnboardSkillTemplate,
   getOpsxProposeSkillTemplate,
+  getReviewPanelSkillTemplate,
+  getReviewPanelCommandTemplate,
   getOpsxExploreCommandTemplate,
   getOpsxNewCommandTemplate,
   getOpsxContinueCommandTemplate,
@@ -32,7 +34,132 @@ import {
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
+import type { SpecModel } from '../artifact-graph/types.js';
+import { LEGACY_SPEC_MODEL, resolveSpecModel } from '../artifact-graph/types.js';
+import { resolveSchema } from '../artifact-graph/resolver.js';
+import { readProjectConfig } from '../project-config.js';
 import { OPENSPEC_CLI_ALLOWED_TOOLS } from './allowed-tools.js';
+import { isGovernedModel } from '../templates/workflows/governed-guidance.js';
+
+/** The project default schema when config declares none. */
+const DEFAULT_SCHEMA_NAME = 'spec-driven';
+
+/**
+ * Resolve the spec model a project's DEFAULT schema selects, so skill/command
+ * generation can gate governed guidance on the declared model rather than a
+ * schema name. Any failure (missing config, unknown/invalid schema) falls back
+ * to the legacy model, keeping generation resilient and legacy output unchanged.
+ *
+ * Plane overrides declared in the project config (`specModel.planes+` to append
+ * or `specModel.planes:` to replace) are merged into the resolved model so the
+ * returned `specModel.planes` is the single source of truth for the plane set.
+ */
+export function resolveProjectSpecModel(projectRoot: string): SpecModel {
+  try {
+    const config = readProjectConfig(projectRoot);
+    const schemaName = config?.schema ?? DEFAULT_SCHEMA_NAME;
+    const schema = resolveSchema(schemaName, projectRoot);
+    const model = resolveSpecModel(schema);
+    return mergeProjectPlanes(model, config);
+  } catch {
+    return LEGACY_SPEC_MODEL;
+  }
+}
+
+/**
+ * Resolve the project's plane set from the schema's single OFFER-ABLE plane list
+ * (`model.planes`, every offer-able plane, each carrying `defaultSelected`) plus
+ * any project-level override, then derive `kind` from the result.
+ *
+ * Resolution:
+ * - No override → the `defaultSelected: true` subset (the resolved default set),
+ *   so an existing governed project keeps its historical plane roster.
+ * - `planes+` (append) → the default subset plus the appended records.
+ * - `planes:` (replace) → exactly the declared records.
+ *
+ * Governance is emergent: if the resolved set is empty the model resolves to
+ * `legacy` (flat); otherwise `governed`. Declared overrides are validated for
+ * kebab ids and non-collision; an invalid override is ignored with the default
+ * subset retained so a malformed config never silently empties the plane set.
+ */
+export function mergeProjectPlanes(
+  model: SpecModel,
+  config: ReturnType<typeof readProjectConfig>
+): SpecModel {
+  if (model.kind !== 'governed') return model;
+  // `defaultSelected` defaults to true (PlaneSchema), so a plane resolves into
+  // the default set unless it explicitly opts out with `defaultSelected: false`.
+  const defaults = model.planes.filter((p) => p.defaultSelected !== false);
+  const withPlanes = (planes: SpecModel['planes']): SpecModel => ({
+    ...model,
+    kind: planes.length > 0 ? 'governed' : 'legacy',
+    planes,
+  });
+  const override = (config as Record<string, unknown> | null)?.specModel as
+    | Record<string, unknown>
+    | undefined;
+  if (!override) return withPlanes(defaults);
+  const replace = override.planes;
+  const append = (override.planesAppend ?? override['planes+']) as unknown;
+  if (replace !== undefined && append !== undefined) {
+    return withPlanes(defaults); // ambiguous: ignore overrides, keep defaults
+  }
+  if (replace !== undefined) {
+    const planes = normalizePlanes(replace);
+    return planes ? withPlanes(planes) : withPlanes(defaults);
+  }
+  if (append !== undefined) {
+    const extra = normalizePlanes(append);
+    if (!extra) return withPlanes(defaults);
+    const byId = new Map(defaults.map((p) => [p.id, p]));
+    for (const plane of extra) byId.set(plane.id, plane); // last wins, but dups across append are validated below
+    return withPlanes(Array.from(byId.values()));
+  }
+  return withPlanes(defaults);
+}
+
+const PLANE_ID_RE = /^[a-z][a-z0-9-]*$/;
+const RESERVED_PLANE_IDS = new Set(['spec', 'specs', 'enforcement']);
+
+function normalizePlanes(
+  value: unknown
+): SpecModel['planes'] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const planes: SpecModel['planes'] = [];
+  const seen = new Set<string>();
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') return undefined;
+    const id = (entry as { id?: unknown }).id;
+    const purpose = (entry as { purpose?: unknown }).purpose;
+    const enforcementFlavor = (entry as { enforcementFlavor?: unknown }).enforcementFlavor;
+    if (typeof id !== 'string' || !PLANE_ID_RE.test(id) || RESERVED_PLANE_IDS.has(id)) {
+      return undefined;
+    }
+    if (typeof purpose !== 'string' || purpose.length === 0) return undefined;
+    if (typeof enforcementFlavor !== 'string' || enforcementFlavor.length === 0) {
+      return undefined;
+    }
+    if (seen.has(id)) return undefined;
+    seen.add(id);
+    planes.push({
+      id,
+      purpose,
+      enforcementFlavor,
+      reviewLens: (entry as { reviewLens?: string }).reviewLens,
+      crossCutting: (entry as { crossCutting?: boolean }).crossCutting ?? false,
+      // A project-declared plane is, by definition, selected for that project;
+      // `defaultSelected` only steers the init picker for schema-offered planes.
+      defaultSelected: (entry as { defaultSelected?: boolean }).defaultSelected ?? true,
+    });
+  }
+  return planes;
+}
+
+/** The resolved plane ids for a project, or the historical two-plane default. */
+export function resolvedPlaneIds(projectRoot: string): string[] {
+  const model = resolveProjectSpecModel(projectRoot);
+  return model.kind === 'governed' ? model.planes.map((p) => p.id) : ['behavior', 'architecture'];
+}
 
 /**
  * Skill template with directory name and workflow ID mapping.
@@ -56,26 +183,48 @@ export interface CommandTemplateEntry {
  *
  * @param workflowFilter - If provided, only return templates whose workflowId is in this array
  */
-export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemplateEntry[] {
+export function getSkillTemplates(
+  workflowFilter?: readonly string[],
+  specModel?: SpecModel
+): SkillTemplateEntry[] {
   const all: SkillTemplateEntry[] = [
-    { template: getExploreSkillTemplate(), dirName: 'openspec-explore', workflowId: 'explore' },
-    { template: getNewChangeSkillTemplate(), dirName: 'openspec-new-change', workflowId: 'new' },
-    { template: getContinueChangeSkillTemplate(), dirName: 'openspec-continue-change', workflowId: 'continue' },
-    { template: getApplyChangeSkillTemplate(), dirName: 'openspec-apply-change', workflowId: 'apply' },
-    { template: getUpdateChangeSkillTemplate(), dirName: 'openspec-update-change', workflowId: 'update' },
-    { template: getFfChangeSkillTemplate(), dirName: 'openspec-ff-change', workflowId: 'ff' },
-    { template: getSyncSpecsSkillTemplate(), dirName: 'openspec-sync-specs', workflowId: 'sync' },
-    { template: getArchiveChangeSkillTemplate(), dirName: 'openspec-archive-change', workflowId: 'archive' },
-    { template: getBulkArchiveChangeSkillTemplate(), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
-    { template: getVerifyChangeSkillTemplate(), dirName: 'openspec-verify-change', workflowId: 'verify' },
-    { template: getOnboardSkillTemplate(), dirName: 'openspec-onboard', workflowId: 'onboard' },
-    { template: getOpsxProposeSkillTemplate(), dirName: 'openspec-propose', workflowId: 'propose' },
+    { template: getExploreSkillTemplate(specModel), dirName: 'openspec-explore', workflowId: 'explore' },
+    { template: getNewChangeSkillTemplate(specModel), dirName: 'openspec-new-change', workflowId: 'new' },
+    { template: getContinueChangeSkillTemplate(specModel), dirName: 'openspec-continue-change', workflowId: 'continue' },
+    { template: getApplyChangeSkillTemplate(specModel), dirName: 'openspec-apply-change', workflowId: 'apply' },
+    { template: getUpdateChangeSkillTemplate(specModel), dirName: 'openspec-update-change', workflowId: 'update' },
+    { template: getFfChangeSkillTemplate(specModel), dirName: 'openspec-ff-change', workflowId: 'ff' },
+    { template: getSyncSpecsSkillTemplate(specModel), dirName: 'openspec-sync-specs', workflowId: 'sync' },
+    { template: getArchiveChangeSkillTemplate(specModel), dirName: 'openspec-archive-change', workflowId: 'archive' },
+    { template: getBulkArchiveChangeSkillTemplate(specModel), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
+    { template: getVerifyChangeSkillTemplate(specModel), dirName: 'openspec-verify-change', workflowId: 'verify' },
+    { template: getOnboardSkillTemplate(specModel), dirName: 'openspec-onboard', workflowId: 'onboard' },
+    { template: getOpsxProposeSkillTemplate(specModel), dirName: 'openspec-propose', workflowId: 'propose' },
   ];
 
-  if (!workflowFilter) return all;
+  const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
+  const selected = filterSet
+    ? all.filter(entry => filterSet.has(entry.workflowId))
+    : all;
 
-  const filterSet = new Set(workflowFilter);
-  return all.filter(entry => filterSet.has(entry.workflowId));
+  // The review-panel orchestration skill is GOVERNED-ONLY: it appears only under
+  // the governed spec model, so legacy generation (and the hash-locked/iterating
+  // parity tests, which run with no model) stay byte-identical.
+  //
+  // It is appended AFTER the profile filter on purpose: review-panel is a
+  // capability of the governed spec model, not a user-toggleable workflow, so it
+  // is deliberately absent from ALL_WORKFLOWS (see profiles.ts). Filtering it
+  // would drop it from every real `init`/`update`, which pass a profile-derived
+  // filter — leaving it unreachable dead template code.
+  if (isGovernedModel(specModel)) {
+    selected.push({
+      template: getReviewPanelSkillTemplate(),
+      dirName: 'openspec-review-panel',
+      workflowId: 'review-panel',
+    });
+  }
+
+  return selected;
 }
 
 /**
@@ -83,26 +232,36 @@ export function getSkillTemplates(workflowFilter?: readonly string[]): SkillTemp
  *
  * @param workflowFilter - If provided, only return templates whose id is in this array
  */
-export function getCommandTemplates(workflowFilter?: readonly string[]): CommandTemplateEntry[] {
+export function getCommandTemplates(
+  workflowFilter?: readonly string[],
+  specModel?: SpecModel
+): CommandTemplateEntry[] {
   const all: CommandTemplateEntry[] = [
-    { template: getOpsxExploreCommandTemplate(), id: 'explore' },
-    { template: getOpsxNewCommandTemplate(), id: 'new' },
-    { template: getOpsxContinueCommandTemplate(), id: 'continue' },
-    { template: getOpsxApplyCommandTemplate(), id: 'apply' },
-    { template: getOpsxUpdateCommandTemplate(), id: 'update' },
-    { template: getOpsxFfCommandTemplate(), id: 'ff' },
-    { template: getOpsxSyncCommandTemplate(), id: 'sync' },
-    { template: getOpsxArchiveCommandTemplate(), id: 'archive' },
-    { template: getOpsxBulkArchiveCommandTemplate(), id: 'bulk-archive' },
-    { template: getOpsxVerifyCommandTemplate(), id: 'verify' },
-    { template: getOpsxOnboardCommandTemplate(), id: 'onboard' },
-    { template: getOpsxProposeCommandTemplate(), id: 'propose' },
+    { template: getOpsxExploreCommandTemplate(specModel), id: 'explore' },
+    { template: getOpsxNewCommandTemplate(specModel), id: 'new' },
+    { template: getOpsxContinueCommandTemplate(specModel), id: 'continue' },
+    { template: getOpsxApplyCommandTemplate(specModel), id: 'apply' },
+    { template: getOpsxUpdateCommandTemplate(specModel), id: 'update' },
+    { template: getOpsxFfCommandTemplate(specModel), id: 'ff' },
+    { template: getOpsxSyncCommandTemplate(specModel), id: 'sync' },
+    { template: getOpsxArchiveCommandTemplate(specModel), id: 'archive' },
+    { template: getOpsxBulkArchiveCommandTemplate(specModel), id: 'bulk-archive' },
+    { template: getOpsxVerifyCommandTemplate(specModel), id: 'verify' },
+    { template: getOpsxOnboardCommandTemplate(specModel), id: 'onboard' },
+    { template: getOpsxProposeCommandTemplate(specModel), id: 'propose' },
   ];
 
-  if (!workflowFilter) return all;
+  const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
+  const selected = filterSet ? all.filter(entry => filterSet.has(entry.id)) : all;
 
-  const filterSet = new Set(workflowFilter);
-  return all.filter(entry => filterSet.has(entry.id));
+  // Governed-only and appended after the filter, matching the skill projection
+  // (parity: skill == command). See getSkillTemplates for why it bypasses the
+  // profile filter.
+  if (isGovernedModel(specModel)) {
+    selected.push({ template: getReviewPanelCommandTemplate(), id: 'review-panel' });
+  }
+
+  return selected;
 }
 
 /**
@@ -110,8 +269,11 @@ export function getCommandTemplates(workflowFilter?: readonly string[]): Command
  *
  * @param workflowFilter - If provided, only return contents whose id is in this array
  */
-export function getCommandContents(workflowFilter?: readonly string[]): CommandContent[] {
-  const commandTemplates = getCommandTemplates(workflowFilter);
+export function getCommandContents(
+  workflowFilter?: readonly string[],
+  specModel?: SpecModel
+): CommandContent[] {
+  const commandTemplates = getCommandTemplates(workflowFilter, specModel);
   return commandTemplates.map(({ template, id }) => ({
     id,
     name: template.name,

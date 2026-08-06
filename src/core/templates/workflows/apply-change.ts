@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_APPLY_GUIDANCE } from './governed-guidance.js';
 
-export function getApplyChangeSkillTemplate(): SkillTemplate {
+export function getApplyChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-apply-change',
     description: 'Implement tasks from an OpenSpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.',
-    instructions: `Implement tasks from an OpenSpec change.
+    instructions: withGovernedGuidance(`Implement tasks from an OpenSpec change.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -158,20 +160,20 @@ What would you like to do?
 This skill supports the "actions on a change" model:
 
 - **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
-- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly`,
+- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly`, specModel, GOVERNED_APPLY_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxApplyCommandTemplate(): CommandTemplate {
+export function getOpsxApplyCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Apply',
     description: 'Implement tasks from an OpenSpec change (Experimental)',
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
-    content: `Implement tasks from an OpenSpec change.
+    content: withGovernedGuidance(`Implement tasks from an OpenSpec change.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -318,6 +320,6 @@ What would you like to do?
 This skill supports the "actions on a change" model:
 
 - **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
-- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly`
+- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts - not phase-locked, work fluidly`, specModel, GOVERNED_APPLY_GUIDANCE),
   };
 }

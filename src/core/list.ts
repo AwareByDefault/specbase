@@ -5,6 +5,15 @@ import { readFileSync, type Dirent } from 'fs';
 import { join } from 'path';
 import { MarkdownParser } from './parsers/markdown-parser.js';
 import type { RootOutput } from './root-selection.js';
+import { resolveProjectSpecModel } from './shared/skill-generation.js';
+import {
+  loadGovernedRepository,
+  parseEnforcement,
+  analyzePairDrift,
+  type ParsedEnforcement,
+} from './governed/index.js';
+import type { PairCompleteness } from './schemas/governed-spec.schema.js';
+import type { SpecPlane } from './artifact-graph/types.js';
 
 interface ChangeInfo {
   name: string;
@@ -94,6 +103,49 @@ function formatRelativeTime(date: Date): string {
   }
 }
 
+/**
+ * Concise single-word coverage/pair state for a governed spec, in the
+ * distinguishing order the cli-list spec enumerates (broken/stale/hanging/
+ * planned all outrank a plain "complete", and a missing pair half outranks
+ * every coverage finding).
+ */
+type GovernedCoverageState =
+  | 'complete'
+  | 'planned'
+  | 'hanging'
+  | 'stale'
+  | 'broken'
+  | 'incomplete-pair';
+
+interface GovernedCoverageSummary {
+  state: GovernedCoverageState;
+  ready: boolean;
+  covered: number;
+  hanging: number;
+  stale: number;
+  broken: number;
+  planned: number;
+}
+
+interface GovernedSpecInfo {
+  id: string;
+  requirementCount: number;
+  locator: string;
+  specId: string | null;
+  plane: SpecPlane;
+  pairStatus: PairCompleteness;
+  specPath: string | null;
+  enforcementPath: string | null;
+  coverage: GovernedCoverageSummary;
+}
+
+const EMPTY_ENFORCEMENT: ParsedEnforcement = {
+  version: null,
+  spec: null,
+  bindings: [],
+  issues: [],
+};
+
 export class ListCommand {
   async execute(targetPath: string = '.', mode: 'changes' | 'specs' = 'changes', options: ListOptions = {}): Promise<void> {
     const { sort = 'recent', json = false, root } = options;
@@ -165,6 +217,14 @@ export class ListCommand {
     }
 
     // specs mode
+    // Governed projects recursively discover plane-qualified spec/enforcement
+    // pairs; legacy projects keep the flat capability listing byte-for-byte.
+    const specModel = resolveProjectSpecModel(targetPath);
+    if (specModel.kind === 'governed') {
+      await this.listGovernedSpecs(targetPath, { json, root }, specModel.planes.map((p) => p.id));
+      return;
+    }
+
     const specsDir = path.join(targetPath, 'openspec', 'specs');
     try {
       await fs.access(specsDir);
@@ -218,4 +278,131 @@ export class ListCommand {
       console.log(`${padding}${padded}     requirements ${spec.requirementCount}`);
     }
   }
+
+  /**
+   * List governed specs: recursively discover every plane-qualified
+   * spec/enforcement pair beneath both planes, resolve each pair's stable spec
+   * ID and enforcement coverage via the Unit 1-2 governed engine, and render the
+   * text/JSON forms the cli-list spec requires. Legacy discovery is untouched.
+   */
+  private async listGovernedSpecs(
+    projectRoot: string,
+    output: { json: boolean; root?: RootOutput },
+    planes?: string[]
+  ): Promise<void> {
+    const { json, root } = output;
+    const openspecRoot = path.join(projectRoot, 'openspec');
+    const repository = await loadGovernedRepository(openspecRoot, planes);
+
+    if (repository.indexedPairs.length === 0) {
+      if (json) {
+        console.log(JSON.stringify({ specs: [], ...(root ? { root } : {}) }, null, 2));
+      } else {
+        console.log('No specs found.');
+      }
+      return;
+    }
+
+    const specs: GovernedSpecInfo[] = [];
+    for (const { record, spec } of repository.indexedPairs) {
+      let enforcement = EMPTY_ENFORCEMENT;
+      if (record.enforcementPath) {
+        try {
+          const content = readFileSync(record.enforcementPath, 'utf-8');
+          enforcement = parseEnforcement(content);
+        } catch {
+          enforcement = EMPTY_ENFORCEMENT;
+        }
+      }
+
+      const analysis = await analyzePairDrift({
+        record,
+        spec,
+        enforcement,
+        projectRoot,
+      });
+
+      const coverage = summarizeCoverage(record.completeness, analysis);
+      specs.push({
+        id: spec.id ?? record.locator,
+        requirementCount: spec.requirements.length,
+        locator: record.locator,
+        specId: spec.id,
+        plane: record.plane,
+        pairStatus: record.completeness,
+        specPath: record.specPath,
+        enforcementPath: record.enforcementPath,
+        coverage,
+      });
+    }
+
+    // Discovery already sorts by locator; keep that stable, OS-independent order.
+
+    if (json) {
+      console.log(JSON.stringify({ specs, ...(root ? { root } : {}) }, null, 2));
+      return;
+    }
+
+    console.log('Specs:');
+    const padding = '  ';
+    const nameWidth = Math.max(...specs.map((s) => s.locator.length));
+    const idWidth = Math.max(...specs.map((s) => (s.specId ?? '-').length));
+    for (const spec of specs) {
+      const locator = spec.locator.padEnd(nameWidth);
+      const id = (spec.specId ?? '-').padEnd(idWidth);
+      const summary = formatCoverageSummary(spec.coverage);
+      console.log(
+        `${padding}${locator}   id ${id}   requirements ${spec.requirementCount}   ${summary}`
+      );
+    }
+  }
+}
+
+/**
+ * Derive the concise coverage/pair state and drift counts for one governed pair
+ * from its {@link analyzePairDrift} result. An incomplete pair (a missing spec
+ * or enforcement half) outranks every coverage finding; otherwise broken beats
+ * stale beats hanging beats planned, and a clean pair is `complete`.
+ */
+function summarizeCoverage(
+  completeness: PairCompleteness,
+  analysis: Awaited<ReturnType<typeof analyzePairDrift>>
+): GovernedCoverageSummary {
+  const { coverage } = analysis;
+  const covered = coverage.requirements.filter(
+    (r) => r.state === 'covered'
+  ).length;
+  const hanging = coverage.hangingRequirementIds.length;
+  const stale = coverage.staleBindingIds.length;
+  const broken = coverage.brokenBindingIds.length;
+  const planned = coverage.plannedBindingIds.length;
+
+  let state: GovernedCoverageState;
+  if (completeness !== 'complete') state = 'incomplete-pair';
+  else if (broken > 0) state = 'broken';
+  else if (stale > 0) state = 'stale';
+  else if (hanging > 0) state = 'hanging';
+  else if (planned > 0) state = 'planned';
+  else state = 'complete';
+
+  return {
+    state,
+    ready: analysis.ready,
+    covered,
+    hanging,
+    stale,
+    broken,
+    planned,
+  };
+}
+
+/** Render a governed coverage summary as a compact text token with counts. */
+function formatCoverageSummary(coverage: GovernedCoverageSummary): string {
+  const detail: string[] = [];
+  if (coverage.broken > 0) detail.push(`broken ${coverage.broken}`);
+  if (coverage.stale > 0) detail.push(`stale ${coverage.stale}`);
+  if (coverage.hanging > 0) detail.push(`hanging ${coverage.hanging}`);
+  if (coverage.planned > 0) detail.push(`planned ${coverage.planned}`);
+  const suffix = detail.length > 0 ? ` (${detail.join(', ')})` : '';
+  return `coverage ${coverage.state}${suffix}`;
 }

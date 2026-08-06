@@ -49,3 +49,16 @@ export type {
   PlanningHomeSummary,
   ActionContext,
 } from '../change-status-policy.js';
+
+// Governed-aware enrichment for the schema-driven status / instructions surface
+export {
+  loadGovernedContext,
+  withGovernedStatus,
+  withGovernedInstructions,
+  collectCurrentPairFiles,
+  type GovernedPlaneRoot,
+  type GovernedCurrentPair,
+  type GovernedDeltaPair,
+  type GovernedWorkflowContext,
+  type GovernedContextResult,
+} from './governed-context.js';

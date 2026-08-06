@@ -1,0 +1,278 @@
+name: spec-driven-governed
+version: 1
+description: >-
+  Governed OpenSpec workflow (opt-in) - permanent truth planes (by default
+  behavior, architecture, ops, code-quality) with every governed spec paired
+  to a machine-validated enforcement contract. proposal -> specs -> design ->
+  enforcement -> tasks. Projects may add, remove, or replace planes in
+  openspec/config.yaml.
+specModel:
+  kind: governed
+  version: 1
+  # One offer-able plane list. `openspec init` presents these as a multi-select
+  # (with a select-all toggle); each record's `defaultSelected` sets its initial
+  # checkbox and, for a project that declares no plane override, forms the
+  # resolved default set. Selecting zero planes keeps the project on the legacy
+  # flat model; selecting one or more makes it governed. Projects may add,
+  # remove, or replace planes in openspec/config.yaml (`specModel.planes+:` to
+  # append, `specModel.planes:` to replace).
+  planes:
+    - id: behavior
+      purpose: "User/client-visible outcomes that must remain true"
+      enforcementFlavor: "tests / property tests"
+      reviewLens: behavioural
+      defaultSelected: true
+    - id: architecture
+      purpose: "Package responsibilities, boundaries, and structural invariants"
+      enforcementFlavor: "lint / static-analysis / conformance"
+      reviewLens: architectural
+      defaultSelected: true
+    - id: ops
+      purpose: "What we use and how it runs: packages, dev env, IaC, deployment"
+      enforcementFlavor: "lockfile audit / plan validate / drift detect"
+      reviewLens: ops
+      defaultSelected: true
+    - id: code-quality
+      purpose: "What good code looks like: smells, qualities, and rules"
+      enforcementFlavor: "smell-lint + review"
+      reviewLens: code-quality
+      defaultSelected: true
+    - id: design-system
+      purpose: >-
+        The product's expressed identity: visual design tokens (color, type,
+        spacing, radius, motion), design principles, and the voice/tone of
+        user-facing copy. Governs HOW outcomes are presented, orthogonal to
+        behavior (WHAT they do). Token truths DESCRIBE the token artifact
+        (tailwind.config / tokens.json), which stays the runtime source of
+        truth, and bind lint/contrast/a11y checks against it; principle and
+        voice truths bind the design review lens for the judgment a linter
+        cannot make.
+      enforcementFlavor: "token-lint / contrast + a11y checks + design review"
+      reviewLens: design
+      defaultSelected: false
+    - id: agents
+      purpose: >-
+        The repo's own agentic instruments: review panel, repo-specific skills,
+        subagents, and hooks it builds. Members are instruments the repo owns,
+        NOT behavioral guardrails on agents (those ride on the plane whose
+        subject they constrain). Each spec DESCRIBES an agent-operational
+        artifact (config.yaml, DEFAULT_LENSES, a SKILL.md, a hook) and its
+        enforcement binds a conformance/drift check to that artifact.
+      enforcementFlavor: "instrument conforms to its spec (config / lens / frontmatter / hook checks)"
+      defaultSelected: false
+  pairedEnforcement: true
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: Initial proposal document outlining the governed change
+    template: proposal.md
+    instruction: |
+      Create the proposal that establishes WHY this governed change is needed.
+
+      Sections:
+      - **Why**: 1-2 sentences on the problem or opportunity. Why now?
+      - **What Changes**: Bullet list of changes. Mark breaking changes with **BREAKING**.
+      - **Planes**: Governed specs live in permanent truth planes. Classify every
+        spec this change touches by the plane whose purpose fits it; the shipped
+        defaults are:
+        - **Behavioral truth** (`specs/behavior/<locator>/`): user- or client-visible
+          capabilities that must remain true now.
+        - **Architectural truth** (`specs/architecture/<locator>/`): package
+          responsibilities, dependency invariants, and cross-cutting structural
+          policies that must remain true now.
+        - **Ops** (`specs/ops/<locator>/`): what the project uses and how it runs —
+          packages, dev env, IaC, deployment.
+        - **Code-quality** (`specs/code-quality/<locator>/`): smells, qualities, and
+          rules about what good code looks like.
+        A project may declare additional planes in `openspec/config.yaml` (append
+        via `specModel.planes+:` or replace via `specModel.planes:`); a single
+        initiative may touch several planes. When it does, list a separate durable
+        truth (and later, delta) for each plane rather than mixing them in one spec.
+      - **Spec pairs**: For each plane target, name the stable project-wide spec ID
+        (dot-separated kebab, e.g. `behavior.session-loop`, `architecture.domain`)
+        and note whether it is new or an existing governed pair being modified.
+        Every governed spec is paired with an `enforcement.md`, so each listed spec
+        implies a paired enforcement contract.
+      - **Impact**: Affected code, APIs, dependencies, or systems.
+
+      Keep it concise. Focus on the "why" - historical rationale for this transition
+      stays in the proposal and design and is preserved in the dated archive, NOT in
+      the permanent architectural spec (which states only what must be true now).
+
+      This is the foundation - specs, design, enforcement, and tasks build on it.
+    requires: []
+
+  - id: specs
+    generates: "specs/**/spec.md"
+    description: Governed specification deltas, one paired spec per plane target
+    template: spec.md
+    instruction: |
+      Create governed specification delta files that define WHAT must remain true.
+
+      Placement (derive concrete paths from CLI `status`/`instructions` output, do
+      NOT hardcode a flat layout):
+      - One spec delta per plane target listed in the proposal, under
+        `specs/<plane>/<locator>/spec.md` where `<plane>` is one of the resolved
+        plane set (defaults: `behavior`, `architecture`, `ops`, `code-quality`).
+      The plane comes from the containing directory, never from metadata.
+
+      Governed frontmatter and stable identity (immutable human-readable slugs;
+      titles and locators stay mutable presentation):
+      - Each spec begins with minimal frontmatter declaring the project-unique
+        spec `id` (dot-separated kebab):
+        ```
+        ---
+        id: architecture.domain
+        ---
+        ```
+      - Each requirement and scenario declares a pair-local `**ID:**` slug on the
+        line immediately below its heading:
+        ```
+        ### Requirement: Domain determinism
+        **ID:** `domain-determinism`
+        The domain MUST obtain time and randomness through injected ports.
+
+        #### Scenario: Ambient time is rejected
+        **ID:** `ambient-time-rejected`
+        - **WHEN** a domain module reads ambient time
+        - **THEN** architectural enforcement reports the violation
+        ```
+      - Requirement/scenario/binding IDs are unique only WITHIN their pair. The
+        spec `id` is the only project-unique governed identity. When a spec moves
+        to a new locator without changing meaning, keep its stable spec `id`.
+
+      Delta operations (use `##` headers), same grammar as the legacy flat model:
+      - **ADDED Requirements**, **MODIFIED Requirements** (full updated content),
+        **REMOVED Requirements** (with **Reason**/**Migration**),
+        **RENAMED Requirements** (FROM:/TO:).
+      - Every requirement uses SHALL/MUST for normative claims and has at least one
+        scenario. Scenarios use exactly four `####` hashes.
+
+      See `behavioral-spec.md` and `architectural-spec.md` in this schema's templates
+      for concrete per-plane examples. Every SHALL/MUST requirement here must be
+      paired with at least one enforcement binding in the next artifact.
+    requires:
+      - proposal
+
+  - id: design
+    generates: design.md
+    description: Technical design and transition rationale for the governed change
+    template: design.md
+    instruction: |
+      Create the design document that explains HOW to implement the change and WHY
+      this transition was chosen.
+
+      Include design when any apply: cross-cutting change, new architectural pattern,
+      new dependency, significant data-model change, or enforcement-mechanism choices
+      that need reasoning before coding.
+
+      Sections:
+      - **Context**: Background, current state, constraints.
+      - **Goals / Non-Goals**.
+      - **Decisions**: Key technical choices with rationale (why X over Y?),
+        including which enforcement mechanism (test, lint, static-analysis, command,
+        review, manual) will protect each governed claim and why.
+      - **Risks / Trade-offs**: [Risk] -> Mitigation.
+      - **Migration Plan** and **Open Questions** as needed.
+
+      Transitional rationale ("why we chose this approach for THIS change") is design
+      or proposal content and lives in the dated archive - it is NOT current
+      architectural truth. Keep the permanent architectural spec limited to what must
+      remain true now; keep the story of the change here.
+    requires:
+      - proposal
+
+  - id: enforcement
+    generates: "specs/**/enforcement.md"
+    description: Paired enforcement contracts binding each governed claim to evidence
+    template: enforcement.md
+    instruction: |
+      Create one `enforcement.md` PAIRED with each governed `spec.md`, in the SAME
+      plane directory (`specs/<plane>/<locator>/enforcement.md`).
+      Enforcement is authored AFTER specs and design so the intended mechanism is
+      clear. Never leave a governed spec without its paired enforcement file.
+
+      Each `enforcement.md` is readable Markdown containing exactly ONE authoritative
+      fenced ```yaml document:
+      ```yaml
+      version: 1
+      spec: architecture.domain          # must match the paired spec's frontmatter id
+      bindings:
+        - id: import-boundary            # pair-local stable slug, unique in this file
+          covers: [domain-determinism, ambient-time-rejected]  # local requirement/scenario IDs
+          mechanism: lint                # test | lint | static-analysis | command | review | manual
+          strength: automated            # automated | review | manual | unenforced
+          status: active                 # planned | active  (planned allowed while authoring)
+          targets:
+            - tools/lint/boundaries.test.ts
+          run:                           # required for automated bindings
+            command: pnpm
+            args: [vitest, run, tools/lint/boundaries.test.ts]
+            cwd: .
+      ```
+
+      Binding rules (version 1):
+      - `covers` references ONLY requirement/scenario IDs from THIS pair's spec.
+      - Every SHALL/MUST requirement needs at least one binding. A scenario is
+        covered directly, or by a requirement-level binding that claims full
+        scenario coverage.
+      - `run` (command + argument vector + project-relative `cwd`) is required for
+        automated bindings; `review` (procedure + inputs) for review bindings;
+        `procedure` and `rationale` for manual bindings. `limitations` is optional
+        and states what the evidence does NOT prove.
+      - A binding may be `planned` during planning but MUST become `active`, with an
+        existing target, before governed verification and archive readiness.
+
+      Delta semantics (how a change's enforcement.md merges at archive): the
+      `bindings` list is an UPSERT by binding `id` onto the current pair - a new
+      id is added, a matching id replaces that binding, and every current binding
+      you DO NOT restate is preserved (never silently dropped). To retire a
+      current binding, list its id under a top-level `remove: [id, ...]`. Do not
+      re-list unaffected bindings just to keep them.
+
+      Core parses and reports bindings; it never runs them. Governed workflows
+      execute declared commands with process tools.
+    requires:
+      - specs
+      - design
+
+  - id: tasks
+    generates: tasks.md
+    description: Implementation checklist covering code AND its paired evidence
+    template: tasks.md
+    instruction: |
+      Create the task list that breaks down the implementation work.
+
+      **Follow the template exactly.** Apply parses `- [ ]` checkboxes to track
+      progress. Group tasks under `## N.` headings; each task is `- [ ] N.M ...`.
+
+      For a governed change, tasks must cover BOTH sides of every pair:
+      - Implement the behavioral or architectural change itself.
+      - Implement or update the declared enforcement evidence (tests, lint rules,
+        conformance checks, review procedures) so each mandatory binding can move
+        from `planned` to `active` with an existing target.
+      - Include cleanup tasks for any enforcement target retired by a removed
+        requirement, scenario, or binding - but only after checking that no
+        surviving binding still shares that target.
+
+      Order tasks by dependency. Each task should be verifiable.
+    requires:
+      - specs
+      - design
+      - enforcement
+
+apply:
+  requires: [tasks]
+  tracks: tasks.md
+  instruction: |
+    Read context files, then work through pending tasks, implementing both the
+    change and its paired enforcement evidence.
+
+    Governed apply rules:
+    - Resolve `planned` bindings to `active` as their targets and commands land.
+    - Do NOT mark a governed spec's related work complete while any mandatory
+      binding for it remains `planned`, stale, hanging, broken, or missing.
+    - Before deleting a retired test, rule, or fixture, confirm no surviving
+      binding still references it; never auto-delete a shared target.
+
+    Pause if you hit blockers or need clarification.

@@ -5,21 +5,23 @@
  * templates file into workflow-focused modules.
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import { withGovernedGuidance, GOVERNED_ONBOARD_GUIDANCE } from './governed-guidance.js';
 
-export function getOnboardSkillTemplate(): SkillTemplate {
+export function getOnboardSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-onboard',
     description: 'Guided onboarding for OpenSpec - walk through a complete workflow cycle with narration and real codebase work.',
-    instructions: getOnboardInstructions(),
+    instructions: getOnboardInstructions(specModel),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-function getOnboardInstructions(): string {
-  return `Guide the user through their first complete OpenSpec workflow cycle. This is a teaching experience—you'll do real work in their codebase while explaining each step.
+function getOnboardInstructions(specModel?: SpecModel): string {
+  const base = `Guide the user through their first complete OpenSpec workflow cycle. This is a teaching experience—you'll do real work in their codebase while explaining each step.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -562,14 +564,15 @@ Exit gracefully.
 - **Handle exits gracefully**—never pressure the user to continue
 - **Use real codebase tasks**—don't simulate or use fake examples
 - **Adjust scope gently**—guide toward smaller tasks but respect user choice`;
+  return withGovernedGuidance(base, specModel, GOVERNED_ONBOARD_GUIDANCE);
 }
 
-export function getOpsxOnboardCommandTemplate(): CommandTemplate {
+export function getOpsxOnboardCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Onboard',
     description: 'Guided onboarding - walk through a complete OpenSpec workflow cycle with narration',
     category: 'Workflow',
     tags: ['workflow', 'onboarding', 'tutorial', 'learning'],
-    content: getOnboardInstructions(),
+    content: getOnboardInstructions(specModel),
   };
 }

@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_VERIFY_GUIDANCE } from './governed-guidance.js';
 
-export function getVerifyChangeSkillTemplate(): SkillTemplate {
+export function getVerifyChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-verify-change',
     description: 'Verify implementation matches change artifacts. Use when the user wants to validate that implementation is complete, correct, and coherent before archiving.',
-    instructions: `Verify that an implementation matches the change artifacts (specs, tasks, design).
+    instructions: withGovernedGuidance(`Verify that an implementation matches the change artifacts (specs, tasks, design).
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -170,20 +172,20 @@ Use clear markdown with:
 - Grouped lists for issues (CRITICAL/WARNING/SUGGESTION)
 - Code references in format: \`file.ts:123\`
 - Specific, actionable recommendations
-- No vague suggestions like "consider reviewing"`,
+- No vague suggestions like "consider reviewing"`, specModel, GOVERNED_VERIFY_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxVerifyCommandTemplate(): CommandTemplate {
+export function getOpsxVerifyCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Verify',
     description: 'Verify implementation matches change artifacts before archiving',
     category: 'Workflow',
     tags: ['workflow', 'verify', 'experimental'],
-    content: `Verify that an implementation matches the change artifacts (specs, tasks, design).
+    content: withGovernedGuidance(`Verify that an implementation matches the change artifacts (specs, tasks, design).
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -342,6 +344,6 @@ Use clear markdown with:
 - Grouped lists for issues (CRITICAL/WARNING/SUGGESTION)
 - Code references in format: \`file.ts:123\`
 - Specific, actionable recommendations
-- No vague suggestions like "consider reviewing"`
+- No vague suggestions like "consider reviewing"`, specModel, GOVERNED_VERIFY_GUIDANCE)
   };
 }

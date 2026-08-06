@@ -6,12 +6,14 @@
  */
 import type { SkillTemplate, CommandTemplate } from '../types.js';
 import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
+import type { SpecModel } from '../../artifact-graph/types.js';
+import { withGovernedGuidance, GOVERNED_AUTHORING_GUIDANCE } from './governed-guidance.js';
 
-export function getFfChangeSkillTemplate(): SkillTemplate {
+export function getFfChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'openspec-ff-change',
     description: 'Fast-forward through OpenSpec artifact creation. Use when the user wants to quickly create all artifacts needed for implementation without stepping through each one individually.',
-    instructions: `Fast-forward through artifact creation - generate everything needed to start implementation in one go.
+    instructions: withGovernedGuidance(`Fast-forward through artifact creation - generate everything needed to start implementation in one go.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -103,20 +105,20 @@ After completing all artifacts, summarize:
 - Always read dependency artifacts before creating a new one
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, suggest continuing that change instead
-- Verify each artifact file exists after writing before proceeding to next`,
+- Verify each artifact file exists after writing before proceeding to next`, specModel, GOVERNED_AUTHORING_GUIDANCE),
     license: 'MIT',
     compatibility: 'Requires openspec CLI.',
     metadata: { author: 'openspec', version: '1.0' },
   };
 }
 
-export function getOpsxFfCommandTemplate(): CommandTemplate {
+export function getOpsxFfCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
     name: 'OPSX: Fast Forward',
     description: 'Create a change and generate all artifacts needed for implementation in one go',
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
-    content: `Fast-forward through artifact creation - generate everything needed to start implementation.
+    content: withGovernedGuidance(`Fast-forward through artifact creation - generate everything needed to start implementation.
 
 ${STORE_SELECTION_GUIDANCE}
 
@@ -208,6 +210,6 @@ After completing all artifacts, summarize:
 - Always read dependency artifacts before creating a new one
 - If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, ask if user wants to continue it or create a new one
-- Verify each artifact file exists after writing before proceeding to next`
+- Verify each artifact file exists after writing before proceeding to next`, specModel, GOVERNED_AUTHORING_GUIDANCE),
   };
 }

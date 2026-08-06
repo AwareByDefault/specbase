@@ -51,6 +51,21 @@ export const ProjectConfigSchema = z.object({
     .string()
     .optional()
     .describe('Store id used as the OpenSpec root when no local planning shape exists'),
+
+  // Optional: project-level spec-model overrides. `specModel.planes:` replaces
+  // the schema's default plane set; `specModel.planes+:` appends to it. Plane
+  // records carry {id, purpose, enforcementFlavor, reviewLens?, crossCutting?}.
+  // The `+` key is awkward in strict Zod, so this object uses passthrough and
+  // mergeProjectPlanes normalizes `planes`/`planes+` (and the `planesAppend`
+  // alias) into the resolved plane set.
+  specModel: z
+    .object({
+      planes: z.array(z.unknown()).optional(),
+      planesAppend: z.array(z.unknown()).optional(),
+    })
+    .passthrough()
+    .optional()
+    .describe('Project-level spec-model overrides (replace or append planes)'),
 });
 
 /** Normalized in-memory shape of a referenced store declaration. */
@@ -62,6 +77,12 @@ export interface DeclarationEntry {
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema> & {
   references?: DeclarationEntry[];
+  // Re-exports the parsed (untyped) specModel override; skill-generation.ts
+  // normalizes and validates plane records from this raw shape.
+  specModel?: {
+    planes?: unknown[];
+    planesAppend?: unknown[];
+  };
 };
 
 /**
@@ -249,6 +270,16 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
           `Warning: ignoring invalid store: field in ${configPathForWarnings(projectRoot)} (must be a single store id string).`
         );
       }
+    }
+
+    // Parse specModel overrides (planes+ to append, planes to replace). Kept
+    // raw here; skill-generation.ts validates and normalizes plane records.
+    if (raw.specModel !== undefined && typeof raw.specModel === 'object' && raw.specModel !== null) {
+      const smRaw = raw.specModel as Record<string, unknown>;
+      config.specModel = {};
+      if (smRaw.planes !== undefined) config.specModel.planes = smRaw.planes as unknown[];
+      const append = smRaw.planesAppend ?? smRaw['planes+'];
+      if (append !== undefined) config.specModel.planesAppend = append as unknown[];
     }
 
     // Return partial config even if some fields failed
