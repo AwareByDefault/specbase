@@ -83,6 +83,47 @@ Each smell names a rule above; the fix lives at that rule.
   the claim (§5).
 - **Per-scenario binding** — one binding or test per scenario (§5).
 
+## 7. Rules
+
+The distilled imperative form of §1–§6. This block is the single authored home
+of the writing rules injected into the generated spec-driven skills:
+`node scripts/generate-clean-rules.mjs` lifts it verbatim during the build.
+Edit the rules here — never in the generator, and never in a skill file.
+
+<!-- BEGIN RULES -->
+Writing one governed spec pair (`spec.md` + `enforcement.md`):
+
+- State only current, verifiable truth. Write WHAT the system promises, never
+  HOW the code delivers it. Delete mechanism narration.
+- Give every candidate requirement a verdict: keep durable truth, promote a real
+  structural invariant to the architecture plane, demote code narration to
+  design docs, drop what is superseded.
+- Make one claim per requirement. Split a compound requirement.
+- Use SHALL, name the actor, and state an observable outcome in active voice.
+- Write every claim so a check could fail it. If no check can fail the claim,
+  rewrite it or demote it.
+- Put a universal claim ("every command SHALL…") at a parent locator.
+- Write scenarios as examples, not enumeration. The requirement owns the claim;
+  cover the representative case, the edge case, and the risky case.
+- Keep foreign facts out. Name the role ("the telemetry backend"), never the
+  vendor another plane owns.
+- Reference a foreign truth by its locator and never restate its content. A
+  restated truth is a future lie.
+- Bind checks at the requirement level, not per scenario.
+- Prefer the highest-leverage check. One fitness function or property test beats
+  many example tests.
+- Match the mechanism to the claim: structural → lint / conformance; behavioral
+  → tests / property tests; subjective → `review` with a named lens;
+  unverifiable today → `manual` with stated `limitations`.
+- Bind an automated check only when it truly exercises the claim, and state
+  `limitations` when it covers only part.
+- Never write a test to inflate coverage. `degraded` is a fact, not a failure.
+
+Reject these writing smells: mechanism narration, untestable claim, compound
+claim, enumerated scenarios, foreign fact, restated truth, hollow binding,
+per-scenario binding.
+<!-- END RULES -->
+
 ---
 
 *Adapted from Robert C. Martin's Clean Code, applied to governed specs.*

@@ -116,6 +116,54 @@ Each smell names a rule above; the fix lives at that rule.
 - **Speculative parent** — a parent pair nobody hoisted into (§4).
 - **Leaf exemption** — a leaf quietly violating an ancestor invariant (§4).
 
+## 7. Rules
+
+The distilled imperative form of §1–§6. This block is the single authored home
+of the placement rules injected into the generated spec-driven skills:
+`node scripts/generate-clean-rules.mjs` lifts it verbatim during the build.
+Edit the rules here — never in the generator, and never in a skill file.
+
+<!-- BEGIN RULES -->
+Placing a governed pair in the spec tree:
+
+- Treat planes as peers, never as layers. Each plane answers to a different
+  actor, on its own clock.
+- Apply the actor test: put two requirements in the same plane only if the same
+  actor would demand their revision. When the plane is ambiguous, ask who shows
+  up angry when the requirement breaks.
+- Give every fact exactly one home locator. Let other planes reference it by
+  locator; never let them restate it.
+- Expect co-change: one feature may legitimately land deltas in several planes.
+- Forbid coupled change: editing one plane's text must never force an edit to
+  another's.
+- Apply the swap test: swapping a vendor, a CI system, or a runtime pin must
+  touch ops specs only.
+- Treat depth as volatility. A leaf refines its ancestors; a parent never
+  depends on a leaf.
+- Let ripple flow leafward. A parent edit may ripple to its leaves; a leaf edit
+  must never force an ancestor edit.
+- Keep every node open-closed. Adding a leaf must touch nothing above it. A
+  parent that lists its children has a reverse dependency.
+- Inherit nothing. Ancestry provides navigation only; parent and leaf bind
+  independently, and a conflict between them is a defect, not a precedence
+  question.
+- Place each requirement at the depth that matches how far you intend its
+  changes to ripple.
+- Hoist on duplication. Promote a requirement to the parent only when two or
+  more siblings would otherwise duplicate it. Leave specifics at the leaf.
+- Quantify to place. "Every X SHALL…" is a parent claim; enforce it by one
+  conformance test over the registry, not by per-child assertions.
+- Grant no leaf exemptions. If one leaf cannot satisfy a parent invariant,
+  narrow the parent; never special-case the leaf.
+- Earn parents. Default an intermediate directory to a pure namespace with no
+  `spec.md`, and create the pair only when siblings actually share invariants.
+- Earn depth. Flatten an intermediate node that has no pair and no plausible
+  one.
+
+Reject these placement smells: leaked fact, restated truth across planes, churny
+parent, enumerating parent, speculative parent, leaf exemption.
+<!-- END RULES -->
+
 ## Open questions
 
 - Which namespaces have *earned* parent pairs today? (`behavior/cli` almost
