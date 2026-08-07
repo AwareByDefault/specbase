@@ -34,15 +34,23 @@ import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
 const REVIEW_PANEL_DESCRIPTION =
   'Run the review panel — router, deterministic gate, blind per-lens reviewers over the residue, refute-verify, completeness critic, read-only severity/lens report. The lens set projects the resolved review model; findings are review-strength and never gate.';
 
+/**
+ * The prose phrase naming a lens's scope, derived from the lens definition so
+ * the generated prose can never contradict the router: a cross-cutting lens (or
+ * one scoped to the empty prefix) covers the whole tree, any other lens covers
+ * its own subtree.
+ */
+function lensScopePhrase(lens: LensDefinition): string {
+  return lens.crossCutting || lens.scope === '' ? 'the whole tree' : `\`${lens.scope}/**\``;
+}
+
 /** The header + prose of one lens's method, rendered from its definition. */
 function lensMethodBody(lens: LensDefinition): string {
   // The enforcement lens judges every pair's bindings, not a plane subtree; its
-  // method is the keystone audit. code-quality's cleanliness judgment is still a
-  // whole-tree concern even though its storage plane is its own subtree.
+  // method is the keystone audit.
   if (lens.id === 'enforcement') {
     return "Judge whether each binding's declared check actually **exercises** the covered\nclaim rather than merely running (a test that imports but asserts nothing, a lint\nthat never fires). Audit **automated** bindings too, not just review ones — but\njudge evidence adequacy only, and **do not review your own verdicts** (no\nrecursion into the enforcement lens itself).";
   }
-  const scopePhrase = lens.id === 'code-quality' ? 'the whole tree' : `\`${lens.scope}/**\``;
   return `Read the affected \`specs/${lens.scope}/...\` pairs and the code they describe.\nJudge only whether the implementation honors ${lens.question} Nothing outside its\nplane (structure, style, correctness elsewhere) is yours — drop it.`;
 }
 
@@ -69,7 +77,7 @@ function reviewPanelBody(specModel?: SpecModel): string {
     ? '| `spec-conformance` | Does the implementation produce the specs that were implemented? | every spec |'
     : [
         ...planeLenses.map(
-          (l) => `| \`${l.id}\` | ${l.question} | \`${l.scope}/**\` |`
+          (l) => `| \`${l.id}\` | ${l.question} | ${lensScopePhrase(l)} |`
         ),
         "| `enforcement` | Do the bound checks actually exercise the claim, not merely run? | every pair's bindings |",
       ].join('\n');
@@ -84,10 +92,7 @@ function reviewPanelBody(specModel?: SpecModel): string {
       ]
     : [
         ...planeLenses.map((l) => ({
-          header: (() => {
-            const scopePhrase = l.id === 'code-quality' ? 'the whole tree' : `\`${l.scope}/**\``;
-            return `\`${l.id}\` — scope: ${scopePhrase}`;
-          })(),
+          header: `\`${l.id}\` — scope: ${lensScopePhrase(l)}`,
           body: lensMethodBody(l),
         })),
         ...lenses.filter((l) => l.crossCutting).map((l) => ({

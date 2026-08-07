@@ -136,7 +136,7 @@ Read the affected `specs/ops/...` pairs and the code they describe.
 Judge only whether the implementation honors Does the repo use what the ops specs declare and run it as declared? Nothing outside its
 plane (structure, style, correctness elsewhere) is yours — drop it.
 
-### `code-quality` — scope: the whole tree
+### `code-quality` — scope: `code-quality/**`
 Read the affected `specs/code-quality/...` pairs and the code they describe.
 Judge only whether the implementation honors Is the code clean, simple, and free of cruft? Nothing outside its
 plane (structure, style, correctness elsewhere) is yours — drop it.

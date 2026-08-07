@@ -1,8 +1,9 @@
 name: spec-driven-governed
 version: 1
 description: >-
-  Governed Specbase workflow (opt-in) - permanent truth planes (by default
-  behavior, architecture, ops, code-quality) with every governed spec paired
+  Governed Specbase workflow (opt-in) - permanent truth planes (shipped
+  defaults behavior, architecture, ops, code-quality, design-system, agents)
+  with every governed spec paired
   to a machine-validated enforcement contract. proposal -> specs -> design ->
   enforcement -> tasks. Projects may add, remove, or replace planes in
   specbase/config.yaml.
@@ -84,6 +85,10 @@ artifacts:
           packages, dev env, IaC, deployment.
         - **Code-quality** (`specs/code-quality/<locator>/`): smells, qualities, and
           rules about what good code looks like.
+        - **Design-system** (`specs/design-system/<locator>/`): the product's
+          expressed identity — design tokens, principles, and voice.
+        - **Agents** (`specs/agents/<locator>/`): the repo's own agentic
+          instruments — review panel, repo-specific skills, subagents, hooks.
         A project may declare additional planes in `specbase/config.yaml` (append
         via `specModel.planes+:` or replace via `specModel.planes:`); a single
         initiative may touch several planes. When it does, list a separate durable
@@ -113,7 +118,8 @@ artifacts:
       NOT hardcode a flat layout):
       - One spec delta per plane target listed in the proposal, under
         `specs/<plane>/<locator>/spec.md` where `<plane>` is one of the resolved
-        plane set (defaults: `behavior`, `architecture`, `ops`, `code-quality`).
+        plane set (shipped defaults: `behavior`, `architecture`, `ops`,
+        `code-quality`, `design-system`, `agents`).
       The plane comes from the containing directory, never from metadata.
 
       Governed frontmatter and stable identity (immutable human-readable slugs;

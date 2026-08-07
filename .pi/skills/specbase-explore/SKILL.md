@@ -314,7 +314,7 @@ Every governed `spec.md` is PAIRED with an `enforcement.md`. Stable identity is
 scoped narrowly: the frontmatter `id` (e.g. `behavior.<locator>`) is the only project-unique governed ID; requirement, scenario, and binding `**ID:**` slugs are unique only within their pair, and stay fixed when titles or locators move.
 
 **Plane classification:** match each proposed claim to the plane whose declared
-purpose best fits the claim's nature. The shipped defaults are behavior, architecture, ops, code-quality; this project also declares design-system, agents (read its purpose from the CLI). a single initiative may touch several planes — list one spec per plane touched, never mix planes in one spec.
+purpose best fits the claim's nature. The shipped defaults are behavior, architecture, ops, code-quality, design-system, agents; a single initiative may touch several planes — list one spec per plane touched, never mix planes in one spec.
 
 **Structure conventions (governed):**
 - Locators may nest to arbitrary safe depth (e.g. `behavior/platforms/desktop`);
@@ -483,7 +483,16 @@ trigger means a spec in that plane is in scope, not optional:
 - what makes a good test (assert behavior not implementation, no mock-call
   order assertions).
 
-**design-system plane** — match claims to this plane by its declared purpose: "The product's expressed identity: visual design tokens (color, type, spacing, radius, motion), design principles, and the voice/tone of user-facing copy. Governs HOW outcomes are presented, orthogonal to behavior (WHAT they do). Token truths DESCRIBE the token artifact (tailwind.config / tokens.json), which stays the runtime source of truth, and bind lint/contrast/a11y checks against it; principle and voice truths bind the design review lens for the judgment a linter cannot make.". Enforcement flavor: token-lint / contrast + a11y checks + design review.
+**design-system plane** — Identity triggers (it is design-system truth when the claim is about):
+- a design token or token set (color, type scale, spacing, motion) and what
+  the token artifact must contain — the truth DESCRIBES the token file, which
+  stays the runtime source of truth;
+- a design principle the UI must uphold (contrast, density, affordance,
+  accessibility floor);
+- the product voice: how copy, labels, and errors must read.
+Token truths are enforced by token-lint / contrast + a11y checks against the
+token artifact; principle and voice truths bind the design review lens.
+NOT a user-visible outcome of a feature — that is behavior.
 
 **agents plane** — Instrument triggers (it is agents truth when the claim is about one of the
 repo’s OWN agentic instruments, NOT how an agent should behave):

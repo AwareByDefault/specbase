@@ -328,14 +328,17 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
     });
   });
 
-  // Unit 6.6 (onboard): governed onboarding teaches both truth planes, stable
-  // scoped identity, paired enforcement, drift, and archived rationale.
+  // Unit 6.6 (onboard): governed onboarding teaches the declared truth planes,
+  // stable scoped identity, paired enforcement, drift, and archived rationale.
   describe('governed onboard guidance (spcb-onboard-skill)', () => {
     const onboardMarkers = [
       'Teaching the governed model while onboarding (governed)',
-      'Two truth planes',
-      'behavioral truth',
-      'architectural truth',
+      'Truth planes',
+      // The lesson enumerates the RESOLVED roster (GOVERNED declares behavior +
+      // architecture), naming each plane's storage subtree - it no longer
+      // asserts a fixed pair of planes.
+      'under `specs/behavior/...`',
+      'under `specs/architecture/...`',
       'durable identity while titles and locators are mutable',
       'assign a project-unique stable spec',
       'stale** bindings (covering a removed ID)',
