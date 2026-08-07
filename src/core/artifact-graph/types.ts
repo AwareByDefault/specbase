@@ -52,12 +52,6 @@ export const PlaneSchema = z.object({
 
 export type Plane = z.infer<typeof PlaneSchema>;
 
-// Back-compat: the historical two default planes. New default planes (`ops`,
-// `code-quality`) are added via the schema's `specModel.planes` declaration.
-// Callers should consume the resolved plane set (`SpecModel.planes`) rather
-// than this constant, which remains for migration convenience only.
-export const DEFAULT_SPEC_PLANES = ['behavior', 'architecture'] as const;
-
 // Explicit, versioned declaration of the spec model a schema selects. Core
 // dispatches on this resolved value — never on the schema's name — so a legacy
 // schema and a governed schema are told apart only by what they declare.

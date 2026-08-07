@@ -159,26 +159,30 @@ Target archive directory already exists.
 
 ## Governed spec model
 
-This project uses the governed spec model (2 permanent truth planes with paired enforcement). Do NOT assume the flat `specs/<capability>/spec.md` layout.
+This project uses the governed spec model (6 permanent truth planes with paired enforcement). Do NOT assume the flat `specs/<capability>/spec.md` layout.
 
 **Confirm the model from the CLI, do not guess:**
 - Run `specbase status --change "<name>" --json` and read `specModel`.
 - The governed model reports `specModel.kind == "governed"` with
-  `planes: [behavior, architecture]` and `pairedEnforcement: true`.
+  `planes: [behavior, architecture, ops, code-quality, design-system, agents]` and `pairedEnforcement: true`.
 - If `specModel.kind` is `legacy` (or absent), follow the flat-spec guidance
   above unchanged.
 
 **Under the governed model, derive concrete paths from CLI output** (`status`
 `artifactPaths` and `specbase instructions <artifact> --change ... --json`),
 never hardcode them. Durable truth lives in the declared planes:
-- behavior: User/client-visible outcomes (enforcement: tests / property tests) → `specs/behavior/<locator>/{spec.md,enforcement.md}`
+- behavior: User/client-visible outcomes that must remain true (enforcement: tests / property tests) → `specs/behavior/<locator>/{spec.md,enforcement.md}`
 - architecture: Package responsibilities, boundaries, and structural invariants (enforcement: lint / static-analysis / conformance) → `specs/architecture/<locator>/{spec.md,enforcement.md}`
+- ops: What we use and how it runs: packages, dev env, IaC, deployment (enforcement: lockfile audit / plan validate / drift detect) → `specs/ops/<locator>/{spec.md,enforcement.md}`
+- code-quality: What good code looks like: smells, qualities, and rules (enforcement: smell-lint + review) → `specs/code-quality/<locator>/{spec.md,enforcement.md}`
+- design-system: The product's expressed identity: visual design tokens (color, type, spacing, radius, motion), design principles, and the voice/tone of user-facing copy. Governs HOW outcomes are presented, orthogonal to behavior (WHAT they do). Token truths DESCRIBE the token artifact (tailwind.config / tokens.json), which stays the runtime source of truth, and bind lint/contrast/a11y checks against it; principle and voice truths bind the design review lens for the judgment a linter cannot make. (enforcement: token-lint / contrast + a11y checks + design review) → `specs/design-system/<locator>/{spec.md,enforcement.md}`
+- agents: The repo's own agentic instruments: review panel, repo-specific skills, subagents, and hooks it builds. Members are instruments the repo owns, NOT behavioral guardrails on agents (those ride on the plane whose subject they constrain). Each spec DESCRIBES an agent-operational artifact (config.yaml, DEFAULT_LENSES, a SKILL.md, a hook) and its enforcement binds a conformance/drift check to that artifact. (enforcement: instrument conforms to its spec (config / lens / frontmatter / hook checks)) → `specs/agents/<locator>/{spec.md,enforcement.md}`
 
 Every governed `spec.md` is PAIRED with an `enforcement.md`. Stable identity is
 scoped narrowly: the frontmatter `id` (e.g. `behavior.<locator>`) is the only project-unique governed ID; requirement, scenario, and binding `**ID:**` slugs are unique only within their pair, and stay fixed when titles or locators move.
 
 **Plane classification:** match each proposed claim to the plane whose declared
-purpose best fits the claim's nature. The shipped defaults are behavior, architecture; a single initiative may touch several planes — list one spec per plane touched, never mix planes in one spec.
+purpose best fits the claim's nature. The shipped defaults are behavior, architecture, ops, code-quality, design-system, agents; a single initiative may touch several planes — list one spec per plane touched, never mix planes in one spec.
 
 **Structure conventions (governed):**
 - Locators may nest to arbitrary safe depth (e.g. `behavior/platforms/desktop`);
@@ -188,6 +192,18 @@ purpose best fits the claim's nature. The shipped defaults are behavior, archite
   `enforcement.md`; ancestry provides navigation, never inherited requirements.
 - A change stores its `spec.md` and `enforcement.md` deltas under the SAME
   plane-qualified locator as the target current pair, so both members move together.
+
+**Agents plane (this project declares it):** its members are the repo's OWN
+agentic instruments (review panel, repo-specific skills, subagents, hooks), NOT
+guardrails on agent behavior — those ride on the plane whose subject they
+constrain. Each agents `spec.md` **describes** an agent-operational artifact
+(`config.yaml`, the lens set, a `SKILL.md`, a hook) and its `enforcement.md`
+binds a **conformance/drift check** to that artifact using the ordinary
+mechanisms (`command`, `test`) — no new mechanism, and the spec never generates
+the artifact (the runtime keeps the artifact as its source of truth). `specbase
+init` may PLANT baseline agents specs (`agents/spec-driven`, `agents/review-panel`)
+directly as scaffolding — the one exception to the proposal→spec→archive flow;
+edit a planted baseline through a change, never by re-running init.
 
 ### Authoring rules (governed)
 

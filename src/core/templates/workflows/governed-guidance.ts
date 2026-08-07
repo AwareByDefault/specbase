@@ -3,7 +3,7 @@
  *
  * The canonical SPCB workflow templates are generated once into project-agnostic
  * skill/command files. To keep the legacy flat workflow byte-for-byte unchanged
- * while teaching governed projects the two-plane + paired-enforcement model, each
+ * while teaching governed projects the declared-plane + paired-enforcement model, each
  * affected getter takes an OPTIONAL resolved spec model:
  *
  *   - omitted / legacy  -> the getter returns its existing payload verbatim, so
@@ -17,6 +17,7 @@
  * hardcoding a flat capability layout".
  */
 import type { SpecModel } from '../../artifact-graph/types.js';
+import { DEFAULT_PLANES } from '../../governed/lenses.js';
 import { CLEAN_SPEC_RULES, CLEAN_SPECBASE_RULES } from './clean-rules.generated.js';
 
 /**
@@ -72,12 +73,13 @@ export function withGovernedGuidance(
  * command projections carry identical governed semantics (parity requirement).
  */
 /**
- * The curated per-plane trigger lists for the four default planes. These are
- * hand-written pedagogy (the same quality as the original architectural
- * structural-trigger list) so explore on the defaults is crisp; user-added
- * planes beyond the defaults get the plane-agnostic procedure instead.
+ * The curated per-plane trigger lists for every default-shipped plane
+ * ({@link DEFAULT_PLANES}). These are hand-written pedagogy (the same quality as
+ * the original architectural structural-trigger list) so explore on the defaults
+ * is crisp; user-added planes beyond the defaults get the plane-agnostic
+ * procedure instead.
  */
-const DEFAULT_PLANE_TRIGGERS: Record<string, string> = {
+export const DEFAULT_PLANE_TRIGGERS: Record<string, string> = {
   behavior: [
     'Outcome triggers (it is behavioral truth when the claim is about):',
     '- a user- or client-visible outcome (what the system DOES, observable),',
@@ -109,6 +111,18 @@ const DEFAULT_PLANE_TRIGGERS: Record<string, string> = {
     '- what makes a good test (assert behavior not implementation, no mock-call',
     '  order assertions).',
   ].join('\n'),
+  'design-system': [
+    'Identity triggers (it is design-system truth when the claim is about):',
+    '- a design token or token set (color, type scale, spacing, motion) and what',
+    '  the token artifact must contain — the truth DESCRIBES the token file, which',
+    '  stays the runtime source of truth;',
+    '- a design principle the UI must uphold (contrast, density, affordance,',
+    '  accessibility floor);',
+    '- the product voice: how copy, labels, and errors must read.',
+    'Token truths are enforced by token-lint / contrast + a11y checks against the',
+    'token artifact; principle and voice truths bind the design review lens.',
+    'NOT a user-visible outcome of a feature — that is behavior.',
+  ].join('\n'),
   agents: [
     'Instrument triggers (it is agents truth when the claim is about one of the',
     'repo’s OWN agentic instruments, NOT how an agent should behave):',
@@ -138,7 +152,10 @@ export function buildGovernedPrimer(specModel: SpecModel): string {
     (p) => `- ${p.id}: ${p.purpose} (enforcement: ${p.enforcementFlavor}) \u2192 \`specs/${p.id}/<locator>/{spec.md,enforcement.md}\``
   );
   const planeIds = planes.map((p) => p.id);
-  const defaultIds = ['behavior', 'architecture', 'ops', 'code-quality'];
+  // The shipped defaults are read from the one place that declares them, never
+  // restated here: a roster literal in this module is exactly the frozen-roster
+  // bug this guidance exists to avoid.
+  const defaultIds = DEFAULT_PLANES.map((p) => p.id);
   const defaultsCovered = defaultIds.filter((id) => planeIds.includes(id));
   const userAdded = planes.filter((p) => !defaultIds.includes(p.id));
   const firstPlane = planes[0]?.id ?? 'behavior';
@@ -215,20 +232,17 @@ export function buildPlaneTriggers(specModel: SpecModel): string {
 }
 
 /**
- * Back-compat alias for callers that still reference the static primer; returns
- * the two-plane primer shape so legacy tests and any unmigrated callers keep
- * working. New callers should use {@link buildGovernedPrimer} with a resolved
- * spec model so the project's planes are interpolated.
+ * The onboarding lesson's plane enumeration: one indented line per declared
+ * plane (id, purpose, storage subtree). The lesson teaches the project's roster
+ * rather than a fixed pair, so a project that adds or removes a plane onboards
+ * on the planes it actually has.
  */
-const GOVERNED_PRIMER = buildGovernedPrimer({
-  kind: 'governed',
-  version: 1,
-  planes: [
-    { id: 'behavior', purpose: 'User/client-visible outcomes', enforcementFlavor: 'tests / property tests', crossCutting: false, defaultSelected: true },
-    { id: 'architecture', purpose: 'Package responsibilities, boundaries, and structural invariants', enforcementFlavor: 'lint / static-analysis / conformance', crossCutting: false, defaultSelected: true },
-  ],
-  pairedEnforcement: true,
-});
+export function buildOnboardPlaneLesson(specModel: SpecModel): string {
+  const planes = specModel.kind === 'governed' ? specModel.planes : [];
+  return planes
+    .map((p) => `  - **${p.id}** - ${p.purpose}, under \`specs/${p.id}/...\`.`)
+    .join('\n');
+}
 
 /**
  * The distilled enforcement/testing philosophy, shared verbatim by the explore
@@ -441,7 +455,7 @@ writing rules decide HOW it is stated, and they always apply.
 ${GOVERNED_ENFORCEMENT_PHILOSOPHY}`;
 
 /** update (task 6.3 / Requirement: Change updates preserve pair coherence). */
-export const GOVERNED_UPDATE_GUIDANCE = `${GOVERNED_PRIMER}
+export const GOVERNED_UPDATE_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Keeping pairs coherent on update (governed)
 
@@ -461,7 +475,7 @@ normative claim, check the paired bindings for the result:
   so drift detection stays meaningful.`;
 
 /** sync (task 6.5 / Requirements: Specs Sync Skill, Delta Reconciliation Logic). */
-export const GOVERNED_SYNC_GUIDANCE = `${GOVERNED_PRIMER}
+export const GOVERNED_SYNC_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Reconciling governed pairs (governed)
 
@@ -500,7 +514,7 @@ NOT apply to governed pairs.
   unchanged and duplicates no requirement, scenario, or binding.`;
 
 /** verify (task 6.4 / Requirements: Completeness Verification, Correctness Verification). */
-export const GOVERNED_VERIFY_GUIDANCE = `${GOVERNED_PRIMER}
+export const GOVERNED_VERIFY_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Verifying coverage and evidence (governed)
 
@@ -579,7 +593,7 @@ Legacy changes (\`specModel.kind == "legacy"\`) retain the heuristic requirement
 scenario / design verification described above unchanged.`;
 
 /** archive (task 6.5 / Requirements: Artifact Completion Check, Spec Sync Prompt, Archive Process). */
-export const GOVERNED_ARCHIVE_GUIDANCE = `${GOVERNED_PRIMER}
+export const GOVERNED_ARCHIVE_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Archiving a governed change (governed)
 
@@ -628,7 +642,7 @@ governed gate below is ADDITIONAL and authoritative.
  * bulk archive (task 6.5). Reuses the single-change governed archive gate verbatim
  * so both projections stay identical, then adds per-change batch reporting.
  */
-export const GOVERNED_BULK_ARCHIVE_GUIDANCE = `${GOVERNED_ARCHIVE_GUIDANCE}
+export const GOVERNED_BULK_ARCHIVE_GUIDANCE = (specModel: SpecModel) => `${GOVERNED_ARCHIVE_GUIDANCE(specModel)}
 
 ### Applying the governed gate across a batch (governed)
 
@@ -644,7 +658,7 @@ export const GOVERNED_BULK_ARCHIVE_GUIDANCE = `${GOVERNED_ARCHIVE_GUIDANCE}
   fold a blocked or bypassed change into the archived count.`;
 
 /** apply (task 6.3 / Requirement: Apply resolves enforcement bindings). */
-export const GOVERNED_APPLY_GUIDANCE = `${GOVERNED_PRIMER}
+export const GOVERNED_APPLY_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Implementing truth and evidence (governed)
 
@@ -669,28 +683,29 @@ Apply implements BOTH the product/architecture change and its declared evidence:
 
 /** onboard (task 6.6 / Requirements: Guided Artifact Creation, Guided
  * Implementation, Archive with Explanation). */
-export const GOVERNED_ONBOARD_GUIDANCE = `${GOVERNED_PRIMER}
+export const GOVERNED_ONBOARD_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Teaching the governed model while onboarding (governed)
 
-When the project uses the governed model, the guided cycle must TEACH the two
-truth planes, stable scoped identity, paired enforcement, drift, and archived
-rationale as it does real work - never present unsettled design as current
-architecture. Weave the following into the phases:
+When the project uses the governed model, the guided cycle must TEACH the
+declared truth planes, stable scoped identity, paired enforcement, drift, and
+archived rationale as it does real work - never present unsettled design as
+current architecture. Weave the following into the phases:
 
-- **Two truth planes.** Explain that durable truth lives in two permanent planes:
-  **behavioral truth** (externally observable capabilities under
-  \`specs/behavior/...\`) and **architectural truth** (current packages,
-  responsibilities, boundaries, and structural invariants under
-  \`specs/architecture/...\`). A single initiative may touch both; each plane gets
-  its own spec pair.
+- **Truth planes.** Explain that durable truth lives in the permanent planes this
+  project declares, each with its own storage subtree and its own kind of claim:
+${buildOnboardPlaneLesson(specModel)}
+  Read the roster from \`specbase status --json\` (\`specModel.planes\`) rather than
+  assuming it - a project may add, remove, or replace planes. A single initiative
+  may touch several planes; each plane touched gets its own spec pair.
 - **Change creation.** Explain that a change is a container that preserves the
   transition **rationale** and the **planned** pair updates; show the
   schema-defined artifact structure (proposal -> specs -> enforcement -> tasks).
 - **Proposal.** Explain WHY the change exists, and classify each affected governed
-  spec as **behavioral** or **architectural** truth.
-- **Governed specs.** Explain observable behavioral contracts vs current
-  architectural invariants, and assign a project-unique stable spec \`id\` plus
+  spec by the plane whose declared purpose fits its claim.
+- **Governed specs.** Explain what each declared plane's claims look like - the
+  observable contract, the structural invariant, or whatever its purpose names -
+  and assign a project-unique stable spec \`id\` plus
   pair-local \`**ID:**\` requirement and scenario slugs. Stress that the IDs are
   durable identity while titles and locators are mutable presentation - a moved
   spec keeps its \`id\`.
@@ -719,4 +734,4 @@ architecture. Weave the following into the phases:
 - **Point to governed surfaces.** Show that \`specbase status\`, \`list\`, \`show\`,
   \`spec\`, and \`validate\` report governed locators, stable IDs, pair status, and
   coverage, and that the governed workflow skills (explore, propose, apply, verify,
-  sync, archive) understand both planes.`;
+  sync, archive) understand every declared plane.`;

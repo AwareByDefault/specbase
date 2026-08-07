@@ -138,7 +138,7 @@ Every governed `spec.md` is PAIRED with an `enforcement.md`. Stable identity is
 scoped narrowly: the frontmatter `id` (e.g. `behavior.<locator>`) is the only project-unique governed ID; requirement, scenario, and binding `**ID:**` slugs are unique only within their pair, and stay fixed when titles or locators move.
 
 **Plane classification:** match each proposed claim to the plane whose declared
-purpose best fits the claim's nature. The shipped defaults are behavior, architecture, ops, code-quality; this project also declares design-system, agents (read its purpose from the CLI). a single initiative may touch several planes — list one spec per plane touched, never mix planes in one spec.
+purpose best fits the claim's nature. The shipped defaults are behavior, architecture, ops, code-quality, design-system, agents; a single initiative may touch several planes — list one spec per plane touched, never mix planes in one spec.
 
 **Structure conventions (governed):**
 - Locators may nest to arbitrary safe depth (e.g. `behavior/platforms/desktop`);
