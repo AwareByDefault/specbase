@@ -17,6 +17,29 @@
  * hardcoding a flat capability layout".
  */
 import type { SpecModel } from '../../artifact-graph/types.js';
+import { CLEAN_SPEC_RULES, CLEAN_SPECBASE_RULES } from './clean-rules.generated.js';
+
+/**
+ * The authoring rules every governed skill carries, assembled from the build
+ * artifact the clean manifestos generate. This module NEVER restates a rule:
+ * `docs/clean-spec.md` and `docs/clean-specbase.md` are the single authored
+ * home, `scripts/generate-clean-rules.mjs` lifts their marked Rules sections,
+ * and the constants below are the only in-code copy. The rules are inlined into
+ * the prompt (rather than referenced by path) because `docs/` does not ship, so
+ * a path reference would dangle in every installed repo.
+ */
+export const GOVERNED_MANIFESTO_RULES = `### Authoring rules (governed)
+
+These rules travel with this skill; apply them whenever you place or write a
+governed pair. They are the current text of this project's clean manifestos.
+
+**Placement - where a pair belongs:**
+
+${CLEAN_SPECBASE_RULES}
+
+**Writing - what one pair says:**
+
+${CLEAN_SPEC_RULES}`;
 
 /** True only when a governed spec model is resolved. Core dispatches on the
  * declared model, never on a schema name. Doubles as a type guard so callers
@@ -165,7 +188,9 @@ purpose best fits the claim's nature. The shipped defaults are ${defaultsCovered
   its own. Only a directory that contains \`spec.md\` must also contain
   \`enforcement.md\`; ancestry provides navigation, never inherited requirements.
 - A change stores its \`spec.md\` and \`enforcement.md\` deltas under the SAME
-  plane-qualified locator as the target current pair, so both members move together.${agentsConventions}`;
+  plane-qualified locator as the target current pair, so both members move together.${agentsConventions}
+
+${GOVERNED_MANIFESTO_RULES}`;
 }
 
 /**
@@ -362,7 +387,33 @@ blind per-lens reviewers.
  * new / propose / ff / continue (task 6.2 / Requirement: Proposal and artifact
  * creation classify governed changes).
  */
-export const GOVERNED_AUTHORING_GUIDANCE = `${GOVERNED_PRIMER}
+export const GOVERNED_AUTHORING_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
+
+### Surface the chosen structure before authoring (governed)
+
+Placement is a decision worth showing. Once you have chosen where each pair
+goes - and BEFORE you author its contents - present the placement, then offer to
+discuss it:
+
+1. **Show each chosen locator with the rule that put it there.** One line per
+   pair: the plane-qualified locator, and the placement rule above that decided
+   it (the actor test, one truth one plane, hoist on duplication, quantify to
+   place, earn parents, earn depth). Name the rule; do not just assert the path.
+2. **Say what you weighed and rejected** wherever the call was genuine - the
+   sibling you did not hoist to, the parent you did not earn, the second plane
+   you ruled out and why.
+3. **Offer to discuss, and mean it.** Invite the user to move, split, merge, or
+   re-plane anything you showed. The offer does NOT block: carry straight on
+   into authoring, and revise the placement if they come back on it. This is an
+   opt-OUT - never make the user opt in before you place.
+4. **Stop and ASK only when placement is genuinely ambiguous** - two planes fit
+   the same claim, or the change would have to create a parent pair. Real
+   ambiguity is a question; a routine placement is an FYI.
+
+**Writing quality is never gated by that offer.** Apply the writing rules above
+to every \`spec.md\` and \`enforcement.md\` you author, whether or not the user
+engages with the structure discussion. The offer decides WHERE truth lives; the
+writing rules decide HOW it is stated, and they always apply.
 
 ### Classifying planes and creating pairs (governed)
 

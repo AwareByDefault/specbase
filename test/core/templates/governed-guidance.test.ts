@@ -28,13 +28,9 @@ import {
 } from '../../../src/core/templates/skill-templates.js';
 import { getSkillTemplates, getCommandContents } from '../../../src/core/shared/skill-generation.js';
 import { LEGACY_SPEC_MODEL, type SpecModel } from '../../../src/core/artifact-graph/types.js';
+import { GOVERNED_TEST_SPEC_MODEL } from '../../helpers/governed-model.js';
 
-const GOVERNED: SpecModel = {
-  kind: 'governed',
-  version: 1,
-  planes: ['behavior', 'architecture'],
-  pairedEnforcement: true,
-};
+const GOVERNED: SpecModel = GOVERNED_TEST_SPEC_MODEL;
 
 // The workflows this unit teaches governed awareness (tasks 6.1-6.4).
 const SKILL_GETTERS = {

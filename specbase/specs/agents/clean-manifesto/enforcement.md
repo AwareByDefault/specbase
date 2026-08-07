@@ -1,9 +1,9 @@
 # Enforcement: Clean manifesto rule injection
 
 <!--
-  Paired with spec.md (agents.clean-manifesto). Bindings are authored `planned`
-  while the codegen, generator wiring, and checks do not yet exist; each becomes
-  `active` with a real target before verify/archive.
+  Paired with spec.md (agents.clean-manifesto). Every binding is `active`: the
+  codegen, the generator wiring, and each declared check now exist, and every
+  declared target resolves on disk.
 -->
 
 ```yaml
@@ -14,7 +14,7 @@ bindings:
     covers: [single-source, manifestos-mark-rules, generator-has-no-inline-copy]
     mechanism: command
     strength: automated
-    status: planned
+    status: active
     targets:
       - docs/clean-spec.md
       - docs/clean-specbase.md
@@ -31,7 +31,7 @@ bindings:
     covers: [build-propagates, generated-matches-source, stale-generated-rejected]
     mechanism: command
     strength: automated
-    status: planned
+    status: active
     targets:
       - src/core/templates/workflows/clean-rules.generated.ts
     run:
@@ -45,7 +45,7 @@ bindings:
     covers: [skills-carry-rules, emitted-skill-contains-rules]
     mechanism: command
     strength: automated
-    status: planned
+    status: active
     targets:
       - src/core/templates/workflows/governed-guidance.ts
     run:
@@ -59,7 +59,7 @@ bindings:
     covers: [propose-surfaces-structure, placement-shown-with-rationale, writing-quality-ungated]
     mechanism: command
     strength: automated
-    status: planned
+    status: active
     targets:
       - src/core/templates/workflows/governed-guidance.ts
     run:
@@ -73,7 +73,7 @@ bindings:
     covers: [propose-surfaces-structure]
     mechanism: review
     strength: review
-    status: planned
+    status: active
     covered_by: [propose-surface-present]
     targets:
       - src/core/templates/workflows/governed-guidance.ts
@@ -85,7 +85,11 @@ bindings:
       inputs:
         - src/core/templates/workflows/governed-guidance.ts
         - docs/clean-specbase.md
-      lens: agents
+      # The agents plane declares no reviewLens in specbase/config.yaml, so an
+      # agents-plane review binding names the cross-cutting `enforcement` lens
+      # explicitly (as agents/agent-docs already does). `lens: agents` would
+      # resolve to no lens and report as an un-lensed review claim.
+      lens: enforcement
     limitations: Judges tone and usefulness of the offer, which no linter can
       assess; the deterministic presence check is covered_by propose-surface-present.
 ```
