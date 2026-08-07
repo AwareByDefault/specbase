@@ -88,7 +88,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run \`/opsx:apply\` or ask me to implement to start working on the tasks."
+- Prompt: "Run \`/spcb:apply\` or ask me to implement to start working on the tasks."
 
 **Artifact Creation Guidelines**
 
@@ -112,9 +112,9 @@ After completing all artifacts, summarize:
   };
 }
 
-export function getOpsxFfCommandTemplate(specModel?: SpecModel): CommandTemplate {
+export function getSpcbFfCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
-    name: 'OPSX: Fast Forward',
+    name: 'SPCB: Fast Forward',
     description: 'Create a change and generate all artifacts needed for implementation in one go',
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
@@ -122,7 +122,7 @@ export function getOpsxFfCommandTemplate(specModel?: SpecModel): CommandTemplate
 
 ${STORE_SELECTION_GUIDANCE}
 
-**Input**: The argument after \`/opsx:ff\` is the change name (kebab-case), OR a description of what the user wants to build.
+**Input**: The argument after \`/spcb:ff\` is the change name (kebab-case), OR a description of what the user wants to build.
 
 **Steps**
 
@@ -193,7 +193,7 @@ After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
 - What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run \`/opsx:apply\` to start implementing."
+- Prompt: "Run \`/spcb:apply\` to start implementing."
 
 **Artifact Creation Guidelines**
 

@@ -4,11 +4,11 @@ import {
   getExploreSkillTemplate,
   getVerifyChangeSkillTemplate,
   getApplyChangeSkillTemplate,
-  getOpsxProposeSkillTemplate,
-  getOpsxExploreCommandTemplate,
-  getOpsxVerifyCommandTemplate,
-  getOpsxApplyCommandTemplate,
-  getOpsxProposeCommandTemplate,
+  getSpcbProposeSkillTemplate,
+  getSpcbExploreCommandTemplate,
+  getSpcbVerifyCommandTemplate,
+  getSpcbApplyCommandTemplate,
+  getSpcbProposeCommandTemplate,
 } from '../../../src/core/templates/skill-templates.js';
 import type { SpecModel } from '../../../src/core/artifact-graph/types.js';
 
@@ -25,7 +25,7 @@ const GOVERNED: SpecModel = {
 };
 
 /**
- * add-spec-coverage-tool (opsx-explore-skill spec): the governed explore
+ * add-spec-coverage-tool (spcb-explore-skill spec): the governed explore
  * guidance walks behavior -> architecture -> enforcement, classifies dual-plane
  * ideas, and opens with the `openspec coverage --json` health check; verify and
  * apply carry one-line coverage pointers. Legacy output never mentions any of
@@ -68,11 +68,11 @@ describe('governed explore staged flow and coverage awareness', () => {
   for (const marker of EXPLORE_MARKERS) {
     it(`teaches "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
       const skill = getExploreSkillTemplate(GOVERNED).instructions;
-      const command = getOpsxExploreCommandTemplate(GOVERNED).content;
+      const command = getSpcbExploreCommandTemplate(GOVERNED).content;
       expect(skill).toContain(marker);
       expect(command).toContain(marker);
       expect(getExploreSkillTemplate().instructions).not.toContain(marker);
-      expect(getOpsxExploreCommandTemplate().content).not.toContain(marker);
+      expect(getSpcbExploreCommandTemplate().content).not.toContain(marker);
     });
   }
 
@@ -107,26 +107,26 @@ describe('coverage pointers in governed verify and apply guidance', () => {
   it('verify names openspec coverage and its --json form under governed, absent under legacy', () => {
     for (const surface of [
       getVerifyChangeSkillTemplate(GOVERNED).instructions,
-      getOpsxVerifyCommandTemplate(GOVERNED).content,
+      getSpcbVerifyCommandTemplate(GOVERNED).content,
     ]) {
       expect(surface).toContain(POINTER);
       expect(surface).toContain('openspec coverage --json');
       expect(surface).toContain('aggregated enforcement-coverage view backing this assessment');
     }
     expect(getVerifyChangeSkillTemplate().instructions).not.toContain(POINTER);
-    expect(getOpsxVerifyCommandTemplate().content).not.toContain(POINTER);
+    expect(getSpcbVerifyCommandTemplate().content).not.toContain(POINTER);
   });
 
   it('apply names openspec coverage as the shared health signal under governed, absent under legacy', () => {
     for (const surface of [
       getApplyChangeSkillTemplate(GOVERNED).instructions,
-      getOpsxApplyCommandTemplate(GOVERNED).content,
+      getSpcbApplyCommandTemplate(GOVERNED).content,
     ]) {
       expect(surface).toContain(POINTER);
       expect(surface).toContain('aggregated coverage health signal');
     }
     expect(getApplyChangeSkillTemplate().instructions).not.toContain(POINTER);
-    expect(getOpsxApplyCommandTemplate().content).not.toContain(POINTER);
+    expect(getSpcbApplyCommandTemplate().content).not.toContain(POINTER);
   });
 });
 
@@ -142,10 +142,10 @@ describe('enforcement philosophy reaches authoring (concrete altitude)', () => {
 
   for (const marker of AUTHORING_MARKERS) {
     it(`propose authoring teaches "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
-      expect(getOpsxProposeSkillTemplate(GOVERNED).instructions).toContain(marker);
-      expect(getOpsxProposeCommandTemplate(GOVERNED).content).toContain(marker);
-      expect(getOpsxProposeSkillTemplate().instructions).not.toContain(marker);
-      expect(getOpsxProposeCommandTemplate().content).not.toContain(marker);
+      expect(getSpcbProposeSkillTemplate(GOVERNED).instructions).toContain(marker);
+      expect(getSpcbProposeCommandTemplate(GOVERNED).content).toContain(marker);
+      expect(getSpcbProposeSkillTemplate().instructions).not.toContain(marker);
+      expect(getSpcbProposeCommandTemplate().content).not.toContain(marker);
     });
   }
 });

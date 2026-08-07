@@ -4,9 +4,14 @@
  * Privacy-first design:
  * - Only tracks command name and version
  * - No arguments, file paths, or content
- * - Opt-out via OPENSPEC_TELEMETRY=0 or DO_NOT_TRACK=1
+ * - Opt-out via SPECBASE_TELEMETRY=0 (or the legacy OPENSPEC_TELEMETRY=0) or DO_NOT_TRACK=1
  * - Auto-disabled in CI environments
  * - Anonymous ID is a random UUID with no relation to the user
+ *
+ * Specbase note: telemetry is DISABLED BY DEFAULT in this fork. The upstream
+ * OpenSpec endpoint/API key below belong to OpenSpec, and a fork must not phone
+ * home to them. To enable analytics for Specbase, wire up AwareByDefault's own
+ * PostHog key + host and remove the default-off guard in isTelemetryEnabled().
  */
 import { PostHog } from 'posthog-node';
 import { randomUUID } from 'crypto';
@@ -38,17 +43,13 @@ async function safeTelemetryFetch(url: string, options: RequestInit): Promise<Re
 /**
  * Check if telemetry is enabled.
  *
- * Disabled when:
- * - OPENSPEC_TELEMETRY=0
+ * Disabled when (any of):
+ * - Always, by default, in this Specbase fork (see note below)
+ * - SPECBASE_TELEMETRY=0 or the legacy OPENSPEC_TELEMETRY=0
  * - DO_NOT_TRACK=1
  * - CI=true (any CI environment)
  */
 export function isTelemetryEnabled(): boolean {
-  // Check explicit opt-out
-  if (process.env.OPENSPEC_TELEMETRY === '0') {
-    return false;
-  }
-
   // Respect DO_NOT_TRACK standard
   if (process.env.DO_NOT_TRACK === '1') {
     return false;
@@ -59,7 +60,19 @@ export function isTelemetryEnabled(): boolean {
     return false;
   }
 
-  return true;
+  // Explicit opt-out (both the Specbase and legacy OpenSpec variables)
+  if (
+    process.env.SPECBASE_TELEMETRY === '0' ||
+    process.env.OPENSPEC_TELEMETRY === '0'
+  ) {
+    return false;
+  }
+
+  // Specbase is opt-IN. Telemetry stays off unless the user explicitly sets
+  // SPECBASE_TELEMETRY=1. The endpoint/API key in this module belong to upstream
+  // OpenSpec, so a fork must not phone home by default; anyone opting in should
+  // first point this module at AwareByDefault's own PostHog key + host.
+  return process.env.SPECBASE_TELEMETRY === '1';
 }
 
 /**

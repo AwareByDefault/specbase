@@ -12,14 +12,14 @@ import { escapeYamlValue } from '../yaml.js';
 
 /**
  * Bob Shell adapter for command generation.
- * File path: .bob/commands/opsx-<id>.md
+ * File path: .bob/commands/spcb-<id>.md
  * Frontmatter: description, argument-hint
  */
 export const bobAdapter: ToolCommandAdapter = {
   toolId: 'bob',
 
   getFilePath(commandId: string): string {
-    return path.join('.bob', 'commands', `opsx-${commandId}.md`);
+    return path.join('.bob', 'commands', `spcb-${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

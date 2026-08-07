@@ -40,18 +40,18 @@ Our philosophy:
 > [!TIP]
 > **New workflow now available!** We've rebuilt OpenSpec with a new artifact-guided workflow.
 >
-> Run `/opsx:propose "your idea"` to get started. → [Learn more here](docs/opsx.md)
+> Run `/spcb:propose "your idea"` to get started. → [Learn more here](docs/spcb.md)
 
 <p align="center">
   Follow <a href="https://x.com/0xTab">@0xTab on X</a> for updates · Join the <a href="https://discord.gg/YctCnvvshC">OpenSpec Discord</a> for help and questions.
 </p>
 
-<!-- TODO: Add GIF demo of /opsx:propose → /opsx:archive workflow -->
+<!-- TODO: Add GIF demo of /spcb:propose → /spcb:archive workflow -->
 
 ## See it in action
 
 ```text
-You: /opsx:explore
+You: /spcb:explore
 AI:  What would you like to explore?
 You: I want dark mode but I'm not sure how to do it cleanly.
 AI:  Let me look at your styling setup...
@@ -59,7 +59,7 @@ AI:  Let me look at your styling setup...
      with system-preference detection. No new dependencies. Scope it?
 You: Yes, let's do it.
 
-You: /opsx:propose add-dark-mode
+You: /spcb:propose add-dark-mode
 AI:  Created openspec/changes/add-dark-mode/
      ✓ proposal.md — why we're doing this, what's changing
      ✓ specs/       — requirements and scenarios
@@ -67,7 +67,7 @@ AI:  Created openspec/changes/add-dark-mode/
      ✓ tasks.md     — implementation checklist
      Ready for implementation!
 
-You: /opsx:apply
+You: /spcb:apply
 AI:  Implementing tasks...
      ✓ 1.1 Add theme context provider
      ✓ 1.2 Create toggle component
@@ -75,7 +75,7 @@ AI:  Implementing tasks...
      ✓ 2.2 Wire up localStorage
      All tasks complete!
 
-You: /opsx:archive
+You: /spcb:archive
 AI:  Archived to openspec/changes/archive/2025-01-23-add-dark-mode/
      Specs updated. Ready for the next feature.
 ```
@@ -104,10 +104,10 @@ OpenSpec is built with OpenSpec — browse this repo's live [specs](openspec/spe
 </details>
 
 <details>
-<summary><strong>OpenSpec Dashboard</strong></summary>
+<summary><strong>Dashboard</strong></summary>
 
 <p align="center">
-  <img src="assets/openspec_dashboard.png" alt="OpenSpec dashboard preview" width="90%">
+  <img src="assets/openspec_dashboard.png" alt="Specbase dashboard preview (inherited from OpenSpec)" width="90%">
 </p>
 
 </details>
@@ -128,25 +128,27 @@ Solo, OpenSpec keeps you and your AI honest on a single repo. On a team, the har
 
 **Requires Node.js 20.19.0 or higher.**
 
-Install OpenSpec globally:
+Install Specbase globally:
 
 ```bash
-npm install -g @fission-ai/openspec@latest
+npm install -g @awarebydefault/specbase@latest
 ```
+
+> The `specbase` command is primary; `openspec` remains as a backward-compatible alias. (Not yet published to npm — until it is, install from source: `pnpm install && pnpm run build && npm link`.)
 
 Then navigate to your project directory and initialize:
 
 ```bash
 cd your-project
-openspec init
+specbase init
 ```
 
 Now talk to your AI:
 
-- **Not sure what to build yet?** Start with `/opsx:explore`, a no-stakes thinking partner that reads your code, weighs options, and shapes a plan before anything is written. ([Explore guide](docs/explore.md))
-- **Already know what you want?** Go straight to `/opsx:propose <what-you-want-to-build>`.
+- **Not sure what to build yet?** Start with `/spcb:explore`, a no-stakes thinking partner that reads your code, weighs options, and shapes a plan before anything is written. ([Explore guide](docs/explore.md))
+- **Already know what you want?** Go straight to `/spcb:propose <what-you-want-to-build>`.
 
-Both are in the default profile. If you want the expanded workflow (`/opsx:new`, `/opsx:continue`, `/opsx:ff`, `/opsx:verify`, `/opsx:bulk-archive`, `/opsx:onboard`), select it with `openspec config profile` and apply with `openspec update`.
+Both are in the default profile. If you want the expanded workflow (`/spcb:new`, `/spcb:continue`, `/spcb:ff`, `/spcb:verify`, `/spcb:bulk-archive`, `/spcb:onboard`), select it with `specbase config profile` and apply with `specbase update`.
 
 > [!NOTE]
 > Not sure if your tool is supported? [View the full list](docs/supported-tools.md) – we support 25+ tools and growing.
@@ -155,10 +157,10 @@ Both are in the default profile. If you want the expanded workflow (`/opsx:new`,
 
 ## Docs
 
-**Start here:** the **[Documentation Home](docs/README.md)** maps everything. New to OpenSpec? Read [Getting Started](docs/getting-started.md), then [How Commands Work](docs/how-commands-work.md) (where you actually type `/opsx:propose`).
+**Start here:** the **[Documentation Home](docs/README.md)** maps everything. New to OpenSpec? Read [Getting Started](docs/getting-started.md), then [How Commands Work](docs/how-commands-work.md) (where you actually type `/spcb:propose`).
 
 → **[Getting Started](docs/getting-started.md)**: first steps<br>
-→ **[Explore First](docs/explore.md)**: think it through with `/opsx:explore` before you commit<br>
+→ **[Explore First](docs/explore.md)**: think it through with `/spcb:explore` before you commit<br>
 → **[How Commands Work](docs/how-commands-work.md)**: where slash commands run vs the CLI<br>
 → **[Core Concepts at a Glance](docs/overview.md)**: the whole mental model, one page<br>
 → **[Examples & Recipes](docs/examples.md)**: real changes, start to finish<br>
@@ -199,12 +201,12 @@ AI coding assistants are powerful but unpredictable when requirements live only 
 
 **vs. nothing** — AI coding without specs means vague prompts and unpredictable results. OpenSpec brings predictability without the ceremony.
 
-## Updating OpenSpec
+## Updating Specbase
 
 **Upgrade the package**
 
 ```bash
-npm install -g @fission-ai/openspec@latest
+npm install -g @awarebydefault/specbase@latest
 ```
 
 **Refresh agent instructions**
@@ -212,7 +214,7 @@ npm install -g @fission-ai/openspec@latest
 Run this inside each project to regenerate AI guidance and ensure the latest slash commands are active:
 
 ```bash
-openspec update
+specbase update
 ```
 
 ## Usage Notes
@@ -244,11 +246,13 @@ When writing proposals, keep the OpenSpec philosophy in mind: we serve a wide va
 <details>
 <summary><strong>Telemetry</strong></summary>
 
-OpenSpec collects anonymous usage stats.
+**Specbase does not collect any telemetry by default.** It is opt-in.
 
-We collect only command names and version to understand usage patterns. No arguments, paths, content, or PII. Automatically disabled in CI.
+The telemetry code inherited from OpenSpec is dormant unless you explicitly set `SPECBASE_TELEMETRY=1` — and even then, the endpoint and API key still belong to upstream OpenSpec, so you should point it at your own analytics before enabling it. Nothing is sent to anyone without your action.
 
-**Opt-out:** `export OPENSPEC_TELEMETRY=0` or `export DO_NOT_TRACK=1`
+If you do opt in, only command names and version are collected — no arguments, paths, content, or PII — and it stays disabled in CI.
+
+**Opt-in:** `export SPECBASE_TELEMETRY=1` · **Force-off:** `export SPECBASE_TELEMETRY=0` (the legacy `OPENSPEC_TELEMETRY=0` and `DO_NOT_TRACK=1` are also honored)
 
 </details>
 

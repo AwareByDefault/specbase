@@ -28,7 +28,7 @@ ${STORE_SELECTION_GUIDANCE}
    - Auto-select if only one active change exists
    - If ambiguous, run \`openspec list --json\` to get available changes and use the **AskUserQuestion tool** to let the user select
 
-   Always announce: "Using change: <name>" and how to override (e.g., \`/opsx:apply <other>\`).
+   Always announce: "Using change: <name>" and how to override (e.g., \`/spcb:apply <other>\`).
 
 2. **Check status to understand the schema**
    \`\`\`bash
@@ -167,9 +167,9 @@ This skill supports the "actions on a change" model:
   };
 }
 
-export function getOpsxApplyCommandTemplate(specModel?: SpecModel): CommandTemplate {
+export function getSpcbApplyCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
-    name: 'OPSX: Apply',
+    name: 'SPCB: Apply',
     description: 'Implement tasks from an OpenSpec change (Experimental)',
     category: 'Workflow',
     tags: ['workflow', 'artifacts', 'experimental'],
@@ -177,7 +177,7 @@ export function getOpsxApplyCommandTemplate(specModel?: SpecModel): CommandTempl
 
 ${STORE_SELECTION_GUIDANCE}
 
-**Input**: Optionally specify a change name (e.g., \`/opsx:apply add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a change name (e.g., \`/spcb:apply add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
 **Steps**
 
@@ -188,7 +188,7 @@ ${STORE_SELECTION_GUIDANCE}
    - Auto-select if only one active change exists
    - If ambiguous, run \`openspec list --json\` to get available changes and use the **AskUserQuestion tool** to let the user select
 
-   Always announce: "Using change: <name>" and how to override (e.g., \`/opsx:apply <other>\`).
+   Always announce: "Using change: <name>" and how to override (e.g., \`/spcb:apply <other>\`).
 
 2. **Check status to understand the schema**
    \`\`\`bash
@@ -212,7 +212,7 @@ ${STORE_SELECTION_GUIDANCE}
    - Dynamic instruction based on current state
 
    **Handle states:**
-   - If \`state: "blocked"\` (missing artifacts): show message, suggest using \`/opsx:continue\`
+   - If \`state: "blocked"\` (missing artifacts): show message, suggest using \`/spcb:continue\`
    - If \`state: "all_done"\`: congratulate, suggest archive
    - Otherwise: proceed to implementation
 
@@ -282,7 +282,7 @@ Working on task 4/7: <task description>
 - [x] Task 2
 ...
 
-All tasks complete! You can archive this change with \`/opsx:archive\`.
+All tasks complete! You can archive this change with \`/spcb:archive\`.
 \`\`\`
 
 **Output On Pause (Issue Encountered)**

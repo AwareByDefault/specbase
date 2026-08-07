@@ -26,9 +26,9 @@ No. OpenSpec works with 25+ assistants, including Claude Code, Cursor, Windsurf,
 
 ## Running commands
 
-### Where do I type `/opsx:propose`?
+### Where do I type `/spcb:propose`?
 
-In your AI assistant's chat, not your terminal. This is the single most common point of confusion, so it has its own page: [How Commands Work](how-commands-work.md). Short version: `openspec ...` runs in the terminal, `/opsx:...` runs in chat.
+In your AI assistant's chat, not your terminal. This is the single most common point of confusion, so it has its own page: [How Commands Work](how-commands-work.md). Short version: `openspec ...` runs in the terminal, `/spcb:...` runs in chat.
 
 ### How do I "start interactive mode"?
 
@@ -36,41 +36,41 @@ There isn't a separate mode to start. You open your AI assistant like normal and
 
 ### I typed a slash command and nothing happened. Why?
 
-Most likely you typed it in the terminal instead of your AI chat, or the commands aren't installed yet. Run `openspec update` in your project, restart your assistant, then try typing `/opsx` in chat and watch for autocomplete. [Troubleshooting](troubleshooting.md#commands-dont-show-up) has the full checklist.
+Most likely you typed it in the terminal instead of your AI chat, or the commands aren't installed yet. Run `openspec update` in your project, restart your assistant, then try typing `/spcb` in chat and watch for autocomplete. [Troubleshooting](troubleshooting.md#commands-dont-show-up) has the full checklist.
 
-### Why is the syntax `/opsx:propose` in one tool and `/opsx-propose` in another?
+### Why is the syntax `/spcb:propose` in one tool and `/spcb-propose` in another?
 
 Each AI tool surfaces custom commands a little differently. The intent is identical; only the punctuation changes. Type a slash in your chat and the autocomplete shows you the form your tool expects. The per-tool table is in [How Commands Work](how-commands-work.md#slash-command-syntax-by-tool).
 
 ### What's the difference between a skill and a command?
 
-Both are files OpenSpec writes so your assistant can run the workflow. Skills (`.../skills/openspec-*/SKILL.md`) are the newer cross-tool standard; commands (`.../commands/opsx-*`) are the older per-tool slash files. You don't need to pick. You just type the slash command, and OpenSpec installs whichever your tool uses.
+Both are files OpenSpec writes so your assistant can run the workflow. Skills (`.../skills/openspec-*/SKILL.md`) are the newer cross-tool standard; commands (`.../commands/spcb-*`) are the older per-tool slash files. You don't need to pick. You just type the slash command, and OpenSpec installs whichever your tool uses.
 
 ## The workflow
 
 ### Where should I start if I'm not sure what to build?
 
-With `/opsx:explore`. It's a no-stakes thinking partner that reads your codebase, lays out options, and turns a fuzzy problem into a concrete plan, all before any change or code exists. It's in the default profile, so it's always available. When the plan is clear, it hands off to `/opsx:propose`. This is the single best habit to form, because it stops an eager AI from confidently building the wrong thing. See [Explore First](explore.md).
+With `/spcb:explore`. It's a no-stakes thinking partner that reads your codebase, lays out options, and turns a fuzzy problem into a concrete plan, all before any change or code exists. It's in the default profile, so it's always available. When the plan is clear, it hands off to `/spcb:propose`. This is the single best habit to form, because it stops an eager AI from confidently building the wrong thing. See [Explore First](explore.md).
 
 ### What's the simplest possible flow?
 
 ```text
-/opsx:explore (optional)   then   /opsx:propose <what you want>   then   /opsx:apply   then   /opsx:archive
+/spcb:explore (optional)   then   /spcb:propose <what you want>   then   /spcb:apply   then   /spcb:archive
 ```
 
 Explore to think it through, propose to draft the plan, apply to build it, archive to file it away. Skip explore when you already know exactly what you want.
 
-### What's the difference between `/opsx:propose` and `/opsx:new`?
+### What's the difference between `/spcb:propose` and `/spcb:new`?
 
-`/opsx:propose` is the default one-step command: it creates the change and drafts all the planning artifacts at once. `/opsx:new` is part of the expanded command set and only scaffolds an empty change, leaving you to create artifacts one at a time with `/opsx:continue` (or all at once with `/opsx:ff`). Use propose unless you want step-by-step control. See [Commands](commands.md).
+`/spcb:propose` is the default one-step command: it creates the change and drafts all the planning artifacts at once. `/spcb:new` is part of the expanded command set and only scaffolds an empty change, leaving you to create artifacts one at a time with `/spcb:continue` (or all at once with `/spcb:ff`). Use propose unless you want step-by-step control. See [Commands](commands.md).
 
 ### What are `core` and expanded profiles?
 
 A profile decides which slash commands get installed. **Core** (the default) gives you `propose`, `explore`, `apply`, `sync`, `archive`. The **expanded** set adds `new`, `continue`, `ff`, `verify`, `bulk-archive`, and `onboard` for finer control. Switch with `openspec config profile`, then apply with `openspec update`.
 
-### Do I need to run `/opsx:sync`?
+### Do I need to run `/spcb:sync`?
 
-Usually not. Sync merges a change's delta specs into your main specs, and `/opsx:archive` will offer to do it for you. Run sync manually only when you want the specs merged before archiving, for example on a long-running change. See [Commands](commands.md#opsxsync).
+Usually not. Sync merges a change's delta specs into your main specs, and `/spcb:archive` will offer to do it for you. Run sync manually only when you want the specs merged before archiving, for example on a long-running change. See [Commands](commands.md#spcbsync).
 
 ### How do I edit a proposal, spec, or task after I've started?
 
@@ -78,11 +78,11 @@ Just edit the file. Every artifact is plain Markdown in `openspec/changes/<name>
 
 ### Can I go back and change the plan after implementing some of it?
 
-Yes, at any time. The workflow is fluid, so review and editing aren't phases you get locked out of. Edit the artifact, then continue. If you want a structured check that the code still matches the plan, run `/opsx:verify`. See [Editing & Iterating on a Change](editing-changes.md#how-do-i-go-back-to-review-after-implementing).
+Yes, at any time. The workflow is fluid, so review and editing aren't phases you get locked out of. Edit the artifact, then continue. If you want a structured check that the code still matches the plan, run `/spcb:verify`. See [Editing & Iterating on a Change](editing-changes.md#how-do-i-go-back-to-review-after-implementing).
 
 ### I edited the code by hand. How do I reconcile it with the spec?
 
-Bring them back in sync before you archive, since archiving makes your specs the record of truth. If the code is now correct, update the delta spec to match what you shipped; if the spec is correct, keep building until the code agrees. `/opsx:verify` surfaces the mismatches. See [Editing & Iterating on a Change](editing-changes.md#i-edited-the-code-by-hand-how-do-i-reconcile-that-with-openspec).
+Bring them back in sync before you archive, since archiving makes your specs the record of truth. If the code is now correct, update the delta spec to match what you shipped; if the spec is correct, keep building until the code agrees. `/spcb:verify` surfaces the mismatches. See [Editing & Iterating on a Change](editing-changes.md#i-edited-the-code-by-hand-how-do-i-reconcile-that-with-openspec).
 
 ### When should I update an existing change versus start a new one?
 
@@ -90,7 +90,7 @@ Update when it's the same work, refined. Start fresh when the intent fundamental
 
 ### What if my session runs out of context, or requirements change mid-implementation?
 
-This is where specs earn their keep. Because the plan lives in files (not only in chat history), you can clear your context, start a fresh AI session, and pick up with `/opsx:apply`; it reads the artifacts and resumes from the first unchecked task. If requirements change, edit the artifacts to match the new reality and continue. Keeping a clean context window also produces better results; clear it before implementation.
+This is where specs earn their keep. Because the plan lives in files (not only in chat history), you can clear your context, start a fresh AI session, and pick up with `/spcb:apply`; it reads the artifacts and resumes from the first unchecked task. If requirements change, edit the artifacts to match the new reality and continue. Keeping a clean context window also produces better results; clear it before implementation.
 
 ### Should I commit the `openspec/` folder to git?
 

@@ -275,7 +275,7 @@ async function validateGovernedSpec(
 export function registerSpecCommand(rootProgram: typeof program) {
   const specCommand = rootProgram
     .command('spec')
-    .description('Manage and view OpenSpec specifications');
+    .description('Manage and view Specbase specifications');
 
   // Deprecation notice for noun-based commands
   specCommand.hook('preAction', () => {
