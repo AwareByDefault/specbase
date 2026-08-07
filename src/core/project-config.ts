@@ -3,6 +3,8 @@ import path from 'path';
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
 
+import { resolvePlanningDirName } from './planning-dir.js';
+
 /**
  * Zod schema for project configuration.
  *
@@ -12,9 +14,9 @@ import { z } from 'zod';
  * 3. Runtime validation - uses safeParse() for resilient field-by-field validation
  *
  * Why Zod over manual validation:
- * - Helps understand OpenSpec's data interfaces at a glance
+ * - Helps understand Specbase's data interfaces at a glance
  * - Single source of truth for type and validation
- * - Consistent with other OpenSpec schemas
+ * - Consistent with other Specbase schemas
  */
 export const ProjectConfigSchema = z.object({
   // Required: which schema to use (e.g., "spec-driven", or project-local schema name)
@@ -45,12 +47,12 @@ export const ProjectConfigSchema = z.object({
   // parses would only drift from the real behavior.
 
   // Optional: the declared default store. Only consulted by root
-  // resolution when this openspec/ directory is config-only (no specs/
+  // resolution when this specbase/ directory is config-only (no specs/
   // or changes/); a fallback, never an override.
   store: z
     .string()
     .optional()
-    .describe('Store id used as the OpenSpec root when no local planning shape exists'),
+    .describe('Store id used as the Specbase root when no local planning shape exists'),
 
   // Optional: project-level spec-model overrides. `specModel.planes:` replaces
   // the schema's default plane set; `specModel.planes+:` appends to it. Plane
@@ -151,7 +153,7 @@ function parseDeclarationList(raw: unknown): DeclarationEntry[] | undefined {
 export const MAX_CONTEXT_SIZE = 50 * 1024; // 50KB hard limit, shared with the references index
 
 /**
- * Read and parse openspec/config.yaml from project root.
+ * Read and parse specbase/config.yaml from project root.
  * Uses resilient parsing - validates each field independently using Zod safeParse.
  * Returns null if file doesn't exist.
  * Returns partial config if some fields are invalid (with warnings).
@@ -166,7 +168,7 @@ export const MAX_CONTEXT_SIZE = 50 * 1024; // 50KB hard limit, shared with the r
  * invalidation logic) for negligible benefit. Direct reads also ensure config
  * changes are reflected immediately without stale cache issues.
  *
- * @param projectRoot - The root directory of the project (where `openspec/` lives)
+ * @param projectRoot - The root directory of the project (where `specbase/` lives)
  * @returns Parsed config or null if file doesn't exist
  */
 export function readProjectConfig(projectRoot: string): ProjectConfig | null {
@@ -180,7 +182,7 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
     const raw = parseYaml(content);
 
     if (!raw || typeof raw !== 'object') {
-      console.warn(`openspec/config.yaml is not a valid YAML object`);
+      console.warn(`specbase/config.yaml is not a valid YAML object`);
       return null;
     }
 
@@ -293,7 +295,10 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
 }
 
 function configPathForWarnings(projectRoot: string): string {
-  return resolveConfigFilePath(projectRoot) ?? path.join(projectRoot, 'openspec', 'config.yaml');
+  return (
+    resolveConfigFilePath(projectRoot) ??
+    path.join(projectRoot, resolvePlanningDirName(projectRoot), 'config.yaml')
+  );
 }
 
 /**
@@ -373,7 +378,7 @@ export function suggestSchemas(
   const builtIn = availableSchemas.filter((s) => s.isBuiltIn).map((s) => s.name);
   const projectLocal = availableSchemas.filter((s) => !s.isBuiltIn).map((s) => s.name);
 
-  let message = `Schema '${invalidSchemaName}' not found in openspec/config.yaml\n\n`;
+  let message = `Schema '${invalidSchemaName}' not found in specbase/config.yaml\n\n`;
 
   if (suggestions.length > 0) {
     message += `Did you mean one of these?\n`;
@@ -394,7 +399,7 @@ export function suggestSchemas(
     message += `  Project-local: (none found)\n`;
   }
 
-  message += `\nFix: Edit openspec/config.yaml and change 'schema: ${invalidSchemaName}' to a valid schema name`;
+  message += `\nFix: Edit specbase/config.yaml and change 'schema: ${invalidSchemaName}' to a valid schema name`;
 
   return message;
 }
@@ -417,7 +422,7 @@ export interface StorePointerRead {
 /**
  * Warning-silent targeted read of the `store:` pointer. Used by root
  * resolution (which must not re-emit the resilient parser's field
- * warnings) and by `openspec init`'s pointer guard. Unlike
+ * warnings) and by `specbase init`'s pointer guard. Unlike
  * `readProjectConfig`, a malformed value is REPORTED, not dropped —
  * a dropped pointer would silently flip where work lands.
  */
@@ -450,11 +455,12 @@ export function readStorePointer(projectRoot: string): StorePointerRead {
 
 /** Shared .yaml/.yml probe used by readProjectConfig and readStorePointer. */
 export function resolveConfigFilePath(projectRoot: string): string | null {
-  const yamlPath = path.join(projectRoot, 'openspec', 'config.yaml');
+  const planningDirName = resolvePlanningDirName(projectRoot);
+  const yamlPath = path.join(projectRoot, planningDirName, 'config.yaml');
   if (existsSync(yamlPath)) {
     return yamlPath;
   }
-  const ymlPath = path.join(projectRoot, 'openspec', 'config.yml');
+  const ymlPath = path.join(projectRoot, planningDirName, 'config.yml');
   return existsSync(ymlPath) ? ymlPath : null;
 }
 
@@ -465,8 +471,8 @@ export function storePointerProblem(reason: 'unparseable' | 'non_string'): strin
     : 'the store key must be a single store id string';
 }
 
-export interface OpenSpecDirClassification {
-  /** True when openspec/specs or openspec/changes exists as a directory. */
+export interface SpecbaseDirClassification {
+  /** True when specbase/specs or specbase/changes exists as a directory. */
   hasPlanningShape: boolean;
   pointer: StorePointerRead;
 }
@@ -476,11 +482,11 @@ export interface OpenSpecDirClassification {
  * by root resolution and the init pointer guard so they can never
  * disagree (slice 3.2).
  */
-export function classifyOpenSpecDir(projectRoot: string): OpenSpecDirClassification {
-  const openspecDir = path.join(projectRoot, 'openspec');
+export function classifySpecbaseDir(projectRoot: string): SpecbaseDirClassification {
+  const specbaseDir = path.join(projectRoot, resolvePlanningDirName(projectRoot));
   const hasPlanningShape =
-    isDirectorySync(path.join(openspecDir, 'specs')) ||
-    isDirectorySync(path.join(openspecDir, 'changes'));
+    isDirectorySync(path.join(specbaseDir, 'specs')) ||
+    isDirectorySync(path.join(specbaseDir, 'changes'));
   return { hasPlanningShape, pointer: readStorePointer(projectRoot) };
 }
 

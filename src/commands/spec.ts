@@ -8,6 +8,7 @@ import type { RootOutput } from '../core/root-selection.js';
 import { isInteractive } from '../utils/interactive.js';
 import { getSpecIds } from '../utils/item-discovery.js';
 import { resolveProjectSpecModel } from '../core/shared/skill-generation.js';
+import { planningDir, resolvePlanningDirName } from '../core/config.js';
 import { ListCommand } from '../core/list.js';
 import {
   loadGovernedRepository,
@@ -21,7 +22,11 @@ import {
 } from '../core/artifact-graph/governed-show.js';
 import { validateGovernedPairs } from '../core/artifact-graph/governed-validate.js';
 
-const SPECS_DIR = 'openspec/specs';
+// cwd-based planning specs dir for the deprecated noun-form commands; resolved
+// at call time so it prefers specbase/ and falls back to an existing specbase/.
+function cwdSpecsDir(): string {
+  return join(resolvePlanningDirName(process.cwd()), 'specs');
+}
 
 interface ShowOptions {
   json?: boolean;
@@ -60,7 +65,7 @@ function filterSpec(spec: Spec, options: ShowOptions): Spec {
     scenarios: includeScenarios ? req.scenarios : [],
   }));
 
-  const metadata = spec.metadata ?? { version: '1.0.0', format: 'openspec' as const };
+  const metadata = spec.metadata ?? { version: '1.0.0', format: 'specbase' as const };
 
   return {
     name: spec.name,
@@ -87,7 +92,7 @@ export class SpecCommand {
   // deprecated noun-form commands stay cwd-based.
   constructor(rootPath?: string) {
     this.rootPath = rootPath;
-    this.specsDir = rootPath ? join(rootPath, 'openspec', 'specs') : SPECS_DIR;
+    this.specsDir = rootPath ? join(planningDir(rootPath), 'specs') : cwdSpecsDir();
   }
 
   async show(specId?: string, options: ShowOptions = {}): Promise<void> {
@@ -117,7 +122,7 @@ export class SpecCommand {
     if (!existsSync(specPath)) {
       // Root-aware callers get the absolute path; the cwd-based noun form
       // keeps its historical forward-slash relative message on all platforms.
-      const displayPath = this.rootPath ? specPath : `openspec/specs/${specId}/spec.md`;
+      const displayPath = this.rootPath ? specPath : `${resolvePlanningDirName(process.cwd())}/specs/${specId}/spec.md`;
       throw new Error(`Spec '${specId}' not found at ${displayPath}`);
     }
 
@@ -133,7 +138,7 @@ export class SpecCommand {
         overview: parsed.overview,
         requirementCount: filtered.requirements.length,
         requirements: filtered.requirements,
-        metadata: parsed.metadata ?? { version: '1.0.0', format: 'openspec' as const },
+        metadata: parsed.metadata ?? { version: '1.0.0', format: 'specbase' as const },
         ...(options.rootOutput ? { root: options.rootOutput } : {}),
       };
       console.log(JSON.stringify(output, null, 2));
@@ -155,7 +160,7 @@ export class SpecCommand {
     projectRoot: string
   ): Promise<void> {
     const planes = resolveProjectSpecModel(projectRoot).planes.map((p) => p.id);
-    const repository = await loadGovernedRepository(join(projectRoot, 'openspec'), planes);
+    const repository = await loadGovernedRepository(planningDir(projectRoot), planes);
 
     if (!specId) {
       const canPrompt = isInteractive(options);
@@ -219,7 +224,7 @@ async function validateGovernedSpec(
   projectRoot: string
 ): Promise<void> {
   const planes = resolveProjectSpecModel(projectRoot).planes.map((p) => p.id);
-  const repository = await loadGovernedRepository(join(projectRoot, 'openspec'), planes);
+  const repository = await loadGovernedRepository(planningDir(projectRoot), planes);
 
   let records = repository.discovery.pairs;
   let targeted = false;
@@ -275,11 +280,11 @@ async function validateGovernedSpec(
 export function registerSpecCommand(rootProgram: typeof program) {
   const specCommand = rootProgram
     .command('spec')
-    .description('Manage and view OpenSpec specifications');
+    .description('Manage and view Specbase specifications');
 
   // Deprecation notice for noun-based commands
   specCommand.hook('preAction', () => {
-    console.error('Warning: The "openspec spec ..." commands are deprecated. Prefer verb-first commands (e.g., "openspec show", "openspec validate --specs").');
+    console.error('Warning: The "specbase spec ..." commands are deprecated. Prefer verb-first commands (e.g., "specbase show", "specbase validate --specs").');
   });
 
   specCommand
@@ -314,15 +319,16 @@ export function registerSpecCommand(rootProgram: typeof program) {
           return;
         }
 
-        if (!existsSync(SPECS_DIR)) {
+        const specsDir = cwdSpecsDir();
+        if (!existsSync(specsDir)) {
           console.log('No items found');
           return;
         }
 
-        const specs = readdirSync(SPECS_DIR, { withFileTypes: true })
+        const specs = readdirSync(specsDir, { withFileTypes: true })
           .filter(dirent => dirent.isDirectory())
           .map(dirent => {
-            const specPath = join(SPECS_DIR, dirent.name, 'spec.md');
+            const specPath = join(specsDir, dirent.name, 'spec.md');
             if (existsSync(specPath)) {
               try {
                 const spec = parseSpecFromFile(specPath, dirent.name);
@@ -395,10 +401,10 @@ export function registerSpecCommand(rootProgram: typeof program) {
           }
         }
 
-        const specPath = join(SPECS_DIR, specId, 'spec.md');
-        
+        const specPath = join(cwdSpecsDir(), specId, 'spec.md');
+
         if (!existsSync(specPath)) {
-          throw new Error(`Spec '${specId}' not found at openspec/specs/${specId}/spec.md`);
+          throw new Error(`Spec '${specId}' not found at ${resolvePlanningDirName(process.cwd())}/specs/${specId}/spec.md`);
         }
 
         const validator = new Validator(options.strict);

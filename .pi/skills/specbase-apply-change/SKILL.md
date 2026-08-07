@@ -1,18 +1,18 @@
 ---
-name: openspec-apply-change
-description: Implement tasks from an OpenSpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.
-allowed-tools: Bash(openspec:*)
+name: specbase-apply-change
+description: Implement tasks from a Specbase change. Use when the user wants to start implementing, continue implementation, or work through tasks.
+allowed-tools: Bash(specbase:*)
 license: MIT
-compatibility: Requires openspec CLI.
+compatibility: Requires specbase CLI.
 metadata:
-  author: openspec
+  author: specbase
   version: "1.0"
   generatedBy: "1.6.0"
 ---
 
-Implement tasks from an OpenSpec change.
+Implement tasks from a Specbase change.
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
+**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
@@ -23,13 +23,13 @@ Implement tasks from an OpenSpec change.
    If a name is provided, use it. Otherwise:
    - Infer from conversation context if the user mentioned a change
    - Auto-select if only one active change exists
-   - If ambiguous, run `openspec list --json` to get available changes and use the **AskUserQuestion tool** to let the user select
+   - If ambiguous, run `specbase list --json` to get available changes and use the **AskUserQuestion tool** to let the user select
 
    Always announce: "Using change: <name>" and how to override (e.g., `/spcb-apply <other>`).
 
 2. **Check status to understand the schema**
    ```bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    ```
    Parse the JSON to understand:
    - `schemaName`: The workflow being used (e.g., "spec-driven")
@@ -39,7 +39,7 @@ Implement tasks from an OpenSpec change.
 3. **Get apply instructions**
 
    ```bash
-   openspec instructions apply --change "<name>" --json
+   specbase instructions apply --change "<name>" --json
    ```
 
    This returns:
@@ -49,7 +49,7 @@ Implement tasks from an OpenSpec change.
    - Dynamic instruction based on current state
 
    **Handle states:**
-   - If `state: "blocked"` (missing artifacts): show message, suggest using openspec-continue-change
+   - If `state: "blocked"` (missing artifacts): show message, suggest using specbase-continue-change
    - If `state: "all_done"`: congratulate, suggest archive
    - Otherwise: proceed to implementation
 
@@ -164,14 +164,14 @@ This skill supports the "actions on a change" model:
 This project uses the governed spec model (2 permanent truth planes with paired enforcement). Do NOT assume the flat `specs/<capability>/spec.md` layout.
 
 **Confirm the model from the CLI, do not guess:**
-- Run `openspec status --change "<name>" --json` and read `specModel`.
+- Run `specbase status --change "<name>" --json` and read `specModel`.
 - The governed model reports `specModel.kind == "governed"` with
   `planes: [behavior, architecture]` and `pairedEnforcement: true`.
 - If `specModel.kind` is `legacy` (or absent), follow the flat-spec guidance
   above unchanged.
 
 **Under the governed model, derive concrete paths from CLI output** (`status`
-`artifactPaths` and `openspec instructions <artifact> --change ... --json`),
+`artifactPaths` and `specbase instructions <artifact> --change ... --json`),
 never hardcode them. Durable truth lives in the declared planes:
 - behavior: User/client-visible outcomes (enforcement: tests / property tests) → `specs/behavior/<locator>/{spec.md,enforcement.md}`
 - architecture: Package responsibilities, boundaries, and structural invariants (enforcement: lint / static-analysis / conformance) → `specs/architecture/<locator>/{spec.md,enforcement.md}`
@@ -208,6 +208,6 @@ Apply implements BOTH the product/architecture change and its declared evidence:
 - **Assess retired-target cleanup safely.** When reconciliation reports a retired
   test, rule, fixture, or review target, check surviving bindings and project usage
   before removing it. Never auto-delete a shared or intentionally retained target.
-- **Consult `openspec coverage` (and `openspec coverage --json`) for the
+- **Consult `specbase coverage` (and `specbase coverage --json`) for the
   aggregated coverage health signal** while resolving bindings - the same view
   exploration and verification consume.

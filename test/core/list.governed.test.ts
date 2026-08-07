@@ -31,7 +31,7 @@ async function writePair(
   locator: string,
   opts: { spec?: string; enforcement?: string; target?: string }
 ): Promise<void> {
-  const dir = path.join(tempDir, 'openspec', 'specs', ...locator.split('/'));
+  const dir = path.join(tempDir, 'specbase', 'specs', ...locator.split('/'));
   await fs.mkdir(dir, { recursive: true });
   if (opts.spec !== undefined) {
     await fs.writeFile(path.join(dir, 'spec.md'), opts.spec);
@@ -47,13 +47,13 @@ async function writePair(
 }
 
 async function writeConfig(schema: string): Promise<void> {
-  const openspec = path.join(tempDir, 'openspec');
-  await fs.mkdir(openspec, { recursive: true });
-  await fs.writeFile(path.join(openspec, 'config.yaml'), `schema: ${schema}\n`);
+  const specbase = path.join(tempDir, 'specbase');
+  await fs.mkdir(specbase, { recursive: true });
+  await fs.writeFile(path.join(specbase, 'config.yaml'), `schema: ${schema}\n`);
 }
 
 beforeEach(async () => {
-  tempDir = path.join(os.tmpdir(), `openspec-list-gov-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  tempDir = path.join(os.tmpdir(), `specbase-list-gov-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   await fs.mkdir(tempDir, { recursive: true });
   originalLog = console.log;
   logOutput = [];

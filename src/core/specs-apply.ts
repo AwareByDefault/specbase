@@ -16,6 +16,7 @@ import {
 } from './parsers/requirement-blocks.js';
 import { findMainSpecStructureIssues } from './parsers/spec-structure.js';
 import { Validator } from './validation/validator.js';
+import { resolvePlanningDirName } from './planning-dir.js';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -377,7 +378,7 @@ export async function writeUpdatedSpec(
   if (options.silent) return;
 
   const specName = path.basename(path.dirname(update.target));
-  console.log(`Applying changes to ${options.displayPath ?? `openspec/specs/${specName}/spec.md`}:`);
+  console.log(`Applying changes to ${options.displayPath ?? `specbase/specs/${specName}/spec.md`}:`);
   if (counts.added) console.log(`  + ${counts.added} added`);
   if (counts.modified) console.log(`  ~ ${counts.modified} modified`);
   if (counts.removed) console.log(`  - ${counts.removed} removed`);
@@ -444,8 +445,9 @@ export async function applySpecs(
     silent?: boolean;
   } = {}
 ): Promise<SpecsApplyOutput> {
-  const changeDir = path.join(projectRoot, 'openspec', 'changes', changeName);
-  const mainSpecsDir = path.join(projectRoot, 'openspec', 'specs');
+  const planningDirName = resolvePlanningDirName(projectRoot);
+  const changeDir = path.join(projectRoot, planningDirName, 'changes', changeName);
+  const mainSpecsDir = path.join(projectRoot, planningDirName, 'specs');
 
   // Verify change exists
   try {
@@ -511,14 +513,14 @@ export async function applySpecs(
       await fs.writeFile(p.update.target, p.rebuilt);
 
       if (!options.silent) {
-        console.log(`Applying changes to openspec/specs/${capability}/spec.md:`);
+        console.log(`Applying changes to ${planningDirName}/specs/${capability}/spec.md:`);
         if (p.counts.added) console.log(`  + ${p.counts.added} added`);
         if (p.counts.modified) console.log(`  ~ ${p.counts.modified} modified`);
         if (p.counts.removed) console.log(`  - ${p.counts.removed} removed`);
         if (p.counts.renamed) console.log(`  → ${p.counts.renamed} renamed`);
       }
     } else if (!options.silent) {
-      console.log(`Would apply changes to openspec/specs/${capability}/spec.md:`);
+      console.log(`Would apply changes to ${planningDirName}/specs/${capability}/spec.md:`);
       if (p.counts.added) console.log(`  + ${p.counts.added} added`);
       if (p.counts.modified) console.log(`  ~ ${p.counts.modified} modified`);
       if (p.counts.removed) console.log(`  - ${p.counts.removed} removed`);

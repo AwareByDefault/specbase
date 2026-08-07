@@ -1,8 +1,9 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { planningDir } from '../core/planning-dir.js';
 
 export async function getActiveChangeIds(root: string = process.cwd()): Promise<string[]> {
-  const changesPath = path.join(root, 'openspec', 'changes');
+  const changesPath = path.join(planningDir(root), 'changes');
   try {
     const entries = await fs.readdir(changesPath, { withFileTypes: true });
     const result: string[] = [];
@@ -23,7 +24,7 @@ export async function getActiveChangeIds(root: string = process.cwd()): Promise<
 }
 
 export async function getSpecIds(root: string = process.cwd()): Promise<string[]> {
-  const specsPath = path.join(root, 'openspec', 'specs');
+  const specsPath = path.join(planningDir(root), 'specs');
   const result: string[] = [];
   try {
     const entries = await fs.readdir(specsPath, { withFileTypes: true });
@@ -44,7 +45,7 @@ export async function getSpecIds(root: string = process.cwd()): Promise<string[]
 }
 
 export async function getArchivedChangeIds(root: string = process.cwd()): Promise<string[]> {
-  const archivePath = path.join(root, 'openspec', 'changes', 'archive');
+  const archivePath = path.join(planningDir(root), 'changes', 'archive');
   try {
     const entries = await fs.readdir(archivePath, { withFileTypes: true });
     const result: string[] = [];

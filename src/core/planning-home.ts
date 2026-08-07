@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import { planningDir } from './planning-dir.js';
 import { FileSystemUtils } from '../utils/file-system.js';
 
 export type PlanningHomeKind = 'repo';
@@ -58,7 +59,7 @@ function findNearestAncestor(startPath: string, predicate: (dirPath: string) => 
 
 export function findRepoPlanningRootSync(startPath = process.cwd()): string | null {
   return findNearestAncestor(startPath, (dirPath) =>
-    pathExistsAsDirectory(path.join(dirPath, 'openspec'))
+    pathExistsAsDirectory(planningDir(dirPath))
   );
 }
 
@@ -66,7 +67,7 @@ function repoPlanningHome(repoRoot: string): PlanningHome {
   return {
     kind: 'repo',
     root: repoRoot,
-    changesDir: path.join(repoRoot, 'openspec', 'changes'),
+    changesDir: path.join(planningDir(repoRoot), 'changes'),
     defaultSchema: REPO_DEFAULT_SCHEMA,
   };
 }
@@ -83,7 +84,7 @@ export function resolveCurrentPlanningHomeSync(
   }
 
   if (options.allowImplicitRepoRoot === false) {
-    throw new Error('No OpenSpec planning home found from the current directory.');
+    throw new Error('No Specbase planning home found from the current directory.');
   }
 
   return repoPlanningHome(FileSystemUtils.canonicalizeExistingPath(searchStart));

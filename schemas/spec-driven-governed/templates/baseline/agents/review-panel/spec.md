@@ -3,7 +3,7 @@ id: agents.review-panel
 ---
 
 <!--
-  Planted by `openspec init` (governed model) when the user opts into agentic
+  Planted by `specbase init` (governed model) when the user opts into agentic
   review, as bootstrap scaffolding rather than through the change flow. It gives
   the review panel - the lens set that judges the governed planes - a governing
   spec. The operational artifact is the resolved lens set; this spec describes it

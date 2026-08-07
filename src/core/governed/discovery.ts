@@ -36,12 +36,12 @@ export interface GovernedDiscovery {
   unsafeLocators: UnsafeLocator[];
 }
 
-export function governedSpecsRoot(openspecRoot: string): string {
-  return path.join(openspecRoot, GOVERNED_SPECS_DIRNAME);
+export function governedSpecsRoot(specbaseRoot: string): string {
+  return path.join(specbaseRoot, GOVERNED_SPECS_DIRNAME);
 }
 
-export function planeRoot(openspecRoot: string, plane: SpecPlane): string {
-  return path.join(governedSpecsRoot(openspecRoot), plane);
+export function planeRoot(specbaseRoot: string, plane: SpecPlane): string {
+  return path.join(governedSpecsRoot(specbaseRoot), plane);
 }
 
 async function hasFile(dir: string, name: string): Promise<boolean> {
@@ -131,19 +131,19 @@ async function walkPlane(
 }
 
 /**
- * Discover every governed pair beneath the given openspec root by walking
+ * Discover every governed pair beneath the given specbase root by walking
  * every top-level directory under `specs/` as a plane root. Missing plane
  * directories are treated as empty, not errors. The optional `planes` filter,
  * when provided, RESTRICTS discovery to the named plane roots; when omitted,
  * every top-level directory under specs is walked so unknown planes are still surfaced.
  */
 export async function discoverGovernedPairs(
-  openspecRoot: string,
+  specbaseRoot: string,
   planes?: readonly SpecPlane[]
 ): Promise<GovernedDiscovery> {
   const out = { pairs: [] as GovernedPairRecord[], unsafe: [] as UnsafeLocator[] };
 
-  const specsRoot = governedSpecsRoot(openspecRoot);
+  const specsRoot = governedSpecsRoot(specbaseRoot);
   let entries: import('node:fs').Dirent[];
   try {
     entries = await fs.readdir(specsRoot, { withFileTypes: true });
@@ -156,7 +156,7 @@ export async function discoverGovernedPairs(
   const selected = planes && planes.length > 0 ? planeDirs.filter((p) => planes.includes(p)) : planeDirs;
 
   for (const plane of selected) {
-    const root = planeRoot(openspecRoot, plane);
+    const root = planeRoot(specbaseRoot, plane);
     await walkPlane(plane, root, [], root, out);
   }
 

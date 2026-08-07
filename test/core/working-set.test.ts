@@ -5,18 +5,18 @@ import {
   buildCodeWorkspaceJson,
   isAvailableMember,
 } from '../../src/core/working-set.js';
-import type { ResolvedOpenSpecRoot } from '../../src/core/root-selection.js';
+import type { ResolvedSpecbaseRoot } from '../../src/core/root-selection.js';
 import type { StoreDiagnostic } from '../../src/core/store/errors.js';
 
 const root = {
   path: '/team/store',
   source: 'store',
   storeId: 'team-context',
-  changesDir: '/team/store/openspec/changes',
-  specsDir: '/team/store/openspec/specs',
-  archiveDir: '/team/store/openspec/changes/archive',
+  changesDir: '/team/store/specbase/changes',
+  specsDir: '/team/store/specbase/specs',
+  archiveDir: '/team/store/specbase/changes/archive',
   defaultSchema: 'spec-driven',
-} as ResolvedOpenSpecRoot;
+} as ResolvedSpecbaseRoot;
 
 const warn = (code: string): StoreDiagnostic => ({
   severity: 'warning',
@@ -41,12 +41,12 @@ describe('working-set assembly (4.1)', () => {
       path: '/team/store',
       source: 'store',
       store_id: 'team-context',
-      role: 'openspec_root',
+      role: 'specbase_root',
     });
     expect(workingSet.members.map((member) => member.id)).toEqual(['up', 'ghost']);
     // Fetch recipe only on available references.
     expect(workingSet.members[0].fetch).toBe(
-      'openspec show <spec-id> --type spec --store up'
+      'specbase show <spec-id> --type spec --store up'
     );
     expect('fetch' in workingSet.members[1]).toBe(false);
     // Availability rule: path AND empty status.

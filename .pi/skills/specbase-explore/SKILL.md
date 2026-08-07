@@ -1,22 +1,22 @@
 ---
-name: openspec-explore
+name: specbase-explore
 description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
-allowed-tools: Bash(openspec:*)
+allowed-tools: Bash(specbase:*)
 license: MIT
-compatibility: Requires openspec CLI.
+compatibility: Requires specbase CLI.
 metadata:
-  author: openspec
+  author: specbase
   version: "1.0"
   generatedBy: "1.6.0"
 ---
 
 Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
 
-**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create OpenSpec artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
+**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create Specbase artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
+**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
 
 ---
 
@@ -78,15 +78,15 @@ Depending on what the user brings, you might:
 
 ---
 
-## OpenSpec Awareness
+## Specbase Awareness
 
-You have full context of the OpenSpec system. Use it naturally, don't force it.
+You have full context of the Specbase system. Use it naturally, don't force it.
 
 ### Check for context
 
 At the start, quickly check what exists:
 ```bash
-openspec list --json
+specbase list --json
 ```
 
 This tells you:
@@ -106,7 +106,7 @@ Think freely. When insights crystallize, you might offer:
 If the user mentions a change or you detect one is relevant:
 
 1. **Resolve and read existing artifacts for context**
-   - Run `openspec status --change "<name>" --json`.
+   - Run `specbase status --change "<name>" --json`.
    - Use `changeRoot`, `artifactPaths`, and `actionContext` from the status JSON.
    - Read existing files from `artifactPaths.<artifact>.existingOutputPaths`.
 
@@ -280,7 +280,7 @@ But this summary is optional. Sometimes the thinking IS the value.
 
 ## Guardrails
 
-- **Don't implement** - Never write code or implement features. Creating OpenSpec artifacts is fine, writing application code is not.
+- **Don't implement** - Never write code or implement features. Creating Specbase artifacts is fine, writing application code is not.
 - **Don't fake understanding** - If something is unclear, dig deeper
 - **Don't rush** - Discovery is thinking time, not task time
 - **Don't force structure** - Let patterns emerge naturally
@@ -294,14 +294,14 @@ But this summary is optional. Sometimes the thinking IS the value.
 This project uses the governed spec model (6 permanent truth planes with paired enforcement). Do NOT assume the flat `specs/<capability>/spec.md` layout.
 
 **Confirm the model from the CLI, do not guess:**
-- Run `openspec status --change "<name>" --json` and read `specModel`.
+- Run `specbase status --change "<name>" --json` and read `specModel`.
 - The governed model reports `specModel.kind == "governed"` with
   `planes: [behavior, architecture, ops, code-quality, design-system, agents]` and `pairedEnforcement: true`.
 - If `specModel.kind` is `legacy` (or absent), follow the flat-spec guidance
   above unchanged.
 
 **Under the governed model, derive concrete paths from CLI output** (`status`
-`artifactPaths` and `openspec instructions <artifact> --change ... --json`),
+`artifactPaths` and `specbase instructions <artifact> --change ... --json`),
 never hardcode them. Durable truth lives in the declared planes:
 - behavior: User/client-visible outcomes that must remain true (enforcement: tests / property tests) → `specs/behavior/<locator>/{spec.md,enforcement.md}`
 - architecture: Package responsibilities, boundaries, and structural invariants (enforcement: lint / static-analysis / conformance) → `specs/architecture/<locator>/{spec.md,enforcement.md}`
@@ -332,7 +332,7 @@ constrain. Each agents `spec.md` **describes** an agent-operational artifact
 (`config.yaml`, the lens set, a `SKILL.md`, a hook) and its `enforcement.md`
 binds a **conformance/drift check** to that artifact using the ordinary
 mechanisms (`command`, `test`) — no new mechanism, and the spec never generates
-the artifact (the runtime keeps the artifact as its source of truth). `openspec
+the artifact (the runtime keeps the artifact as its source of truth). `specbase
 init` may PLANT baseline agents specs (`agents/spec-driven`, `agents/review-panel`)
 directly as scaffolding — the one exception to the proposal→spec→archive flow;
 edit a planted baseline through a change, never by re-running init.
@@ -340,7 +340,7 @@ edit a planted baseline through a change, never by re-running init.
 ### Health check first (governed)
 
 Open a governed explore session by consulting the aggregated coverage view:
-run `openspec coverage --json` and read the per-spec states and orphan
+run `specbase coverage --json` and read the per-spec states and orphan
 classes. Mention any rot or gaps in the areas the idea touches - hanging
 claims, stale bindings, **degraded** specs (covered only by review/manual
 evidence), broken targets, or orphaned enforcement - and factor that health
@@ -418,7 +418,7 @@ a SKILL.md, a hook) and is enforced by a conformance/drift check against it —
 the artifact stays the runtime source of truth; the spec never generates it.
 
 - For user-added planes beyond the defaults, fetch `specModel.planes` from
-  `openspec status --json` and match the claim to the plane whose declared
+  `specbase status --json` and match the claim to the plane whose declared
   `purpose` best fits the claim's nature. Do not force a claim into a plane
   whose purpose it does not match.
 - If the idea touches several planes, name a candidate locator in EACH touched
@@ -508,7 +508,7 @@ blind per-lens reviewers.
   part of the territory, list them in the review binding's `covered_by` so the
   lens reviews only the residue above the gate - the review surface shrinks as you
   harden, with no lens edit.
-- **Coverage makes the pressure visible.** `openspec coverage` reports each lens's
+- **Coverage makes the pressure visible.** `specbase coverage` reports each lens's
   review-claim load, un-lensed review claims, and split candidates - use it to
   decide when to grow a lens, split one, or harden a claim to automated. The tool
   surfaces the case; the human makes the call.

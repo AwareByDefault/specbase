@@ -25,22 +25,22 @@ function injectPiArgs(body: string): string {
 
 /**
  * Pi adapter for prompt template generation.
- * File path: .pi/prompts/opsx-<id>.md
+ * File path: .pi/prompts/spcb-<id>.md
  * Frontmatter: description
  *
  * Pi uses the filename (minus .md) as the slash command name, so
- * opsx-propose.md → /opsx-propose. Command references in the body
- * are transformed from /opsx: to /opsx- for consistency.
+ * spcb-propose.md → /spcb-propose. Command references in the body
+ * are transformed from /spcb: to /spcb- for consistency.
  */
 export const piAdapter: ToolCommandAdapter = {
   toolId: 'pi',
 
   getFilePath(commandId: string): string {
-    return path.join('.pi', 'prompts', `opsx-${commandId}.md`);
+    return path.join('.pi', 'prompts', `spcb-${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {
-    // Transform /opsx: references to /opsx- and inject $@ for template args
+    // Transform /spcb: references to /spcb- and inject $@ for template args
     const transformedBody = transformToHyphenCommands(content.body);
 
     return `---

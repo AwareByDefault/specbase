@@ -7,7 +7,8 @@ import path from 'path';
 import { promises as fs } from 'fs';
 import chalk from 'chalk';
 import { FileSystemUtils, removeMarkerBlock as removeMarkerBlockUtil } from '../utils/file-system.js';
-import { OPENSPEC_MARKERS } from './config.js';
+import { LEGACY_OPENSPEC_MARKERS } from './config.js';
+import { resolvePlanningDirName } from './planning-dir.js';
 
 /**
  * Legacy config file names from the old ToolRegistry.
@@ -50,11 +51,11 @@ export const LEGACY_SLASH_COMMAND_PATHS: Record<string, LegacySlashCommandPatter
   'roocode': { type: 'files', pattern: '.roo/commands/openspec-*.md' },
   'auggie': { type: 'files', pattern: '.augment/commands/openspec-*.md' },
   'factory': { type: 'files', pattern: '.factory/commands/openspec-*.md' },
-  'opencode': { type: 'files', pattern: ['.opencode/command/opsx-*.md', '.opencode/command/openspec-*.md'] },
+  'opencode': { type: 'files', pattern: ['.opencode/command/spcb-*.md', '.opencode/command/openspec-*.md'] },
   'continue': { type: 'files', pattern: '.continue/prompts/openspec-*.prompt' },
   'antigravity': { type: 'files', pattern: '.agent/workflows/openspec-*.md' },
   'iflow': { type: 'files', pattern: '.iflow/commands/openspec-*.md' },
-  'junie': { type: 'files', pattern: ['.junie/commands/opsx-*.md', '.junie/commands/openspec-*.md'] },
+  'junie': { type: 'files', pattern: ['.junie/commands/spcb-*.md', '.junie/commands/openspec-*.md'] },
   'qwen': { type: 'files', pattern: '.qwen/commands/openspec-*.toml' },
   'codex': { type: 'files', pattern: '.codex/prompts/openspec-*.md' },
 };
@@ -88,6 +89,8 @@ export interface LegacyDetectionResult {
   hasRootAgentsWithMarkers: boolean;
   /** Whether any legacy artifacts were found */
   hasLegacyArtifacts: boolean;
+  /** The resolved planning directory name (`specbase`, or a legacy `openspec`) */
+  planningDirName: string;
 }
 
 /**
@@ -108,6 +111,7 @@ export async function detectLegacyArtifacts(
     hasProjectMd: false,
     hasRootAgentsWithMarkers: false,
     hasLegacyArtifacts: false,
+    planningDirName: resolvePlanningDirName(projectPath),
   };
 
   // Detect legacy config files
@@ -275,12 +279,14 @@ export async function detectLegacyStructureFiles(
   let hasProjectMd = false;
   let hasRootAgentsWithMarkers = false;
 
-  // Check for openspec/AGENTS.md
-  const openspecAgentsPath = FileSystemUtils.joinPath(projectPath, 'openspec', 'AGENTS.md');
+  const planningDirName = resolvePlanningDirName(projectPath);
+
+  // Check for <planning-dir>/AGENTS.md
+  const openspecAgentsPath = FileSystemUtils.joinPath(projectPath, planningDirName, 'AGENTS.md');
   hasOpenspecAgents = await FileSystemUtils.fileExists(openspecAgentsPath);
 
-  // Check for openspec/project.md (for migration messaging, not deleted)
-  const projectMdPath = FileSystemUtils.joinPath(projectPath, 'openspec', 'project.md');
+  // Check for <planning-dir>/project.md (for migration messaging, not deleted)
+  const projectMdPath = FileSystemUtils.joinPath(projectPath, planningDirName, 'project.md');
   hasProjectMd = await FileSystemUtils.fileExists(projectMdPath);
 
   // Check for root AGENTS.md with OpenSpec markers
@@ -301,7 +307,7 @@ export async function detectLegacyStructureFiles(
  */
 export function hasOpenSpecMarkers(content: string): boolean {
   return (
-    content.includes(OPENSPEC_MARKERS.start) && content.includes(OPENSPEC_MARKERS.end)
+    content.includes(LEGACY_OPENSPEC_MARKERS.start) && content.includes(LEGACY_OPENSPEC_MARKERS.end)
   );
 }
 
@@ -312,15 +318,15 @@ export function hasOpenSpecMarkers(content: string): boolean {
  * @returns True if content outside markers is only whitespace
  */
 export function isOnlyOpenSpecContent(content: string): boolean {
-  const startIndex = content.indexOf(OPENSPEC_MARKERS.start);
-  const endIndex = content.indexOf(OPENSPEC_MARKERS.end);
+  const startIndex = content.indexOf(LEGACY_OPENSPEC_MARKERS.start);
+  const endIndex = content.indexOf(LEGACY_OPENSPEC_MARKERS.end);
 
   if (startIndex === -1 || endIndex === -1 || endIndex <= startIndex) {
     return false;
   }
 
   const before = content.substring(0, startIndex);
-  const after = content.substring(endIndex + OPENSPEC_MARKERS.end.length);
+  const after = content.substring(endIndex + LEGACY_OPENSPEC_MARKERS.end.length);
 
   return before.trim() === '' && after.trim() === '';
 }
@@ -334,7 +340,7 @@ export function isOnlyOpenSpecContent(content: string): boolean {
  * @returns Content with marker block removed
  */
 export function removeMarkerBlock(content: string): string {
-  return removeMarkerBlockUtil(content, OPENSPEC_MARKERS.start, OPENSPEC_MARKERS.end);
+  return removeMarkerBlockUtil(content, LEGACY_OPENSPEC_MARKERS.start, LEGACY_OPENSPEC_MARKERS.end);
 }
 
 /**
@@ -410,15 +416,16 @@ export async function cleanupLegacyArtifacts(
     }
   }
 
-  // Delete openspec/AGENTS.md (this is inside openspec/, it's OpenSpec-managed)
+  // Delete <planning-dir>/AGENTS.md (this is inside the planning dir, it's OpenSpec-managed)
   if (detection.hasOpenspecAgents) {
-    const agentsPath = FileSystemUtils.joinPath(projectPath, 'openspec', 'AGENTS.md');
+    const planningDirName = resolvePlanningDirName(projectPath);
+    const agentsPath = FileSystemUtils.joinPath(projectPath, planningDirName, 'AGENTS.md');
     if (await FileSystemUtils.fileExists(agentsPath)) {
       try {
         await fs.unlink(agentsPath);
-        result.deletedFiles.push('openspec/AGENTS.md');
+        result.deletedFiles.push(`${planningDirName}/AGENTS.md`);
       } catch (error: any) {
-        result.errors.push(`Failed to delete openspec/AGENTS.md: ${error.message}`);
+        result.errors.push(`Failed to delete ${planningDirName}/AGENTS.md: ${error.message}`);
       }
     }
   }
@@ -447,7 +454,7 @@ export function formatCleanupSummary(result: CleanupResult): string {
     }
 
     for (const dir of result.deletedDirs) {
-      lines.push(`  ✓ Removed ${dir}/ (replaced by /opsx:*)`);
+      lines.push(`  ✓ Removed ${dir}/ (replaced by /spcb:*)`);
     }
 
     for (const file of result.modifiedFiles) {
@@ -498,9 +505,12 @@ function buildRemovalsList(detection: LegacyDetectionResult): Array<{ path: stri
     removals.push({ path: file, explanation: 'replaced by skills/' });
   }
 
-  // openspec/AGENTS.md (inside openspec/, it's OpenSpec-managed)
+  // <planning-dir>/AGENTS.md (inside the planning dir, it's tool-managed)
   if (detection.hasOpenspecAgents) {
-    removals.push({ path: 'openspec/AGENTS.md', explanation: 'obsolete workflow file' });
+    removals.push({
+      path: `${detection.planningDirName}/AGENTS.md`,
+      explanation: 'obsolete workflow file',
+    });
   }
 
   // Note: Config files (CLAUDE.md, AGENTS.md, etc.) are NEVER in the removals list
@@ -546,9 +556,9 @@ export function formatDetectionSummary(detection: LegacyDetectionResult): string
   }
 
   // Header - welcoming upgrade message
-  lines.push(chalk.bold('Upgrading to the new OpenSpec'));
+  lines.push(chalk.bold('Upgrading to the new Specbase'));
   lines.push('');
-  lines.push('OpenSpec now uses agent skills, the emerging standard across coding');
+  lines.push('Specbase now uses agent skills, the emerging standard across coding');
   lines.push('agents. This simplifies your setup while keeping everything working');
   lines.push('as before.');
   lines.push('');
@@ -642,8 +652,8 @@ export function formatProjectMdMigrationHint(): string {
   lines.push('  • openspec/project.md');
   lines.push(chalk.dim('    We won\'t delete this file. It may contain useful project context.'));
   lines.push('');
-  lines.push(chalk.dim('    The new openspec/config.yaml has a "context:" section for planning'));
-  lines.push(chalk.dim('    context. This is included in every OpenSpec request and works more'));
+  lines.push(chalk.dim('    The new config.yaml has a "context:" section for planning'));
+  lines.push(chalk.dim('    context. This is included in every Specbase request and works more'));
   lines.push(chalk.dim('    reliably than the old project.md approach.'));
   lines.push('');
   lines.push(chalk.dim('    Review project.md, move any useful content to config.yaml\'s context'));

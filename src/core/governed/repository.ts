@@ -31,16 +31,16 @@ export interface GovernedRepository {
 }
 
 /**
- * Discover, parse, and index every governed pair beneath `openspecRoot`. Reads
+ * Discover, parse, and index every governed pair beneath `specbaseRoot`. Reads
  * each pair's `spec.md` when present; incomplete/enforcement-only pairs are kept
  * with an empty parsed spec so callers can still report them. `planes` is the
  * resolved plane set; when omitted, the historical two-plane set is assumed.
  */
 export async function loadGovernedRepository(
-  openspecRoot: string,
+  specbaseRoot: string,
   planes?: readonly SpecPlane[]
 ): Promise<GovernedRepository> {
-  const discovery = await discoverGovernedPairs(openspecRoot, planes);
+  const discovery = await discoverGovernedPairs(specbaseRoot, planes);
 
   const indexedPairs: IndexedPair[] = [];
   const duplicateLocalIds = new Map<string, DuplicateLocalId[]>();

@@ -13,6 +13,7 @@ import type { GovernedWorkflowContext } from '../../core/artifact-graph/index.js
 import type { ReferenceIndexEntry } from '../../core/references.js';
 import { isRootSelectionError } from '../../core/root-selection.js';
 import { validateChangeName } from '../../utils/change-utils.js';
+import { planningDir } from '../../core/config.js';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -121,12 +122,12 @@ export function getStatusIndicator(status: 'done' | 'ready' | 'blocked'): string
 }
 
 /**
- * Returns the list of available change directory names under openspec/changes/.
+ * Returns the list of available change directory names under specbase/changes/.
  * Excludes the archive directory and hidden directories.
  */
 export async function getAvailableChanges(
   projectRoot: string,
-  changesDir = path.join(projectRoot, 'openspec', 'changes')
+  changesDir = path.join(planningDir(projectRoot), 'changes')
 ): Promise<string[]> {
   const changesPath = changesDir;
   try {
@@ -147,12 +148,12 @@ export async function getAvailableChanges(
 export async function validateChangeExists(
   changeName: string | undefined,
   projectRoot: string,
-  changesDir = path.join(projectRoot, 'openspec', 'changes'),
+  changesDir = path.join(planningDir(projectRoot), 'changes'),
   hints: { newChangeHint?: string } = {}
 ): Promise<string> {
   // Hints must stay pasteable: callers with a selected store pass a
   // store-carrying hint so following it lands in the same root.
-  const newChangeHint = hints.newChangeHint ?? 'openspec new change <name>';
+  const newChangeHint = hints.newChangeHint ?? 'specbase new change <name>';
 
   if (!changeName) {
     const available = await getAvailableChanges(projectRoot, changesDir);

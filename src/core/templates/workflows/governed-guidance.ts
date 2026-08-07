@@ -1,7 +1,7 @@
 /**
  * Governed-model workflow guidance (design decision 10).
  *
- * The canonical OPSX workflow templates are generated once into project-agnostic
+ * The canonical SPCB workflow templates are generated once into project-agnostic
  * skill/command files. To keep the legacy flat workflow byte-for-byte unchanged
  * while teaching governed projects the two-plane + paired-enforcement model, each
  * affected getter takes an OPTIONAL resolved spec model:
@@ -12,8 +12,8 @@
  *
  * The governed guidance itself never hardcodes plane paths or lifecycle rules as
  * ground truth for a specific project: it instructs the agent to CONFIRM the
- * governed model and read concrete artifact paths from `openspec status` /
- * `openspec instructions` output, satisfying "derive from CLI output rather than
+ * governed model and read concrete artifact paths from `specbase status` /
+ * `specbase instructions` output, satisfying "derive from CLI output rather than
  * hardcoding a flat capability layout".
  */
 import type { SpecModel } from '../../artifact-graph/types.js';
@@ -92,7 +92,7 @@ const DEFAULT_PLANE_TRIGGERS: Record<string, string> = {
     '- a review panel / lens set the repo runs over its own code;',
     '- a repo-specific skill, subagent, or command the repo builds for agents;',
     '- a hook (commit, CI, or tool hook) the repo installs as an agent guardrail;',
-    '- the repo’s use of the spec-driven workflow itself (opsx, its plane roster).',
+    '- the repo’s use of the spec-driven workflow itself (spcb, its plane roster).',
     'NOT a tool/language preference or safety rule for generated code — those ride',
     'on the plane whose subject they constrain (ops, code-quality, behavior).',
     'Each agents spec DESCRIBES an operational artifact (config.yaml, the lens set,',
@@ -131,7 +131,7 @@ constrain. Each agents \`spec.md\` **describes** an agent-operational artifact
 (\`config.yaml\`, the lens set, a \`SKILL.md\`, a hook) and its \`enforcement.md\`
 binds a **conformance/drift check** to that artifact using the ordinary
 mechanisms (\`command\`, \`test\`) — no new mechanism, and the spec never generates
-the artifact (the runtime keeps the artifact as its source of truth). \`openspec
+the artifact (the runtime keeps the artifact as its source of truth). \`specbase
 init\` may PLANT baseline agents specs (\`agents/spec-driven\`, \`agents/review-panel\`)
 directly as scaffolding — the one exception to the proposal→spec→archive flow;
 edit a planted baseline through a change, never by re-running init.`
@@ -141,14 +141,14 @@ edit a planted baseline through a change, never by re-running init.`
 This project uses the governed spec model (${planes.length} permanent truth plane${planes.length === 1 ? '' : 's'} with paired enforcement). Do NOT assume the flat \`specs/<capability>/spec.md\` layout.
 
 **Confirm the model from the CLI, do not guess:**
-- Run \`openspec status --change "<name>" --json\` and read \`specModel\`.
+- Run \`specbase status --change "<name>" --json\` and read \`specModel\`.
 - The governed model reports \`specModel.kind == "governed"\` with
   \`planes: [${planeIds.join(', ')}]\` and \`pairedEnforcement: true\`.
 - If \`specModel.kind\` is \`legacy\` (or absent), follow the flat-spec guidance
   above unchanged.
 
 **Under the governed model, derive concrete paths from CLI output** (\`status\`
-\`artifactPaths\` and \`openspec instructions <artifact> --change ... --json\`),
+\`artifactPaths\` and \`specbase instructions <artifact> --change ... --json\`),
 never hardcode them. Durable truth lives in the declared planes:
 ${planeLines.join('\n')}
 
@@ -237,7 +237,7 @@ coverage quota. Aim for deliberate, honest evidence, not a wall of tests:
   Use review/manual openly and first-class rather than faking automation.`;
 
 /**
- * explore (opsx-explore-skill spec): staged behavior -> architecture ->
+ * explore (spcb-explore-skill spec): staged behavior -> architecture ->
  * enforcement exploration, the dual-plane classifier, coverage-informed health
  * awareness, and the durable-insight classification table.
  */
@@ -246,7 +246,7 @@ export const GOVERNED_EXPLORE_GUIDANCE = (specModel: SpecModel) => `${buildGover
 ### Health check first (governed)
 
 Open a governed explore session by consulting the aggregated coverage view:
-run \`openspec coverage --json\` and read the per-spec states and orphan
+run \`specbase coverage --json\` and read the per-spec states and orphan
 classes. Mention any rot or gaps in the areas the idea touches - hanging
 claims, stale bindings, **degraded** specs (covered only by review/manual
 evidence), broken targets, or orphaned enforcement - and factor that health
@@ -285,7 +285,7 @@ trigger means a spec in that plane is in scope, not optional:
 ${buildPlaneTriggers(specModel)}
 
 - For user-added planes beyond the defaults, fetch \`specModel.planes\` from
-  \`openspec status --json\` and match the claim to the plane whose declared
+  \`specbase status --json\` and match the claim to the plane whose declared
   \`purpose\` best fits the claim's nature. Do not force a claim into a plane
   whose purpose it does not match.
 - If the idea touches several planes, name a candidate locator in EACH touched
@@ -353,7 +353,7 @@ blind per-lens reviewers.
   part of the territory, list them in the review binding's \`covered_by\` so the
   lens reviews only the residue above the gate - the review surface shrinks as you
   harden, with no lens edit.
-- **Coverage makes the pressure visible.** \`openspec coverage\` reports each lens's
+- **Coverage makes the pressure visible.** \`specbase coverage\` reports each lens's
   review-claim load, un-lensed review claims, and split candidates - use it to
   decide when to grow a lens, split one, or harden a claim to automated. The tool
   surfaces the case; the human makes the call.`;
@@ -371,7 +371,7 @@ export const GOVERNED_AUTHORING_GUIDANCE = `${GOVERNED_PRIMER}
   so, author **separate deltas for each plane**, each with its own stable spec ID.
 - **Create specifications THEN enforcement**, following the schema's artifact
   order (\`specs\` before \`enforcement\`). Get each artifact's guidance and output
-  path from \`openspec instructions <artifact> --change "<name>" --json\` and write
+  path from \`specbase instructions <artifact> --change "<name>" --json\` and write
   to the CLI-reported paths.
 - **Assign stable identity when authoring:** a project-unique spec \`id\` in the
   \`spec.md\` frontmatter, and pair-local \`**ID:**\` slugs for each requirement,
@@ -419,7 +419,7 @@ stable scoped identity, never by title. Legacy header-identity merging above doe
 NOT apply to governed pairs.
 
 - **Discover every concrete delta from status, not the filesystem shape.** Run
-  \`openspec status --change "<name>" --json\` and read every nested specification
+  \`specbase status --change "<name>" --json\` and read every nested specification
   AND enforcement delta path it reports; do not assume the flat
   \`specs/<capability>/spec.md\` layout.
 - **Resolve current pairs by stable identity.** For each delta, resolve the
@@ -458,8 +458,8 @@ normative truth, then reports evidence STRENGTH honestly. Core validates
 declaration shape only; the WORKFLOW executes commands and review procedures with
 your process tools.
 
-- **Assess enforcement COVERAGE first.** From \`openspec validate\` (or
-  \`openspec spec validate\`) plus \`openspec status --change "<name>" --json\`, load
+- **Assess enforcement COVERAGE first.** From \`specbase validate\` (or
+  \`specbase spec validate\`) plus \`specbase status --change "<name>" --json\`, load
   every affected \`spec.md\`/\`enforcement.md\` PAIR and map each requirement and
   scenario by its stable pair-local \`**ID:**\` to its covering bindings. Every
   mandatory (SHALL/MUST) requirement needs at least one complete **active** binding.
@@ -497,7 +497,7 @@ your process tools.
   affected binding, label its evidence as **automated**, **review**, **manual**, or
   **unenforced**. Block archive-readiness while any affected binding is \`planned\`,
   unenforced, unresolved, stale, broken, or missing its target.
-- **Consult \`openspec coverage\` (and \`openspec coverage --json\`) as the
+- **Consult \`specbase coverage\` (and \`specbase coverage --json\`) as the
   aggregated enforcement-coverage view backing this assessment** - per-spec
   states, strength mix, and orphaned enforcement in one health signal.
 
@@ -517,11 +517,11 @@ read-through. For the affected \`review\`/\`manual\` bindings:
 - **Report findings as \`review\`-strength, attributed by lens and severity.**
   Panel findings are weaker evidence by construction: they DO NOT by themselves
   mark the change ready or not-ready, do NOT flip verification readiness, and
-  NEVER block archive or \`openspec coverage --strict\` - those gate on structural
+  NEVER block archive or \`specbase coverage --strict\` - those gate on structural
   rot only. High-severity findings are refute-verified before being reported.
 - **Flag un-lensed review claims.** When an affected \`review\`/\`manual\` binding
   resolves to no defined lens, report it as an **un-lensed review** gap (the same
-  class \`openspec coverage\` surfaces) and suggest pointing it at an existing lens
+  class \`specbase coverage\` surfaces) and suggest pointing it at an existing lens
   or proposing a new/scoped one - never invent a lens on the fly.
 
 Legacy changes (\`specModel.kind == "legacy"\`) retain the heuristic requirement /
@@ -538,13 +538,13 @@ enforcement. The legacy artifact/task/delta prompts above still apply; the
 governed gate below is ADDITIONAL and authoritative.
 
 - **Require governed readiness BEFORE archiving.** Do not archive until the
-  affected \`spec.md\`/\`enforcement.md\` PAIRS validate together (\`openspec
-  validate\` / \`openspec spec validate\`), coverage is satisfied (no **hanging**
+  affected \`spec.md\`/\`enforcement.md\` PAIRS validate together (\`specbase
+  validate\` / \`specbase spec validate\`), coverage is satisfied (no **hanging**
   mandatory SHALL/MUST claims, no **stale** or uncovered bindings), every active
   binding's declared \`targets\` exist, and NO \`planned\`, unenforced, unresolved,
-  **broken**, or failing-mandatory bindings remain. Reuse the \`/opsx:verify\`
+  **broken**, or failing-mandatory bindings remain. Reuse the \`/spcb:verify\`
   results as the readiness evidence; if verification has not been run or does not
-  pass, block ordinary archive readiness and direct the user to \`/opsx:verify\`
+  pass, block ordinary archive readiness and direct the user to \`/spcb:verify\`
   or the explicit validation-bypass command. Interactive confirmation is NOT
   enforcement evidence - never treat a "proceed anyway" answer as proof the pair
   is enforced.
@@ -612,7 +612,7 @@ Apply implements BOTH the product/architecture change and its declared evidence:
 - **Assess retired-target cleanup safely.** When reconciliation reports a retired
   test, rule, fixture, or review target, check surviving bindings and project usage
   before removing it. Never auto-delete a shared or intentionally retained target.
-- **Consult \`openspec coverage\` (and \`openspec coverage --json\`) for the
+- **Consult \`specbase coverage\` (and \`specbase coverage --json\`) for the
   aggregated coverage health signal** while resolving bindings - the same view
   exploration and verification consume.`;
 
@@ -648,8 +648,8 @@ architecture. Weave the following into the phases:
   **review**, **manual**, and **planned** evidence honestly (a passing command is
   not proof of semantic correspondence); and demonstrate how stable IDs expose
   **stale** bindings (covering a removed ID) and **hanging** claims (a mandatory
-  requirement with no covering binding), which \`openspec list\` and
-  \`openspec validate\` surface.
+  requirement with no covering binding), which \`specbase list\` and
+  \`specbase validate\` surface.
 - **Tasks.** Include implementation, **enforcement resolution** (planned ->
   active), **targeted verification**, and **retired-target assessment** as explicit
   task items.
@@ -658,14 +658,14 @@ architecture. Weave the following into the phases:
   actual \`targets\` before marking related work complete. When implementation
   removes a requirement or scenario, update its binding and assess the former
   \`targets\` for safe cleanup (never auto-delete). When all tasks are complete, run
-  governed verification (\`/opsx:verify\`) BEFORE transitioning to archive.
+  governed verification (\`/spcb:verify\`) BEFORE transitioning to archive.
 - **Archive with explanation.** Explain that specification and enforcement deltas
   update each affected pair TOGETHER, run the schema-aware governed archive, and
   show the dated archive location, the updated current locators, and any cleanup
   candidates. Explain that the archived **proposal and design preserve WHY** the
   transition occurred, while the current architectural spec states only what must be
   true NOW - historical rationale lives in the dated archive, not in current truth.
-- **Point to governed surfaces.** Show that \`openspec status\`, \`list\`, \`show\`,
+- **Point to governed surfaces.** Show that \`specbase status\`, \`list\`, \`show\`,
   \`spec\`, and \`validate\` report governed locators, stable IDs, pair status, and
   coverage, and that the governed workflow skills (explore, propose, apply, verify,
   sync, archive) understand both planes.`;

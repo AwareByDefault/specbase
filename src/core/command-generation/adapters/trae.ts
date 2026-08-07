@@ -31,14 +31,14 @@ function escapeYamlValue(value: string): string {
 
 /**
  * Trae adapter for command generation.
- * File path: .trae/commands/opsx-<id>.md
+ * File path: .trae/commands/spcb-<id>.md
  * Frontmatter: name, description
  */
 export const traeAdapter: ToolCommandAdapter = {
   toolId: 'trae',
 
   getFilePath(commandId: string): string {
-    return path.join('.trae', 'commands', `opsx-${commandId}.md`);
+    return path.join('.trae', 'commands', `spcb-${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

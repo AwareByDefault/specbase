@@ -16,21 +16,21 @@ import {
   getBulkArchiveChangeSkillTemplate,
   getVerifyChangeSkillTemplate,
   getOnboardSkillTemplate,
-  getOpsxProposeSkillTemplate,
+  getSpcbProposeSkillTemplate,
   getReviewPanelSkillTemplate,
   getReviewPanelCommandTemplate,
-  getOpsxExploreCommandTemplate,
-  getOpsxNewCommandTemplate,
-  getOpsxContinueCommandTemplate,
-  getOpsxApplyCommandTemplate,
-  getOpsxUpdateCommandTemplate,
-  getOpsxFfCommandTemplate,
-  getOpsxSyncCommandTemplate,
-  getOpsxArchiveCommandTemplate,
-  getOpsxBulkArchiveCommandTemplate,
-  getOpsxVerifyCommandTemplate,
-  getOpsxOnboardCommandTemplate,
-  getOpsxProposeCommandTemplate,
+  getSpcbExploreCommandTemplate,
+  getSpcbNewCommandTemplate,
+  getSpcbContinueCommandTemplate,
+  getSpcbApplyCommandTemplate,
+  getSpcbUpdateCommandTemplate,
+  getSpcbFfCommandTemplate,
+  getSpcbSyncCommandTemplate,
+  getSpcbArchiveCommandTemplate,
+  getSpcbBulkArchiveCommandTemplate,
+  getSpcbVerifyCommandTemplate,
+  getSpcbOnboardCommandTemplate,
+  getSpcbProposeCommandTemplate,
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
@@ -38,7 +38,7 @@ import type { SpecModel } from '../artifact-graph/types.js';
 import { LEGACY_SPEC_MODEL, resolveSpecModel } from '../artifact-graph/types.js';
 import { resolveSchema } from '../artifact-graph/resolver.js';
 import { readProjectConfig } from '../project-config.js';
-import { OPENSPEC_CLI_ALLOWED_TOOLS } from './allowed-tools.js';
+import { SPECBASE_CLI_ALLOWED_TOOLS } from './allowed-tools.js';
 import { isGovernedModel } from '../templates/workflows/governed-guidance.js';
 
 /** The project default schema when config declares none. */
@@ -174,7 +174,7 @@ export interface SkillTemplateEntry {
  * Command template with ID mapping.
  */
 export interface CommandTemplateEntry {
-  template: ReturnType<typeof getOpsxExploreCommandTemplate>;
+  template: ReturnType<typeof getSpcbExploreCommandTemplate>;
   id: string;
 }
 
@@ -188,18 +188,18 @@ export function getSkillTemplates(
   specModel?: SpecModel
 ): SkillTemplateEntry[] {
   const all: SkillTemplateEntry[] = [
-    { template: getExploreSkillTemplate(specModel), dirName: 'openspec-explore', workflowId: 'explore' },
-    { template: getNewChangeSkillTemplate(specModel), dirName: 'openspec-new-change', workflowId: 'new' },
-    { template: getContinueChangeSkillTemplate(specModel), dirName: 'openspec-continue-change', workflowId: 'continue' },
-    { template: getApplyChangeSkillTemplate(specModel), dirName: 'openspec-apply-change', workflowId: 'apply' },
-    { template: getUpdateChangeSkillTemplate(specModel), dirName: 'openspec-update-change', workflowId: 'update' },
-    { template: getFfChangeSkillTemplate(specModel), dirName: 'openspec-ff-change', workflowId: 'ff' },
-    { template: getSyncSpecsSkillTemplate(specModel), dirName: 'openspec-sync-specs', workflowId: 'sync' },
-    { template: getArchiveChangeSkillTemplate(specModel), dirName: 'openspec-archive-change', workflowId: 'archive' },
-    { template: getBulkArchiveChangeSkillTemplate(specModel), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
-    { template: getVerifyChangeSkillTemplate(specModel), dirName: 'openspec-verify-change', workflowId: 'verify' },
-    { template: getOnboardSkillTemplate(specModel), dirName: 'openspec-onboard', workflowId: 'onboard' },
-    { template: getOpsxProposeSkillTemplate(specModel), dirName: 'openspec-propose', workflowId: 'propose' },
+    { template: getExploreSkillTemplate(specModel), dirName: 'specbase-explore', workflowId: 'explore' },
+    { template: getNewChangeSkillTemplate(specModel), dirName: 'specbase-new-change', workflowId: 'new' },
+    { template: getContinueChangeSkillTemplate(specModel), dirName: 'specbase-continue-change', workflowId: 'continue' },
+    { template: getApplyChangeSkillTemplate(specModel), dirName: 'specbase-apply-change', workflowId: 'apply' },
+    { template: getUpdateChangeSkillTemplate(specModel), dirName: 'specbase-update-change', workflowId: 'update' },
+    { template: getFfChangeSkillTemplate(specModel), dirName: 'specbase-ff-change', workflowId: 'ff' },
+    { template: getSyncSpecsSkillTemplate(specModel), dirName: 'specbase-sync-specs', workflowId: 'sync' },
+    { template: getArchiveChangeSkillTemplate(specModel), dirName: 'specbase-archive-change', workflowId: 'archive' },
+    { template: getBulkArchiveChangeSkillTemplate(specModel), dirName: 'specbase-bulk-archive-change', workflowId: 'bulk-archive' },
+    { template: getVerifyChangeSkillTemplate(specModel), dirName: 'specbase-verify-change', workflowId: 'verify' },
+    { template: getOnboardSkillTemplate(specModel), dirName: 'specbase-onboard', workflowId: 'onboard' },
+    { template: getSpcbProposeSkillTemplate(specModel), dirName: 'specbase-propose', workflowId: 'propose' },
   ];
 
   const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
@@ -219,7 +219,7 @@ export function getSkillTemplates(
   if (isGovernedModel(specModel)) {
     selected.push({
       template: getReviewPanelSkillTemplate(),
-      dirName: 'openspec-review-panel',
+      dirName: 'specbase-review-panel',
       workflowId: 'review-panel',
     });
   }
@@ -237,18 +237,18 @@ export function getCommandTemplates(
   specModel?: SpecModel
 ): CommandTemplateEntry[] {
   const all: CommandTemplateEntry[] = [
-    { template: getOpsxExploreCommandTemplate(specModel), id: 'explore' },
-    { template: getOpsxNewCommandTemplate(specModel), id: 'new' },
-    { template: getOpsxContinueCommandTemplate(specModel), id: 'continue' },
-    { template: getOpsxApplyCommandTemplate(specModel), id: 'apply' },
-    { template: getOpsxUpdateCommandTemplate(specModel), id: 'update' },
-    { template: getOpsxFfCommandTemplate(specModel), id: 'ff' },
-    { template: getOpsxSyncCommandTemplate(specModel), id: 'sync' },
-    { template: getOpsxArchiveCommandTemplate(specModel), id: 'archive' },
-    { template: getOpsxBulkArchiveCommandTemplate(specModel), id: 'bulk-archive' },
-    { template: getOpsxVerifyCommandTemplate(specModel), id: 'verify' },
-    { template: getOpsxOnboardCommandTemplate(specModel), id: 'onboard' },
-    { template: getOpsxProposeCommandTemplate(specModel), id: 'propose' },
+    { template: getSpcbExploreCommandTemplate(specModel), id: 'explore' },
+    { template: getSpcbNewCommandTemplate(specModel), id: 'new' },
+    { template: getSpcbContinueCommandTemplate(specModel), id: 'continue' },
+    { template: getSpcbApplyCommandTemplate(specModel), id: 'apply' },
+    { template: getSpcbUpdateCommandTemplate(specModel), id: 'update' },
+    { template: getSpcbFfCommandTemplate(specModel), id: 'ff' },
+    { template: getSpcbSyncCommandTemplate(specModel), id: 'sync' },
+    { template: getSpcbArchiveCommandTemplate(specModel), id: 'archive' },
+    { template: getSpcbBulkArchiveCommandTemplate(specModel), id: 'bulk-archive' },
+    { template: getSpcbVerifyCommandTemplate(specModel), id: 'verify' },
+    { template: getSpcbOnboardCommandTemplate(specModel), id: 'onboard' },
+    { template: getSpcbProposeCommandTemplate(specModel), id: 'propose' },
   ];
 
   const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
@@ -288,7 +288,7 @@ export function getCommandContents(
  * Generates skill file content with YAML frontmatter.
  *
  * @param template - The skill template
- * @param generatedByVersion - The OpenSpec version to embed in the file
+ * @param generatedByVersion - The Specbase version to embed in the file
  * @param transformInstructions - Optional callback to transform the instructions content
  */
 export function generateSkillContent(
@@ -303,11 +303,11 @@ export function generateSkillContent(
   return `---
 name: ${template.name}
 description: ${template.description}
-allowed-tools: ${OPENSPEC_CLI_ALLOWED_TOOLS}
+allowed-tools: ${SPECBASE_CLI_ALLOWED_TOOLS}
 license: ${template.license || 'MIT'}
-compatibility: ${template.compatibility || 'Requires openspec CLI.'}
+compatibility: ${template.compatibility || 'Requires specbase CLI.'}
 metadata:
-  author: ${template.metadata?.author || 'openspec'}
+  author: ${template.metadata?.author || 'specbase'}
   version: "${template.metadata?.version || '1.0'}"
   generatedBy: "${generatedByVersion}"
 ---

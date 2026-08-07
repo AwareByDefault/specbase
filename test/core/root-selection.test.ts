@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
-  resolveOpenSpecRoot,
+  resolveSpecbaseRoot,
   RootSelectionError,
 } from '../../src/core/root-selection.js';
 import {
@@ -13,7 +13,7 @@ import {
   writeStoreRegistryState,
 } from '../../src/core/store/foundation.js';
 
-describe('resolveOpenSpecRoot', () => {
+describe('resolveSpecbaseRoot', () => {
   let tempDir: string;
   let globalDataDir: string;
   let savedXdgDataHome: string | undefined;
@@ -25,7 +25,7 @@ describe('resolveOpenSpecRoot', () => {
     globalDataDir = path.join(tempDir, 'global-data');
     // Backstop: store calls below thread `globalDataDir`, but if a future
     // edit forgets one, the path resolver falls back to XDG_DATA_HOME and
-    // then to the real ~/.local/share/openspec. Pin XDG at the temp dir so
+    // then to the real ~/.local/share/specbase. Pin XDG at the temp dir so
     // a missed arg can never pollute the developer's home registry.
     savedXdgDataHome = process.env.XDG_DATA_HOME;
     process.env.XDG_DATA_HOME = path.join(tempDir, 'xdg');
@@ -46,10 +46,10 @@ describe('resolveOpenSpecRoot', () => {
     return dir;
   }
 
-  function createOpenSpecRoot(rootDir: string): void {
-    fs.mkdirSync(path.join(rootDir, 'openspec', 'specs'), { recursive: true });
-    fs.mkdirSync(path.join(rootDir, 'openspec', 'changes', 'archive'), { recursive: true });
-    fs.writeFileSync(path.join(rootDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+  function createSpecbaseRoot(rootDir: string): void {
+    fs.mkdirSync(path.join(rootDir, 'specbase', 'specs'), { recursive: true });
+    fs.mkdirSync(path.join(rootDir, 'specbase', 'changes', 'archive'), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, 'specbase', 'config.yaml'), 'schema: spec-driven\n');
   }
 
   async function registerStore(
@@ -58,7 +58,7 @@ describe('resolveOpenSpecRoot', () => {
   ): Promise<string> {
     const storeRoot = mkdir(`stores/${id}`);
     if (options.healthyRoot !== false) {
-      createOpenSpecRoot(storeRoot);
+      createSpecbaseRoot(storeRoot);
     }
     if (options.metadataId !== null) {
       await writeStoreMetadataState(storeRoot, {
@@ -104,17 +104,17 @@ describe('resolveOpenSpecRoot', () => {
     return error;
   }
 
-  it('resolves a selected store to its healthy OpenSpec root', async () => {
+  it('resolves a selected store to its healthy Specbase root', async () => {
     const storeRoot = await registerStore('team-context');
 
-    const root = await resolveOpenSpecRoot({ store: 'team-context', globalDataDir });
+    const root = await resolveSpecbaseRoot({ store: 'team-context', globalDataDir });
 
     expect(root.source).toBe('store');
     expect(root.storeId).toBe('team-context');
     expect(root.path).toBe(storeRoot);
-    expect(root.changesDir).toBe(path.join(storeRoot, 'openspec', 'changes'));
-    expect(root.specsDir).toBe(path.join(storeRoot, 'openspec', 'specs'));
-    expect(root.archiveDir).toBe(path.join(storeRoot, 'openspec', 'changes', 'archive'));
+    expect(root.changesDir).toBe(path.join(storeRoot, 'specbase', 'changes'));
+    expect(root.specsDir).toBe(path.join(storeRoot, 'specbase', 'specs'));
+    expect(root.archiveDir).toBe(path.join(storeRoot, 'specbase', 'changes', 'archive'));
     expect(root.defaultSchema).toBe('spec-driven');
   });
 
@@ -122,7 +122,7 @@ describe('resolveOpenSpecRoot', () => {
     await registerStore('team-context');
 
     const error = await expectRootSelectionError(
-      resolveOpenSpecRoot({ store: 'team-contxt', globalDataDir }),
+      resolveSpecbaseRoot({ store: 'team-contxt', globalDataDir }),
       'unknown_store'
     );
     expect(error.message).toContain("'team-contxt'");
@@ -131,7 +131,7 @@ describe('resolveOpenSpecRoot', () => {
 
   it('rejects --store when no stores are registered without suggesting --store-path', async () => {
     const error = await expectRootSelectionError(
-      resolveOpenSpecRoot({ store: 'team-context', globalDataDir }),
+      resolveSpecbaseRoot({ store: 'team-context', globalDataDir }),
       'no_registered_stores'
     );
     expect(error.message).not.toContain('--store-path');
@@ -141,7 +141,7 @@ describe('resolveOpenSpecRoot', () => {
   it('rejects an invalid store id format before registry lookup', async () => {
     // No registry exists at all; format validation must win.
     const error = await expectRootSelectionError(
-      resolveOpenSpecRoot({ store: 'Bad/Id', globalDataDir }),
+      resolveSpecbaseRoot({ store: 'Bad/Id', globalDataDir }),
       'invalid_store_id'
     );
     expect(error.message).toContain('Store id');
@@ -151,19 +151,19 @@ describe('resolveOpenSpecRoot', () => {
     const storeRoot = await registerStore('team-context', { healthyRoot: false });
 
     const error = await expectRootSelectionError(
-      resolveOpenSpecRoot({ store: 'team-context', globalDataDir }),
+      resolveSpecbaseRoot({ store: 'team-context', globalDataDir }),
       'unhealthy_store_root'
     );
     expect(error.diagnostic.fix).toContain('store doctor');
     // No scaffolding or repair happened.
-    expect(fs.existsSync(path.join(storeRoot, 'openspec'))).toBe(false);
+    expect(fs.existsSync(path.join(storeRoot, 'specbase'))).toBe(false);
   });
 
   it('rejects a store whose metadata id does not match the registry id', async () => {
     await registerStore('team-context', { metadataId: 'other-context' });
 
     const error = await expectRootSelectionError(
-      resolveOpenSpecRoot({ store: 'team-context', globalDataDir }),
+      resolveSpecbaseRoot({ store: 'team-context', globalDataDir }),
       'store_identity_mismatch'
     );
     expect(error.message).toContain('other-context');
@@ -175,7 +175,7 @@ describe('resolveOpenSpecRoot', () => {
     await registerStore('team-context', { healthyRoot: false, metadataId: null });
 
     const error = await expectRootSelectionError(
-      resolveOpenSpecRoot({ store: 'team-context', globalDataDir }),
+      resolveSpecbaseRoot({ store: 'team-context', globalDataDir }),
       'store_identity_mismatch'
     );
     expect(error.diagnostic.fix).toContain('store doctor');
@@ -183,19 +183,19 @@ describe('resolveOpenSpecRoot', () => {
 
   it('rejects --store-path deliberately with register guidance', async () => {
     const error = await expectRootSelectionError(
-      resolveOpenSpecRoot({ storePath: '/somewhere', globalDataDir }),
+      resolveSpecbaseRoot({ storePath: '/somewhere', globalDataDir }),
       'store_path_not_supported'
     );
     expect(error.message).toContain('store register');
     expect(error.message).toContain('--store <id>');
   });
 
-  it('resolves the nearest openspec root without --store', async () => {
+  it('resolves the nearest specbase root without --store', async () => {
     const repoRoot = mkdir('app-repo');
-    createOpenSpecRoot(repoRoot);
+    createSpecbaseRoot(repoRoot);
     const nested = mkdir('app-repo/src/deep');
 
-    const root = await resolveOpenSpecRoot({ startPath: nested, globalDataDir });
+    const root = await resolveSpecbaseRoot({ startPath: nested, globalDataDir });
 
     expect(root.source).toBe('nearest');
     expect(root.path).toBe(repoRoot);
@@ -203,32 +203,32 @@ describe('resolveOpenSpecRoot', () => {
 
   it('ignores leftover workspace view state when a nearest root exists', async () => {
     const workspaceDir = mkdir('workspace');
-    fs.mkdirSync(path.join(workspaceDir, '.openspec-workspace'), { recursive: true });
+    fs.mkdirSync(path.join(workspaceDir, '.specbase-workspace'), { recursive: true });
     fs.writeFileSync(
-      path.join(workspaceDir, '.openspec-workspace', 'view.yaml'),
+      path.join(workspaceDir, '.specbase-workspace', 'view.yaml'),
       'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
     );
     const repoRoot = mkdir('workspace/app-repo');
-    createOpenSpecRoot(repoRoot);
+    createSpecbaseRoot(repoRoot);
     const nested = mkdir('workspace/app-repo/src');
 
-    const root = await resolveOpenSpecRoot({ startPath: nested, globalDataDir });
+    const root = await resolveSpecbaseRoot({ startPath: nested, globalDataDir });
 
     expect(root.source).toBe('nearest');
     expect(root.path).toBe(repoRoot);
-    expect(root.changesDir).toBe(path.join(repoRoot, 'openspec', 'changes'));
+    expect(root.changesDir).toBe(path.join(repoRoot, 'specbase', 'changes'));
     expect(root.defaultSchema).toBe('spec-driven');
   });
 
   it('treats workspace state alone as no root at all', async () => {
     const workspaceDir = mkdir('workspace-only');
-    fs.mkdirSync(path.join(workspaceDir, '.openspec-workspace'), { recursive: true });
+    fs.mkdirSync(path.join(workspaceDir, '.specbase-workspace'), { recursive: true });
     fs.writeFileSync(
-      path.join(workspaceDir, '.openspec-workspace', 'view.yaml'),
+      path.join(workspaceDir, '.specbase-workspace', 'view.yaml'),
       'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
     );
 
-    const root = await resolveOpenSpecRoot({ startPath: workspaceDir, globalDataDir });
+    const root = await resolveSpecbaseRoot({ startPath: workspaceDir, globalDataDir });
 
     expect(root.source).toBe('implicit');
     expect(root.path).toBe(workspaceDir);
@@ -239,40 +239,40 @@ describe('resolveOpenSpecRoot', () => {
     const appRepo = mkdir('plain-app');
 
     const error = await expectRootSelectionError(
-      resolveOpenSpecRoot({ startPath: appRepo, globalDataDir }),
+      resolveSpecbaseRoot({ startPath: appRepo, globalDataDir }),
       'no_root_with_registered_stores'
     );
     expect(error.message).toContain('team-context');
     expect(error.message).toContain('--store <id>');
-    expect(error.message).toContain('openspec init');
+    expect(error.message).toContain('specbase init');
     // No scaffolding happened.
-    expect(fs.existsSync(path.join(appRepo, 'openspec'))).toBe(false);
+    expect(fs.existsSync(path.join(appRepo, 'specbase'))).toBe(false);
   });
 
   it('allows an implicit root only when requested', async () => {
     const appRepo = mkdir('implicit-app');
 
-    const implicitRoot = await resolveOpenSpecRoot({ startPath: appRepo, globalDataDir });
+    const implicitRoot = await resolveSpecbaseRoot({ startPath: appRepo, globalDataDir });
     expect(implicitRoot.source).toBe('implicit');
     expect(implicitRoot.path).toBe(appRepo);
 
     await expectRootSelectionError(
-      resolveOpenSpecRoot({ startPath: appRepo, globalDataDir, allowImplicitRoot: false }),
-      'no_openspec_root'
+      resolveSpecbaseRoot({ startPath: appRepo, globalDataDir, allowImplicitRoot: false }),
+      'no_specbase_root'
     );
   });
 
   it('prefers the selected store over a nearby root and leftover workspace state', async () => {
     const storeRoot = await registerStore('team-context');
     const repoRoot = mkdir('local-repo');
-    createOpenSpecRoot(repoRoot);
-    fs.mkdirSync(path.join(repoRoot, '.openspec-workspace'), { recursive: true });
+    createSpecbaseRoot(repoRoot);
+    fs.mkdirSync(path.join(repoRoot, '.specbase-workspace'), { recursive: true });
     fs.writeFileSync(
-      path.join(repoRoot, '.openspec-workspace', 'view.yaml'),
+      path.join(repoRoot, '.specbase-workspace', 'view.yaml'),
       'version: 1\nname: platform\ncontext: null\nlinks: {}\n'
     );
 
-    const root = await resolveOpenSpecRoot({
+    const root = await resolveSpecbaseRoot({
       store: 'team-context',
       startPath: repoRoot,
       globalDataDir,
@@ -285,8 +285,8 @@ describe('resolveOpenSpecRoot', () => {
   describe('declared store fallback (3.2)', () => {
     function createPointerDir(relativePath: string, configBody: string): string {
       const dir = mkdir(relativePath);
-      fs.mkdirSync(path.join(dir, 'openspec'), { recursive: true });
-      fs.writeFileSync(path.join(dir, 'openspec', 'config.yaml'), configBody);
+      fs.mkdirSync(path.join(dir, 'specbase'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'specbase', 'config.yaml'), configBody);
       return dir;
     }
 
@@ -294,14 +294,14 @@ describe('resolveOpenSpecRoot', () => {
       const storeRoot = await registerStore('team-context');
       const pointerDir = createPointerDir('app-repo', 'store: team-context\n');
 
-      const root = await resolveOpenSpecRoot({ startPath: pointerDir, globalDataDir });
+      const root = await resolveSpecbaseRoot({ startPath: pointerDir, globalDataDir });
 
       expect(root.source).toBe('declared');
       expect(root.storeId).toBe('team-context');
       expect(root.path).toBe(storeRoot);
       // The pointer dir is untouched.
-      expect(fs.existsSync(path.join(pointerDir, 'openspec', 'specs'))).toBe(false);
-      expect(fs.existsSync(path.join(pointerDir, 'openspec', 'changes'))).toBe(false);
+      expect(fs.existsSync(path.join(pointerDir, 'specbase', 'specs'))).toBe(false);
+      expect(fs.existsSync(path.join(pointerDir, 'specbase', 'changes'))).toBe(false);
     });
 
     it('lets explicit --store beat the pointer with source store', async () => {
@@ -309,7 +309,7 @@ describe('resolveOpenSpecRoot', () => {
       const otherRoot = await registerStore('other-context');
       const pointerDir = createPointerDir('app-repo', 'store: team-context\n');
 
-      const root = await resolveOpenSpecRoot({
+      const root = await resolveSpecbaseRoot({
         startPath: pointerDir,
         store: 'other-context',
         globalDataDir,
@@ -322,9 +322,9 @@ describe('resolveOpenSpecRoot', () => {
     it('never overrides a real root and warns once about the ignored pointer', async () => {
       await registerStore('team-context');
       const repo = mkdir('real-repo');
-      createOpenSpecRoot(repo);
+      createSpecbaseRoot(repo);
       fs.writeFileSync(
-        path.join(repo, 'openspec', 'config.yaml'),
+        path.join(repo, 'specbase', 'config.yaml'),
         'schema: spec-driven\nstore: team-context\n'
       );
 
@@ -332,7 +332,7 @@ describe('resolveOpenSpecRoot', () => {
       const original = console.error;
       console.error = (message: string) => warnings.push(String(message));
       try {
-        const root = await resolveOpenSpecRoot({ startPath: repo, globalDataDir });
+        const root = await resolveSpecbaseRoot({ startPath: repo, globalDataDir });
         expect(root.source).toBe('nearest');
         expect(root.path).toBe(repo);
         expect(root.storeId).toBeUndefined();
@@ -353,7 +353,7 @@ describe('resolveOpenSpecRoot', () => {
       const original = console.error;
       console.error = (message: string) => warnings.push(String(message));
       try {
-        const root = await resolveOpenSpecRoot({ startPath: dir, globalDataDir });
+        const root = await resolveSpecbaseRoot({ startPath: dir, globalDataDir });
         expect(root.source).toBe('nearest');
         expect(root.path).toBe(dir);
       } finally {
@@ -365,16 +365,16 @@ describe('resolveOpenSpecRoot', () => {
     it('errors on malformed pointers instead of falling through to local writes', async () => {
       const nonString = createPointerDir('bad-type', 'store: [a, b]\n');
       const error = await expectRootSelectionError(
-        resolveOpenSpecRoot({ startPath: nonString, globalDataDir }),
+        resolveSpecbaseRoot({ startPath: nonString, globalDataDir }),
         'invalid_store_pointer'
       );
-      expect(error.message).toContain(path.join(nonString, 'openspec', 'config.yaml'));
+      expect(error.message).toContain(path.join(nonString, 'specbase', 'config.yaml'));
       expect(error.message).toContain('the store key must be a single store id string');
-      expect(fs.existsSync(path.join(nonString, 'openspec', 'changes'))).toBe(false);
+      expect(fs.existsSync(path.join(nonString, 'specbase', 'changes'))).toBe(false);
 
       const unparseable = createPointerDir('bad-yaml', 'store: [unclosed');
       const yamlError = await expectRootSelectionError(
-        resolveOpenSpecRoot({ startPath: unparseable, globalDataDir }),
+        resolveSpecbaseRoot({ startPath: unparseable, globalDataDir }),
         'invalid_store_pointer'
       );
       // The unparseable case names the real problem, not a phantom key.
@@ -384,7 +384,7 @@ describe('resolveOpenSpecRoot', () => {
       // A config that parses to a non-mapping scalar has no pointer at
       // all: plain root, no error (readProjectConfig owns that warning).
       const scalar = createPointerDir('scalar-config', 'just a string');
-      const scalarRoot = await resolveOpenSpecRoot({ startPath: scalar, globalDataDir });
+      const scalarRoot = await resolveSpecbaseRoot({ startPath: scalar, globalDataDir });
       expect(scalarRoot.source).toBe('nearest');
     });
 
@@ -392,12 +392,12 @@ describe('resolveOpenSpecRoot', () => {
       // The documented conversion path comments the line out; that must
       // not strand every command behind invalid_store_pointer.
       const empty = createPointerDir('empty-config', '');
-      const emptyRoot = await resolveOpenSpecRoot({ startPath: empty, globalDataDir });
+      const emptyRoot = await resolveSpecbaseRoot({ startPath: empty, globalDataDir });
       expect(emptyRoot.source).toBe('nearest');
       expect(emptyRoot.path).toBe(empty);
 
       const commented = createPointerDir('commented-config', '# store: team-context\n');
-      const commentedRoot = await resolveOpenSpecRoot({ startPath: commented, globalDataDir });
+      const commentedRoot = await resolveSpecbaseRoot({ startPath: commented, globalDataDir });
       expect(commentedRoot.source).toBe('nearest');
       expect(commentedRoot.path).toBe(commented);
     });
@@ -409,31 +409,31 @@ describe('resolveOpenSpecRoot', () => {
       await registerStore('team-context');
       cases.push([
         'unknown_store',
-        path.join(unknownDir, 'openspec', 'config.yaml'),
-        () => resolveOpenSpecRoot({ startPath: unknownDir, globalDataDir }),
+        path.join(unknownDir, 'specbase', 'config.yaml'),
+        () => resolveSpecbaseRoot({ startPath: unknownDir, globalDataDir }),
       ]);
 
       const invalidDir = createPointerDir('invalid-pointer', 'store: "BAD ID"\n');
       cases.push([
         'invalid_store_id',
-        path.join(invalidDir, 'openspec', 'config.yaml'),
-        () => resolveOpenSpecRoot({ startPath: invalidDir, globalDataDir }),
+        path.join(invalidDir, 'specbase', 'config.yaml'),
+        () => resolveSpecbaseRoot({ startPath: invalidDir, globalDataDir }),
       ]);
 
       await registerStore('hollow-context', { healthyRoot: false });
       const unhealthyDir = createPointerDir('unhealthy-pointer', 'store: hollow-context\n');
       cases.push([
         'unhealthy_store_root',
-        path.join(unhealthyDir, 'openspec', 'config.yaml'),
-        () => resolveOpenSpecRoot({ startPath: unhealthyDir, globalDataDir }),
+        path.join(unhealthyDir, 'specbase', 'config.yaml'),
+        () => resolveSpecbaseRoot({ startPath: unhealthyDir, globalDataDir }),
       ]);
 
       await registerStore('mismatched-context', { metadataId: 'someone-else' });
       const mismatchDir = createPointerDir('mismatch-pointer', 'store: mismatched-context\n');
       cases.push([
         'store_identity_mismatch',
-        path.join(mismatchDir, 'openspec', 'config.yaml'),
-        () => resolveOpenSpecRoot({ startPath: mismatchDir, globalDataDir }),
+        path.join(mismatchDir, 'specbase', 'config.yaml'),
+        () => resolveSpecbaseRoot({ startPath: mismatchDir, globalDataDir }),
       ]);
 
       for (const [code, origin, run] of cases) {
@@ -447,7 +447,7 @@ describe('resolveOpenSpecRoot', () => {
       const pointerDir = createPointerDir('lonely-pointer', 'store: team-context\n');
 
       const error = await expectRootSelectionError(
-        resolveOpenSpecRoot({ startPath: pointerDir, globalDataDir }),
+        resolveSpecbaseRoot({ startPath: pointerDir, globalDataDir }),
         'no_registered_stores'
       );
       expect(error.message).toContain('Declared in ');
@@ -456,7 +456,7 @@ describe('resolveOpenSpecRoot', () => {
     it('resolves one hop only - a store with its own pointer is the destination', async () => {
       const storeRoot = await registerStore('team-context');
       fs.writeFileSync(
-        path.join(storeRoot, 'openspec', 'config.yaml'),
+        path.join(storeRoot, 'specbase', 'config.yaml'),
         'schema: spec-driven\nstore: somewhere-else\n'
       );
       const pointerDir = createPointerDir('app-repo', 'store: team-context\n');
@@ -465,7 +465,7 @@ describe('resolveOpenSpecRoot', () => {
       const original = console.error;
       console.error = (message: string) => warnings.push(String(message));
       try {
-        const root = await resolveOpenSpecRoot({ startPath: pointerDir, globalDataDir });
+        const root = await resolveSpecbaseRoot({ startPath: pointerDir, globalDataDir });
         expect(root.path).toBe(storeRoot);
         expect(root.storeId).toBe('team-context');
       } finally {
@@ -475,23 +475,23 @@ describe('resolveOpenSpecRoot', () => {
 
     it('names a .yml origin when that file was read', async () => {
       const dir = mkdir('yml-pointer');
-      fs.mkdirSync(path.join(dir, 'openspec'), { recursive: true });
-      fs.writeFileSync(path.join(dir, 'openspec', 'config.yml'), 'store: ghost\n');
+      fs.mkdirSync(path.join(dir, 'specbase'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'specbase', 'config.yml'), 'store: ghost\n');
 
       const error = await expectRootSelectionError(
-        resolveOpenSpecRoot({ startPath: dir, globalDataDir }),
+        resolveSpecbaseRoot({ startPath: dir, globalDataDir }),
         'no_registered_stores'
       );
-      expect(error.message).toContain(path.join(dir, 'openspec', 'config.yml'));
+      expect(error.message).toContain(path.join(dir, 'specbase', 'config.yml'));
     });
   });
 
-  it('skips openspec/ directories that are neither planning-shaped nor configured (the ~/openspec layout)', async () => {
-    // The recommended store layout: $HOME/openspec/<store>. $HOME must
+  it('skips specbase/ directories that are neither planning-shaped nor configured (the ~/specbase layout)', async () => {
+    // The recommended store layout: $HOME/specbase/<store>. $HOME must
     // NOT become a nearest root for everything under the home tree.
     await registerStore('team-context');
     const fakeHome = path.join(tempDir, 'fake-home');
-    fs.mkdirSync(path.join(fakeHome, 'openspec', 'team-context'), { recursive: true });
+    fs.mkdirSync(path.join(fakeHome, 'specbase', 'team-context'), { recursive: true });
     const scratch = path.join(fakeHome, 'projects', 'scratch');
     fs.mkdirSync(scratch, { recursive: true });
 
@@ -499,7 +499,7 @@ describe('resolveOpenSpecRoot', () => {
     // exact guidance the phantom $HOME root used to shadow). The
     // isolated globalDataDir keeps this off the machine's real registry.
     await expect(
-      resolveOpenSpecRoot({ startPath: scratch, globalDataDir })
+      resolveSpecbaseRoot({ startPath: scratch, globalDataDir })
     ).rejects.toMatchObject({
       diagnostic: expect.objectContaining({ code: 'no_root_with_registered_stores' }),
     });

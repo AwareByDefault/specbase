@@ -1,20 +1,20 @@
 name: spec-driven-governed
 version: 1
 description: >-
-  Governed OpenSpec workflow (opt-in) - permanent truth planes (by default
+  Governed Specbase workflow (opt-in) - permanent truth planes (by default
   behavior, architecture, ops, code-quality) with every governed spec paired
   to a machine-validated enforcement contract. proposal -> specs -> design ->
   enforcement -> tasks. Projects may add, remove, or replace planes in
-  openspec/config.yaml.
+  specbase/config.yaml.
 specModel:
   kind: governed
   version: 1
-  # One offer-able plane list. `openspec init` presents these as a multi-select
+  # One offer-able plane list. `specbase init` presents these as a multi-select
   # (with a select-all toggle); each record's `defaultSelected` sets its initial
   # checkbox and, for a project that declares no plane override, forms the
   # resolved default set. Selecting zero planes keeps the project on the legacy
   # flat model; selecting one or more makes it governed. Projects may add,
-  # remove, or replace planes in openspec/config.yaml (`specModel.planes+:` to
+  # remove, or replace planes in specbase/config.yaml (`specModel.planes+:` to
   # append, `specModel.planes:` to replace).
   planes:
     - id: behavior
@@ -84,7 +84,7 @@ artifacts:
           packages, dev env, IaC, deployment.
         - **Code-quality** (`specs/code-quality/<locator>/`): smells, qualities, and
           rules about what good code looks like.
-        A project may declare additional planes in `openspec/config.yaml` (append
+        A project may declare additional planes in `specbase/config.yaml` (append
         via `specModel.planes+:` or replace via `specModel.planes:`); a single
         initiative may touch several planes. When it does, list a separate durable
         truth (and later, delta) for each plane rather than mixing them in one spec.

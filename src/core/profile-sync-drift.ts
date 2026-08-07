@@ -12,19 +12,32 @@ type WorkflowId = (typeof ALL_WORKFLOWS)[number];
  * Maps workflow IDs to their skill directory names.
  */
 export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
-  'explore': 'openspec-explore',
-  'new': 'openspec-new-change',
-  'continue': 'openspec-continue-change',
-  'apply': 'openspec-apply-change',
-  'update': 'openspec-update-change',
-  'ff': 'openspec-ff-change',
-  'sync': 'openspec-sync-specs',
-  'archive': 'openspec-archive-change',
-  'bulk-archive': 'openspec-bulk-archive-change',
-  'verify': 'openspec-verify-change',
-  'onboard': 'openspec-onboard',
-  'propose': 'openspec-propose',
+  'explore': 'specbase-explore',
+  'new': 'specbase-new-change',
+  'continue': 'specbase-continue-change',
+  'apply': 'specbase-apply-change',
+  'update': 'specbase-update-change',
+  'ff': 'specbase-ff-change',
+  'sync': 'specbase-sync-specs',
+  'archive': 'specbase-archive-change',
+  'bulk-archive': 'specbase-bulk-archive-change',
+  'verify': 'specbase-verify-change',
+  'onboard': 'specbase-onboard',
+  'propose': 'specbase-propose',
 };
+
+/**
+ * The skill directory names pre-Specbase releases installed. Nothing generates
+ * these any more, but detection paths (migration, legacy cleanup) must still
+ * recognise them so existing installs are not treated as "nothing installed".
+ */
+export const LEGACY_WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> =
+  Object.fromEntries(
+    Object.entries(WORKFLOW_TO_SKILL_DIR).map(([workflowId, dirName]) => [
+      workflowId,
+      dirName.replace(/^specbase-/, 'openspec-'),
+    ])
+  ) as Record<WorkflowId, string>;
 
 function toKnownWorkflows(workflows: readonly string[]): WorkflowId[] {
   return workflows.filter(
@@ -34,7 +47,7 @@ function toKnownWorkflows(workflows: readonly string[]): WorkflowId[] {
 }
 
 /**
- * Checks whether a tool has at least one generated OpenSpec command file.
+ * Checks whether a tool has at least one generated Specbase command file.
  */
 export function toolHasAnyConfiguredCommand(projectPath: string, toolId: string): boolean {
   const adapter = CommandAdapterRegistry.get(toolId);

@@ -26,7 +26,7 @@ describe('telemetry/index', () => {
 
   beforeEach(() => {
     // Create unique temp directory for each test using UUID
-    tempDir = path.join(os.tmpdir(), `openspec-telemetry-test-${randomUUID()}`);
+    tempDir = path.join(os.tmpdir(), `specbase-telemetry-test-${randomUUID()}`);
     fs.mkdirSync(tempDir, { recursive: true });
 
     // Save original env
@@ -61,8 +61,8 @@ describe('telemetry/index', () => {
   });
 
   describe('isTelemetryEnabled', () => {
-    it('should return false when OPENSPEC_TELEMETRY=0', () => {
-      process.env.OPENSPEC_TELEMETRY = '0';
+    it('should return false when SPECBASE_TELEMETRY=0', () => {
+      process.env.SPECBASE_TELEMETRY = '0';
       expect(isTelemetryEnabled()).toBe(false);
     });
 
@@ -76,14 +76,31 @@ describe('telemetry/index', () => {
       expect(isTelemetryEnabled()).toBe(false);
     });
 
-    it('should return true when no opt-out is set', () => {
+    it('should return false by default when no opt-in is set (Specbase is opt-in)', () => {
+      delete process.env.SPECBASE_TELEMETRY;
+      delete process.env.OPENSPEC_TELEMETRY;
+      delete process.env.DO_NOT_TRACK;
+      delete process.env.CI;
+      expect(isTelemetryEnabled()).toBe(false);
+    });
+
+    it('should return true only when explicitly opted in with SPECBASE_TELEMETRY=1', () => {
+      process.env.SPECBASE_TELEMETRY = '1';
       delete process.env.OPENSPEC_TELEMETRY;
       delete process.env.DO_NOT_TRACK;
       delete process.env.CI;
       expect(isTelemetryEnabled()).toBe(true);
     });
 
-    it('should prioritize OPENSPEC_TELEMETRY=0 over other settings', () => {
+    it('should prioritize opt-outs over SPECBASE_TELEMETRY=1', () => {
+      process.env.SPECBASE_TELEMETRY = '1';
+      process.env.DO_NOT_TRACK = '1';
+      delete process.env.CI;
+      expect(isTelemetryEnabled()).toBe(false);
+    });
+
+    it('should honor the legacy OPENSPEC_TELEMETRY=0 opt-out', () => {
+      process.env.SPECBASE_TELEMETRY = '1';
       process.env.OPENSPEC_TELEMETRY = '0';
       delete process.env.DO_NOT_TRACK;
       delete process.env.CI;
@@ -93,7 +110,7 @@ describe('telemetry/index', () => {
 
   describe('maybeShowTelemetryNotice', () => {
     it('should not show notice when telemetry is disabled', async () => {
-      process.env.OPENSPEC_TELEMETRY = '0';
+      process.env.SPECBASE_TELEMETRY = '0';
 
       await maybeShowTelemetryNotice();
 
@@ -103,7 +120,7 @@ describe('telemetry/index', () => {
 
   describe('trackCommand', () => {
     it('should not track when telemetry is disabled', async () => {
-      process.env.OPENSPEC_TELEMETRY = '0';
+      process.env.SPECBASE_TELEMETRY = '0';
 
       await trackCommand('test', '1.0.0');
 
@@ -111,6 +128,7 @@ describe('telemetry/index', () => {
     });
 
     it('should track when telemetry is enabled', async () => {
+      process.env.SPECBASE_TELEMETRY = '1';
       delete process.env.OPENSPEC_TELEMETRY;
       delete process.env.DO_NOT_TRACK;
       delete process.env.CI;
@@ -121,6 +139,7 @@ describe('telemetry/index', () => {
     });
 
     it('should construct PostHog with bounded silent-failure settings', async () => {
+      process.env.SPECBASE_TELEMETRY = '1';
       delete process.env.OPENSPEC_TELEMETRY;
       delete process.env.DO_NOT_TRACK;
       delete process.env.CI;
@@ -144,6 +163,7 @@ describe('telemetry/index', () => {
     });
 
     it('should return a synthetic success response when fetch throws a network error', async () => {
+      process.env.SPECBASE_TELEMETRY = '1';
       delete process.env.OPENSPEC_TELEMETRY;
       delete process.env.DO_NOT_TRACK;
       delete process.env.CI;
@@ -158,6 +178,7 @@ describe('telemetry/index', () => {
     });
 
     it('should return a synthetic success response when fetch aborts', async () => {
+      process.env.SPECBASE_TELEMETRY = '1';
       delete process.env.OPENSPEC_TELEMETRY;
       delete process.env.DO_NOT_TRACK;
       delete process.env.CI;
@@ -172,6 +193,7 @@ describe('telemetry/index', () => {
     });
 
     it('should return a synthetic success response for non-2xx responses', async () => {
+      process.env.SPECBASE_TELEMETRY = '1';
       delete process.env.OPENSPEC_TELEMETRY;
       delete process.env.DO_NOT_TRACK;
       delete process.env.CI;
@@ -186,6 +208,7 @@ describe('telemetry/index', () => {
     });
 
     it('should pass through successful responses from fetch', async () => {
+      process.env.SPECBASE_TELEMETRY = '1';
       delete process.env.OPENSPEC_TELEMETRY;
       delete process.env.DO_NOT_TRACK;
       delete process.env.CI;

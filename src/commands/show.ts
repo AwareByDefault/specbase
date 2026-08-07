@@ -4,7 +4,7 @@ import {
   resolveRootForCommand,
   toRootOutput,
   withStoreFlag,
-  type ResolvedOpenSpecRoot,
+  type ResolvedSpecbaseRoot,
   type RootOutput,
   isStoreSelectedRoot,
 } from '../core/root-selection.js';
@@ -24,6 +24,7 @@ import {
   renderGovernedSpecSummary,
 } from '../core/artifact-graph/governed-show.js';
 import type { GovernedPairRecord } from '../core/schemas/governed-spec.schema.js';
+import { planningDir } from '../core/config.js';
 
 type ItemType = 'change' | 'spec';
 
@@ -77,7 +78,7 @@ export class ShowCommand {
     return undefined;
   }
 
-  private delegateOptions(root: ResolvedOpenSpecRoot, options: ShowExecuteOptions): ShowExecuteOptions & { rootOutput?: RootOutput } {
+  private delegateOptions(root: ResolvedSpecbaseRoot, options: ShowExecuteOptions): ShowExecuteOptions & { rootOutput?: RootOutput } {
     return {
       ...options,
       ...(options.json ? { rootOutput: toRootOutput(root) } : {}),
@@ -87,7 +88,7 @@ export class ShowCommand {
   private async runInteractiveByType(
     type: ItemType,
     options: ShowExecuteOptions,
-    root: ResolvedOpenSpecRoot
+    root: ResolvedSpecbaseRoot
   ): Promise<void> {
     const { select } = await import('@inquirer/prompts');
     if (type === 'change') {
@@ -116,7 +117,7 @@ export class ShowCommand {
 
   private async showDirect(
     itemName: string,
-    params: { typeOverride?: ItemType; options: ShowExecuteOptions; root: ResolvedOpenSpecRoot }
+    params: { typeOverride?: ItemType; options: ShowExecuteOptions; root: ResolvedSpecbaseRoot }
   ): Promise<void> {
     const root = params.root;
 
@@ -194,7 +195,7 @@ export class ShowCommand {
       if (isStoreSelectedRoot(root)) {
         console.error('Pass --type change|spec.');
       } else {
-        console.error('Pass --type change|spec, or use: openspec change show / openspec spec show');
+        console.error('Pass --type change|spec, or use: specbase change show / specbase spec show');
       }
       process.exitCode = 1;
       return;
@@ -220,12 +221,12 @@ export class ShowCommand {
    */
   private async showGovernedDirect(
     itemName: string,
-    params: { typeOverride?: ItemType; options: ShowExecuteOptions; root: ResolvedOpenSpecRoot },
+    params: { typeOverride?: ItemType; options: ShowExecuteOptions; root: ResolvedSpecbaseRoot },
     planes?: string[]
   ): Promise<void> {
     const { typeOverride, options, root } = params;
-    const openspecRoot = path.join(root.path, 'openspec');
-    const repository = await loadGovernedRepository(openspecRoot, planes);
+    const specbaseRoot = planningDir(root.path);
+    const repository = await loadGovernedRepository(specbaseRoot, planes);
 
     // Change detection is unchanged under the governed model.
     let changes: string[] = [];
@@ -268,7 +269,7 @@ export class ShowCommand {
         if (isStoreSelectedRoot(root)) {
           console.error('Pass --type change|spec.');
         } else {
-          console.error('Pass --type change|spec, or use: openspec change show / openspec spec show');
+          console.error('Pass --type change|spec, or use: specbase change show / specbase spec show');
         }
       }
       process.exitCode = 1;
@@ -350,7 +351,7 @@ export class ShowCommand {
    */
   private async renderGovernedSpec(
     record: GovernedPairRecord,
-    root: ResolvedOpenSpecRoot,
+    root: ResolvedSpecbaseRoot,
     options: ShowExecuteOptions,
     repository: GovernedRepository
   ): Promise<void> {
@@ -377,16 +378,16 @@ export class ShowCommand {
     console.log(renderGovernedSpecSummary(view));
   }
 
-  private printNonInteractiveHint(root: ResolvedOpenSpecRoot): void {
+  private printNonInteractiveHint(root: ResolvedSpecbaseRoot): void {
     console.error('Nothing to show. Try one of:');
-    console.error(`  ${withStoreFlag(root, 'openspec show <item>')}`);
+    console.error(`  ${withStoreFlag(root, 'specbase show <item>')}`);
     if (isStoreSelectedRoot(root)) {
       // The noun-form commands are cwd-based and cannot reach a selected store.
-      console.error(`  ${withStoreFlag(root, 'openspec show <item> --type change')}`);
-      console.error(`  ${withStoreFlag(root, 'openspec show <item> --type spec')}`);
+      console.error(`  ${withStoreFlag(root, 'specbase show <item> --type change')}`);
+      console.error(`  ${withStoreFlag(root, 'specbase show <item> --type spec')}`);
     } else {
-      console.error('  openspec change show');
-      console.error('  openspec spec show');
+      console.error('  specbase change show');
+      console.error('  specbase spec show');
     }
     console.error('Or run in an interactive terminal.');
   }

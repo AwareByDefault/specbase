@@ -10,13 +10,13 @@ import {
   resolvePair,
 } from '../../../src/core/governed/repository.js';
 
-let openspecRoot: string;
+let specbaseRoot: string;
 
 function writePair(
   locator: string,
   opts: { spec?: string; enforcement?: string }
 ): void {
-  const dir = path.join(openspecRoot, 'specs', ...locator.split('/'));
+  const dir = path.join(specbaseRoot, 'specs', ...locator.split('/'));
   fs.mkdirSync(dir, { recursive: true });
   if (opts.spec !== undefined) {
     fs.writeFileSync(path.join(dir, 'spec.md'), opts.spec);
@@ -33,11 +33,11 @@ function specDoc(id: string): string {
 const enforcementDoc = '# Enforcement\n\n```yaml\nversion: 1\nspec: x\nbindings: []\n```\n';
 
 beforeEach(() => {
-  openspecRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'governed-disc-'));
+  specbaseRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'governed-disc-'));
 });
 
 afterEach(() => {
-  fs.rmSync(openspecRoot, { recursive: true, force: true });
+  fs.rmSync(specbaseRoot, { recursive: true, force: true });
 });
 
 describe('governed/discovery', () => {
@@ -51,7 +51,7 @@ describe('governed/discovery', () => {
       enforcement: enforcementDoc,
     });
 
-    const discovery = await discoverGovernedPairs(openspecRoot);
+    const discovery = await discoverGovernedPairs(specbaseRoot);
     const locators = discovery.pairs.map((p) => p.locator);
     expect(locators).toContain('behavior/session-loop');
     expect(locators).toContain('architecture/platforms/desktop');
@@ -62,7 +62,7 @@ describe('governed/discovery', () => {
     );
     expect(nested?.completeness).toBe('complete');
     expect(nested?.specPath).toBe(
-      path.join(openspecRoot, 'specs', 'architecture', 'platforms', 'desktop', 'spec.md')
+      path.join(specbaseRoot, 'specs', 'architecture', 'platforms', 'desktop', 'spec.md')
     );
   });
 
@@ -72,7 +72,7 @@ describe('governed/discovery', () => {
       spec: specDoc('architecture.platforms.desktop'),
       enforcement: enforcementDoc,
     });
-    const discovery = await discoverGovernedPairs(openspecRoot);
+    const discovery = await discoverGovernedPairs(specbaseRoot);
     const locators = discovery.pairs.map((p) => p.locator);
     expect(locators).toEqual(['architecture/platforms/desktop']);
     // `architecture/platforms` is a pure namespace and must not appear.
@@ -88,7 +88,7 @@ describe('governed/discovery', () => {
       spec: specDoc('architecture.platforms.desktop'),
       enforcement: enforcementDoc,
     });
-    const discovery = await discoverGovernedPairs(openspecRoot);
+    const discovery = await discoverGovernedPairs(specbaseRoot);
     const locators = discovery.pairs.map((p) => p.locator).sort();
     expect(locators).toEqual([
       'architecture/platforms',
@@ -100,7 +100,7 @@ describe('governed/discovery', () => {
     writePair('behavior/only-spec', { spec: specDoc('behavior.only-spec') });
     writePair('behavior/only-enforcement', { enforcement: enforcementDoc });
 
-    const discovery = await discoverGovernedPairs(openspecRoot);
+    const discovery = await discoverGovernedPairs(specbaseRoot);
     const byLocator = new Map(discovery.pairs.map((p) => [p.locator, p]));
     expect(byLocator.get('behavior/only-spec')?.completeness).toBe('spec-only');
     expect(byLocator.get('behavior/only-enforcement')?.completeness).toBe(
@@ -113,11 +113,11 @@ describe('governed/discovery', () => {
   });
 
   it('never traverses hidden control directories', async () => {
-    const hiddenDir = path.join(openspecRoot, 'specs', 'behavior', '.git', 'obj');
+    const hiddenDir = path.join(specbaseRoot, 'specs', 'behavior', '.git', 'obj');
     fs.mkdirSync(hiddenDir, { recursive: true });
     fs.writeFileSync(path.join(hiddenDir, 'spec.md'), specDoc('behavior.sneaky'));
 
-    const discovery = await discoverGovernedPairs(openspecRoot);
+    const discovery = await discoverGovernedPairs(specbaseRoot);
     expect(discovery.pairs).toHaveLength(0);
   });
 
@@ -130,7 +130,7 @@ describe('governed/discovery', () => {
       spec: specDoc('architecture.platforms.desktop'),
       enforcement: enforcementDoc,
     });
-    const discovery = await discoverGovernedPairs(openspecRoot);
+    const discovery = await discoverGovernedPairs(specbaseRoot);
     const locators = discovery.pairs.map((p) => p.locator).sort();
     expect(locators).toEqual([
       'architecture/platforms/desktop',
@@ -139,7 +139,7 @@ describe('governed/discovery', () => {
   });
 
   it('returns empty discovery when planes are absent', async () => {
-    const discovery = await discoverGovernedPairs(openspecRoot);
+    const discovery = await discoverGovernedPairs(specbaseRoot);
     expect(discovery.pairs).toEqual([]);
     expect(discovery.incompletePairs).toEqual([]);
     expect(discovery.unsafeLocators).toEqual([]);
@@ -152,7 +152,7 @@ describe('governed/repository resolution', () => {
       spec: specDoc('behavior.session-loop'),
       enforcement: enforcementDoc,
     });
-    const repo = await loadGovernedRepository(openspecRoot);
+    const repo = await loadGovernedRepository(specbaseRoot);
     const resolution = resolvePair(repo, 'behavior/session-loop');
     expect(resolution.found).toBe(true);
     if (resolution.found) {
@@ -168,7 +168,7 @@ describe('governed/repository resolution', () => {
       spec: specDoc('architecture.domain'),
       enforcement: enforcementDoc,
     });
-    const repo = await loadGovernedRepository(openspecRoot);
+    const repo = await loadGovernedRepository(specbaseRoot);
     const resolution = resolvePair(repo, 'architecture.domain');
     expect(resolution.found).toBe(true);
     if (resolution.found) {
@@ -179,7 +179,7 @@ describe('governed/repository resolution', () => {
 
   it('reports incomplete pairs but still resolves them', async () => {
     writePair('behavior/half', { spec: specDoc('behavior.half') });
-    const repo = await loadGovernedRepository(openspecRoot);
+    const repo = await loadGovernedRepository(specbaseRoot);
     const resolution = resolvePair(repo, 'behavior/half');
     expect(resolution.found).toBe(true);
     if (resolution.found) {
@@ -189,7 +189,7 @@ describe('governed/repository resolution', () => {
   });
 
   it('returns not-found for unknown locators and spec IDs', async () => {
-    const repo = await loadGovernedRepository(openspecRoot);
+    const repo = await loadGovernedRepository(specbaseRoot);
     expect(resolvePair(repo, 'behavior/missing')).toEqual({
       found: false,
       reason: 'unknown-locator',
@@ -203,7 +203,7 @@ describe('governed/repository resolution', () => {
   it('detects duplicate spec IDs across the project with all locations', async () => {
     writePair('behavior/a', { spec: specDoc('shared.id') });
     writePair('behavior/b', { spec: specDoc('shared.id') });
-    const repo = await loadGovernedRepository(openspecRoot);
+    const repo = await loadGovernedRepository(specbaseRoot);
     expect(repo.index.conflicts).toHaveLength(1);
     expect(repo.index.conflicts[0].id).toBe('shared.id');
     expect(repo.index.conflicts[0].locations).toHaveLength(2);

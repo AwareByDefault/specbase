@@ -9,27 +9,27 @@ import * as fs from 'fs';
 import { AI_TOOLS } from '../config.js';
 
 /**
- * Names of skill directories created by openspec init.
+ * Names of skill directories created by specbase init.
  */
 export const SKILL_NAMES = [
-  'openspec-explore',
-  'openspec-new-change',
-  'openspec-continue-change',
-  'openspec-apply-change',
-  'openspec-update-change',
-  'openspec-ff-change',
-  'openspec-sync-specs',
-  'openspec-archive-change',
-  'openspec-bulk-archive-change',
-  'openspec-verify-change',
-  'openspec-onboard',
-  'openspec-propose',
+  'specbase-explore',
+  'specbase-new-change',
+  'specbase-continue-change',
+  'specbase-apply-change',
+  'specbase-update-change',
+  'specbase-ff-change',
+  'specbase-sync-specs',
+  'specbase-archive-change',
+  'specbase-bulk-archive-change',
+  'specbase-verify-change',
+  'specbase-onboard',
+  'specbase-propose',
 ] as const;
 
 export type SkillName = (typeof SKILL_NAMES)[number];
 
 /**
- * IDs of command templates created by openspec init.
+ * IDs of command templates created by specbase init.
  */
 export const COMMAND_IDS = [
   'explore',
@@ -140,7 +140,7 @@ export function extractGeneratedByVersion(skillFilePath: string): string | null 
     // ---
     // ...
     // metadata:
-    //   author: openspec
+    //   author: specbase
     //   version: "1.0"
     //   generatedBy: "0.23.0"
     // ---

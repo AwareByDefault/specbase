@@ -11,7 +11,7 @@ import { withGovernedGuidance, GOVERNED_SYNC_GUIDANCE } from './governed-guidanc
 
 export function getSyncSpecsSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
-    name: 'openspec-sync-specs',
+    name: 'specbase-sync-specs',
     description: 'Sync delta specs from a change to main specs. Use when the user wants to update main specs with changes from a delta spec, without archiving the change.',
     instructions: withGovernedGuidance(`Sync delta specs from a change to main specs.
 
@@ -25,7 +25,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`specbase list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have delta specs (under \`specs/\` directory).
 
@@ -35,7 +35,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    Run:
    \`\`\`bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    \`\`\`
 
 3. **Find delta specs**
@@ -56,7 +56,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    a. **Read the delta spec** to understand the intended changes
 
-   b. **Read the main spec** at \`openspec/specs/<capability>/spec.md\` (may not exist yet)
+   b. **Read the main spec** at \`specbase/specs/<capability>/spec.md\` (may not exist yet)
 
    c. **Apply changes intelligently**:
 
@@ -79,7 +79,7 @@ ${STORE_SELECTION_GUIDANCE}
       - Find the FROM requirement, rename to TO
 
    d. **Create new main spec** if capability doesn't exist yet:
-      - Create \`openspec/specs/<capability>/spec.md\`
+      - Create \`specbase/specs/<capability>/spec.md\`
       - Add Purpose section (can be brief, mark as TBD)
       - Add Requirements section with the ADDED requirements
 
@@ -150,14 +150,14 @@ Main specs are now updated. The change remains active - archive when implementat
 - Show what you're changing as you go
 - The operation should be idempotent - running twice should give same result`, specModel, GOVERNED_SYNC_GUIDANCE),
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires specbase CLI.',
+    metadata: { author: 'specbase', version: '1.0' },
   };
 }
 
-export function getOpsxSyncCommandTemplate(specModel?: SpecModel): CommandTemplate {
+export function getSpcbSyncCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
-    name: 'OPSX: Sync',
+    name: 'SPCB: Sync',
     description: 'Sync delta specs from a change to main specs',
     category: 'Workflow',
     tags: ['workflow', 'specs', 'experimental'],
@@ -167,13 +167,13 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
 ${STORE_SELECTION_GUIDANCE}
 
-**Input**: Optionally specify a change name after \`/opsx:sync\` (e.g., \`/opsx:sync add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a change name after \`/spcb:sync\` (e.g., \`/spcb:sync add-auth\`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
 **Steps**
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`specbase list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have delta specs (under \`specs/\` directory).
 
@@ -183,7 +183,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    Run:
    \`\`\`bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    \`\`\`
 
 3. **Find delta specs**
@@ -204,7 +204,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    a. **Read the delta spec** to understand the intended changes
 
-   b. **Read the main spec** at \`openspec/specs/<capability>/spec.md\` (may not exist yet)
+   b. **Read the main spec** at \`specbase/specs/<capability>/spec.md\` (may not exist yet)
 
    c. **Apply changes intelligently**:
 
@@ -227,7 +227,7 @@ ${STORE_SELECTION_GUIDANCE}
       - Find the FROM requirement, rename to TO
 
    d. **Create new main spec** if capability doesn't exist yet:
-      - Create \`openspec/specs/<capability>/spec.md\`
+      - Create \`specbase/specs/<capability>/spec.md\`
       - Add Purpose section (can be brief, mark as TBD)
       - Add Requirements section with the ADDED requirements
 

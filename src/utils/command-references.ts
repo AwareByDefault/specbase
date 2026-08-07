@@ -6,15 +6,15 @@
 
 /**
  * Transforms colon-based command references to hyphen-based format.
- * Converts `/opsx:` patterns to `/opsx-` for tools that use hyphen syntax.
+ * Converts `/spcb:` patterns to `/spcb-` for tools that use hyphen syntax.
  *
  * @param text - The text containing command references
  * @returns Text with command references transformed to hyphen format
  *
  * @example
- * transformToHyphenCommands('/opsx:new') // returns '/opsx-new'
- * transformToHyphenCommands('Use /opsx:apply to implement') // returns 'Use /opsx-apply to implement'
+ * transformToHyphenCommands('/spcb:new') // returns '/spcb-new'
+ * transformToHyphenCommands('Use /spcb:apply to implement') // returns 'Use /spcb-apply to implement'
  */
 export function transformToHyphenCommands(text: string): string {
-  return text.replace(/\/opsx:/g, '/opsx-');
+  return text.replace(/\/spcb:/g, '/spcb-');
 }

@@ -21,7 +21,7 @@ let projectRoot: string;
 
 /** Native change directory for the fixture change. */
 function changeDir(): string {
-  return path.join(projectRoot, 'openspec', 'changes', CHANGE);
+  return path.join(projectRoot, 'specbase', 'changes', CHANGE);
 }
 
 /** Canonicalized (realpath) change dir — matches the path recorded on the change context. */
@@ -29,8 +29,8 @@ function realChangeDir(): string {
   return fs.realpathSync(changeDir());
 }
 
-/** Canonicalized openspec root, two levels above the change dir. */
-function realOpenspecRoot(): string {
+/** Canonicalized specbase root, two levels above the change dir. */
+function realSpecbaseRoot(): string {
   return path.resolve(realChangeDir(), '..', '..');
 }
 
@@ -45,7 +45,7 @@ const enforcementDoc =
 /**
  * Write a governed pair under either the change delta root
  * (`<changeDir>/specs/<locator>`) or the permanent current root
- * (`<openspec>/specs/<locator>`).
+ * (`<specbase>/specs/<locator>`).
  */
 function writePair(
   scope: 'delta' | 'current',
@@ -55,7 +55,7 @@ function writePair(
   const base =
     scope === 'delta'
       ? changeDir()
-      : path.join(projectRoot, 'openspec');
+      : path.join(projectRoot, 'specbase');
   const dir = path.join(base, 'specs', ...locator.split('/'));
   fs.mkdirSync(dir, { recursive: true });
   if (opts.spec !== undefined) {
@@ -103,7 +103,7 @@ describe('loadGovernedContext (governed schema)', () => {
       path.join(realChangeDir(), 'specs', 'behavior')
     );
     expect(behavior.currentRoot).toBe(
-      path.join(realOpenspecRoot(), 'specs', 'behavior')
+      path.join(realSpecbaseRoot(), 'specs', 'behavior')
     );
   });
 
@@ -144,7 +144,7 @@ describe('loadGovernedContext (governed schema)', () => {
     expect(pair.currentPair!.specId).toBe('behavior.session-loop');
     expect(pair.currentPair!.locator).toBe('behavior/session-loop');
     const currentDir = path.join(
-      realOpenspecRoot(),
+      realSpecbaseRoot(),
       'specs',
       'behavior',
       'session-loop'
@@ -182,7 +182,7 @@ describe('loadGovernedContext (governed schema)', () => {
     const result = await loadGovernedContext(context(GOVERNED_SCHEMA));
     const files = collectCurrentPairFiles(result!.governed);
     const currentDir = path.join(
-      realOpenspecRoot(),
+      realSpecbaseRoot(),
       'specs',
       'behavior',
       'session-loop'

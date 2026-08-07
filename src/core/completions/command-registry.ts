@@ -3,7 +3,7 @@ import type { CommandDefinition } from './types.js';
 export const COMMAND_REGISTRY: CommandDefinition[] = [
   {
     name: 'init',
-    description: 'Initialize OpenSpec in your project',
+    description: 'Initialize Specbase in your project',
     acceptsPositional: true,
     positionalType: 'path',
     positionals: [{ name: 'path', type: 'path', optional: true }],
@@ -27,7 +27,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'update',
-    description: 'Update OpenSpec instruction files',
+    description: 'Update Specbase instruction files',
     acceptsPositional: true,
     positionalType: 'path',
     positionals: [{ name: 'path', type: 'path', optional: true }],
@@ -89,7 +89,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
       COMMON_FLAGS.jsonValidation,
       {
         name: 'concurrency',
-        description: 'Max concurrent validations (defaults to env OPENSPEC_CONCURRENCY or 6)',
+        description: 'Max concurrent validations (defaults to env SPECBASE_CONCURRENCY or 6)',
         takesValue: true,
       },
       COMMON_FLAGS.noInteractive,
@@ -276,7 +276,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   {
     name: 'store',
     description:
-      'Create and manage stores - standalone OpenSpec repos you register on this machine',
+      'Create and manage stores - standalone Specbase repos you register on this machine',
     flags: [],
     subcommands: [
       {
@@ -373,7 +373,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'context',
-    description: 'Print the working context for the resolved OpenSpec root',
+    description: 'Print the working context for the resolved Specbase root',
     flags: [
       COMMON_FLAGS.json,
       COMMON_FLAGS.store,
@@ -390,7 +390,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'doctor',
-    description: 'Report relationship health for the resolved OpenSpec root',
+    description: 'Report relationship health for the resolved Specbase root',
     flags: [
       COMMON_FLAGS.json,
       COMMON_FLAGS.store,
@@ -462,7 +462,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'feedback',
-    description: 'Submit feedback about OpenSpec',
+    description: 'Submit feedback about Specbase',
     acceptsPositional: true,
     positionals: [{ name: 'message' }],
     flags: [
@@ -475,7 +475,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'change',
-    description: 'Manage OpenSpec change proposals (deprecated)',
+    description: 'Manage Specbase change proposals (deprecated)',
     flags: [],
     subcommands: [
       {
@@ -524,7 +524,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'spec',
-    description: 'Manage OpenSpec specifications',
+    description: 'Manage Specbase specifications',
     flags: [],
     subcommands: [
       {
@@ -579,7 +579,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'completion',
-    description: 'Manage shell completions for OpenSpec CLI',
+    description: 'Manage shell completions for Specbase CLI',
     flags: [],
     subcommands: [
       {
@@ -621,7 +621,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'config',
-    description: 'View and modify global OpenSpec configuration',
+    description: 'View and modify global Specbase configuration',
     flags: [
       {
         name: 'scope',

@@ -3,23 +3,53 @@ import * as path from 'node:path';
 
 import { FileSystemUtils } from '../utils/file-system.js';
 import { serializeConfig } from './config-prompts.js';
+import { resolvePlanningDirName } from './planning-dir.js';
 import {
   makeStoreDiagnostic,
   type StoreDiagnostic,
 } from './store/errors.js';
 
-export const OPENSPEC_ROOT_DIR = 'openspec';
-export const OPENSPEC_CONFIG_YAML = 'openspec/config.yaml';
-export const OPENSPEC_CONFIG_YML = 'openspec/config.yml';
-export const OPENSPEC_SPECS_DIR = 'openspec/specs';
-export const OPENSPEC_CHANGES_DIR = 'openspec/changes';
-export const OPENSPEC_ARCHIVE_DIR = 'openspec/changes/archive';
-export const DEFAULT_OPENSPEC_SCHEMA = 'spec-driven';
+export const SPECBASE_ROOT_DIR = 'specbase';
+export const SPECBASE_CONFIG_YAML = 'specbase/config.yaml';
+export const SPECBASE_CONFIG_YML = 'specbase/config.yml';
+export const SPECBASE_SPECS_DIR = 'specbase/specs';
+export const SPECBASE_CHANGES_DIR = 'specbase/changes';
+export const SPECBASE_ARCHIVE_DIR = 'specbase/changes/archive';
+export const DEFAULT_SPECBASE_SCHEMA = 'spec-driven';
 export const DIRECTORY_ANCHOR_FILE_NAME = '.gitkeep';
 
 // Git cannot track empty directories, so setup anchors otherwise-empty
 // conventional store directories for teammates who clone the repo later.
-export const ANCHORED_OPENSPEC_DIRS = [OPENSPEC_SPECS_DIR, OPENSPEC_ARCHIVE_DIR] as const;
+export const ANCHORED_SPECBASE_DIRS = [SPECBASE_SPECS_DIR, SPECBASE_ARCHIVE_DIR] as const;
+
+// The set of planning-store relative paths for a given store root, built from
+// the resolved planning directory name (specbase for new roots, an existing
+// specbase/ otherwise). Paths are posix-relative so they compare equal to the
+// legacy string constants and serialize consistently across platforms.
+interface PlanningDirLayout {
+  rootDir: string;
+  configYaml: string;
+  configYml: string;
+  specsDir: string;
+  changesDir: string;
+  archiveDir: string;
+  anchoredDirs: string[];
+}
+
+function planningDirLayout(storeRoot: string): PlanningDirLayout {
+  const rootDir = resolvePlanningDirName(storeRoot);
+  const specsDir = path.posix.join(rootDir, 'specs');
+  const archiveDir = path.posix.join(rootDir, 'changes', 'archive');
+  return {
+    rootDir,
+    configYaml: path.posix.join(rootDir, 'config.yaml'),
+    configYml: path.posix.join(rootDir, 'config.yml'),
+    specsDir,
+    changesDir: path.posix.join(rootDir, 'changes'),
+    archiveDir,
+    anchoredDirs: [specsDir, archiveDir],
+  };
+}
 
 type PathKind = 'missing' | 'directory' | 'file' | 'other';
 
@@ -29,7 +59,7 @@ export interface CreatedPathLedgerEntry {
   kind: 'directory' | 'file';
 }
 
-export interface OpenSpecRootInspection {
+export interface SpecbaseRootInspection {
   present: boolean | null;
   config: {
     present: boolean | null;
@@ -48,8 +78,8 @@ export interface OpenSpecRootInspection {
   diagnostics: StoreDiagnostic[];
 }
 
-export interface EnsureOpenSpecRootResult {
-  inspection: OpenSpecRootInspection;
+export interface EnsureSpecbaseRootResult {
+  inspection: SpecbaseRootInspection;
   createdArtifacts: string[];
   createdPaths: CreatedPathLedgerEntry[];
 }
@@ -79,7 +109,7 @@ function relativeArtifact(relativePath: string, kind: CreatedPathLedgerEntry['ki
   return kind === 'directory' ? `${normalized}/` : normalized;
 }
 
-function unresolvedInspection(): OpenSpecRootInspection {
+function unresolvedInspection(): SpecbaseRootInspection {
   return {
     present: null,
     config: { present: null },
@@ -102,7 +132,7 @@ function missingDirectoryDiagnostic(
 type OptionalPlanningDirectoryKey = 'specs' | 'changes' | 'archive';
 
 async function inspectOptionalPlanningDirectory(
-  inspection: OpenSpecRootInspection,
+  inspection: SpecbaseRootInspection,
   storeRoot: string,
   key: OptionalPlanningDirectoryKey,
   relativePath: string,
@@ -121,13 +151,13 @@ async function inspectOptionalPlanningDirectory(
   return kind;
 }
 
-export async function inspectOpenSpecRoot(storeRoot: string): Promise<OpenSpecRootInspection> {
+export async function inspectSpecbaseRoot(storeRoot: string): Promise<SpecbaseRootInspection> {
   const rootKind = await pathKind(storeRoot);
   const inspection = unresolvedInspection();
 
   if (rootKind === 'missing') {
     inspection.diagnostics.push(missingDirectoryDiagnostic(
-      'openspec_store_root_missing',
+      'specbase_store_root_missing',
       'Store root does not exist.',
       'store.root'
     ));
@@ -136,54 +166,55 @@ export async function inspectOpenSpecRoot(storeRoot: string): Promise<OpenSpecRo
 
   if (rootKind !== 'directory') {
     inspection.diagnostics.push(missingDirectoryDiagnostic(
-      'openspec_store_root_not_directory',
+      'specbase_store_root_not_directory',
       'Store root is not a directory.',
       'store.root'
     ));
     return inspection;
   }
 
-  const openspecPath = path.join(storeRoot, OPENSPEC_ROOT_DIR);
-  const openspecKind = await pathKind(openspecPath);
-  inspection.present = openspecKind === 'directory';
+  const layout = planningDirLayout(storeRoot);
+  const specbasePath = path.join(storeRoot, layout.rootDir);
+  const specbaseKind = await pathKind(specbasePath);
+  inspection.present = specbaseKind === 'directory';
 
-  if (openspecKind === 'missing') {
+  if (specbaseKind === 'missing') {
     inspection.diagnostics.push(missingDirectoryDiagnostic(
-      'openspec_root_missing',
-      'Missing openspec/ directory.',
-      'openspec.root'
+      'specbase_root_missing',
+      `Missing ${layout.rootDir}/ directory.`,
+      'specbase.root'
     ));
     return inspection;
   }
 
-  if (openspecKind !== 'directory') {
+  if (specbaseKind !== 'directory') {
     inspection.diagnostics.push(missingDirectoryDiagnostic(
-      'openspec_root_not_directory',
-      'openspec/ exists but is not a directory.',
-      'openspec.root'
+      'specbase_root_not_directory',
+      `${layout.rootDir}/ exists but is not a directory.`,
+      'specbase.root'
     ));
     return inspection;
   }
 
-  const configYamlKind = await pathKind(path.join(storeRoot, OPENSPEC_CONFIG_YAML));
-  const configYmlKind = await pathKind(path.join(storeRoot, OPENSPEC_CONFIG_YML));
+  const configYamlKind = await pathKind(path.join(storeRoot, layout.configYaml));
+  const configYmlKind = await pathKind(path.join(storeRoot, layout.configYml));
   if (configYamlKind === 'file') {
-    inspection.config = { present: true, path: OPENSPEC_CONFIG_YAML };
+    inspection.config = { present: true, path: layout.configYaml };
   } else if (configYmlKind === 'file') {
-    inspection.config = { present: true, path: OPENSPEC_CONFIG_YML };
+    inspection.config = { present: true, path: layout.configYml };
   } else {
     inspection.config = { present: false };
     if (configYamlKind !== 'missing' || configYmlKind !== 'missing') {
       inspection.diagnostics.push(missingDirectoryDiagnostic(
-        'openspec_config_not_file',
-        'OpenSpec config path exists but is not a file.',
-        'openspec.config'
+        'specbase_config_not_file',
+        'Specbase config path exists but is not a file.',
+        'specbase.config'
       ));
     } else {
       inspection.diagnostics.push(missingDirectoryDiagnostic(
-        'openspec_config_missing',
-        'Missing openspec/config.yaml or openspec/config.yml.',
-        'openspec.config'
+        'specbase_config_missing',
+        `Missing ${layout.configYaml} or ${layout.configYml}.`,
+        'specbase.config'
       ));
     }
   }
@@ -192,26 +223,26 @@ export async function inspectOpenSpecRoot(storeRoot: string): Promise<OpenSpecRo
     inspection,
     storeRoot,
     'specs',
-    OPENSPEC_SPECS_DIR,
-    'openspec_specs_not_directory',
-    'openspec.specs'
+    layout.specsDir,
+    'specbase_specs_not_directory',
+    'specbase.specs'
   );
   const changesKind = await inspectOptionalPlanningDirectory(
     inspection,
     storeRoot,
     'changes',
-    OPENSPEC_CHANGES_DIR,
-    'openspec_changes_not_directory',
-    'openspec.changes'
+    layout.changesDir,
+    'specbase_changes_not_directory',
+    'specbase.changes'
   );
   if (changesKind === 'directory') {
     await inspectOptionalPlanningDirectory(
       inspection,
       storeRoot,
       'archive',
-      OPENSPEC_ARCHIVE_DIR,
-      'openspec_archive_not_directory',
-      'openspec.archive'
+      layout.archiveDir,
+      'specbase_archive_not_directory',
+      'specbase.archive'
     );
   } else {
     inspection.archive = { present: false };
@@ -248,24 +279,25 @@ async function ensureDirectory(
 
 async function ensureDefaultConfig(
   storeRoot: string,
+  layout: PlanningDirLayout,
   ledger: CreatedPathLedgerEntry[]
 ): Promise<void> {
-  const configYamlPath = path.join(storeRoot, OPENSPEC_CONFIG_YAML);
-  const configYmlPath = path.join(storeRoot, OPENSPEC_CONFIG_YML);
+  const configYamlPath = path.join(storeRoot, layout.configYaml);
+  const configYmlPath = path.join(storeRoot, layout.configYml);
   const yamlKind = await pathKind(configYamlPath);
   const ymlKind = await pathKind(configYmlPath);
 
   if (yamlKind === 'file' || ymlKind === 'file') return;
   if (yamlKind !== 'missing' || ymlKind !== 'missing') {
-    throw new Error('OpenSpec config path exists but is not a file.');
+    throw new Error('Specbase config path exists but is not a file.');
   }
 
   await FileSystemUtils.writeFile(
     configYamlPath,
-    serializeConfig({ schema: DEFAULT_OPENSPEC_SCHEMA })
+    serializeConfig({ schema: DEFAULT_SPECBASE_SCHEMA })
   );
   ledger.push({
-    relativePath: relativeArtifact(OPENSPEC_CONFIG_YAML, 'file'),
+    relativePath: relativeArtifact(layout.configYaml, 'file'),
     absolutePath: configYamlPath,
     kind: 'file',
   });
@@ -289,14 +321,14 @@ async function ensureDirectoryAnchor(
   });
 }
 
-export interface EnsureOpenSpecRootOptions {
+export interface EnsureSpecbaseRootOptions {
   anchorEmptyDirectories?: boolean;
 }
 
-export async function ensureOpenSpecRoot(
+export async function ensureSpecbaseRoot(
   storeRoot: string,
-  options: EnsureOpenSpecRootOptions = {}
-): Promise<EnsureOpenSpecRootResult> {
+  options: EnsureSpecbaseRootOptions = {}
+): Promise<EnsureSpecbaseRootResult> {
   const ledger: CreatedPathLedgerEntry[] = [];
   const rootKind = await pathKind(storeRoot);
 
@@ -306,20 +338,24 @@ export async function ensureOpenSpecRoot(
     throw new Error('Store root is not a directory.');
   }
 
-  await ensureDirectory(storeRoot, OPENSPEC_ROOT_DIR, ledger);
-  await ensureDirectory(storeRoot, OPENSPEC_SPECS_DIR, ledger);
-  await ensureDirectory(storeRoot, OPENSPEC_CHANGES_DIR, ledger);
-  await ensureDirectory(storeRoot, OPENSPEC_ARCHIVE_DIR, ledger);
-  await ensureDefaultConfig(storeRoot, ledger);
+  // Resolve the planning dir name once against the (now-existing) store root:
+  // an existing specbase/ root keeps its name, a fresh root creates specbase/.
+  const layout = planningDirLayout(storeRoot);
+
+  await ensureDirectory(storeRoot, layout.rootDir, ledger);
+  await ensureDirectory(storeRoot, layout.specsDir, ledger);
+  await ensureDirectory(storeRoot, layout.changesDir, ledger);
+  await ensureDirectory(storeRoot, layout.archiveDir, ledger);
+  await ensureDefaultConfig(storeRoot, layout, ledger);
 
   if (options.anchorEmptyDirectories) {
-    for (const relativeDir of ANCHORED_OPENSPEC_DIRS) {
+    for (const relativeDir of layout.anchoredDirs) {
       await ensureDirectoryAnchor(storeRoot, relativeDir, ledger);
     }
   }
 
   return {
-    inspection: await inspectOpenSpecRoot(storeRoot),
+    inspection: await inspectSpecbaseRoot(storeRoot),
     createdArtifacts: ledger.map((entry) => entry.relativePath),
     createdPaths: ledger,
   };

@@ -9,9 +9,10 @@ product and it self-hosts the governed spec model it ships.
 - Skill / slash-command surface: **`spcb`** — `/spcb:explore`,
   `/spcb:propose`, `/spcb:apply`, `/spcb:archive`, `/spcb:review-panel`.
   (`opsx` is the superseded name.)
-- CLI: the installed `openspec` binary on PATH. It prefers `specbase/`.
-  Do not run `node bin/openspec.js` — this branch's `src/` still hardcodes
-  the old store name.
+- CLI: **`specbase`** (`node bin/specbase.js` from a local build). It prefers
+  the `specbase/` store and falls back to a legacy `openspec/` one. `openspec`
+  remains a backward-compatible bin alias for the same CLI, so the enforcement
+  bindings that invoke `openspec validate` keep working.
 - Organizing rules for the spec tree: [`docs/clean-specbase.md`](docs/clean-specbase.md).
   Writing rules for one pair: [`docs/clean-spec.md`](docs/clean-spec.md).
 

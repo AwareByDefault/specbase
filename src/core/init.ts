@@ -1,7 +1,7 @@
 /**
  * Init Command
  *
- * Sets up OpenSpec with Agent Skills and /opsx:* slash commands.
+ * Sets up Specbase with Agent Skills and /spcb:* slash commands.
  * This is the unified setup command that replaces both the old init and experimental commands.
  */
 
@@ -11,12 +11,12 @@ import ora from 'ora';
 import * as fs from 'fs';
 import { createRequire } from 'module';
 import { FileSystemUtils } from '../utils/file-system.js';
-import { classifyOpenSpecDir, storePointerProblem } from './project-config.js';
+import { classifySpecbaseDir, storePointerProblem } from './project-config.js';
 import { findRepoPlanningRootSync } from './planning-home.js';
 import { transformToHyphenCommands } from '../utils/command-references.js';
 import {
   AI_TOOLS,
-  OPENSPEC_DIR_NAME,
+  resolvePlanningDirName,
   AIToolOption,
 } from './config.js';
 import { PALETTE } from './styles/palette.js';
@@ -53,14 +53,14 @@ import { resolveSpecModel, type Plane } from './artifact-graph/types.js';
 import type { ProjectConfig } from './project-config.js';
 
 const require = createRequire(import.meta.url);
-const { version: OPENSPEC_VERSION } = require('../../package.json');
+const { version: SPECBASE_VERSION } = require('../../package.json');
 
 // -----------------------------------------------------------------------------
 // Constants
 // -----------------------------------------------------------------------------
 
 const DEFAULT_SCHEMA = 'spec-driven';
-// The governed schema a user opts into via the `openspec init` governed-model
+// The governed schema a user opts into via the `specbase init` governed-model
 // prompt. The global DEFAULT_SCHEMA stays flat; only an explicit yes writes this.
 const GOVERNED_SCHEMA = 'spec-driven-governed';
 
@@ -99,21 +99,21 @@ const PROGRESS_SPINNER = {
 };
 
 const WORKFLOW_TO_SKILL_DIR: Record<string, string> = {
-  'explore': 'openspec-explore',
-  'new': 'openspec-new-change',
-  'continue': 'openspec-continue-change',
-  'apply': 'openspec-apply-change',
-  'update': 'openspec-update-change',
-  'ff': 'openspec-ff-change',
-  'sync': 'openspec-sync-specs',
-  'archive': 'openspec-archive-change',
-  'bulk-archive': 'openspec-bulk-archive-change',
-  'verify': 'openspec-verify-change',
-  'onboard': 'openspec-onboard',
-  'propose': 'openspec-propose',
+  'explore': 'specbase-explore',
+  'new': 'specbase-new-change',
+  'continue': 'specbase-continue-change',
+  'apply': 'specbase-apply-change',
+  'update': 'specbase-update-change',
+  'ff': 'specbase-ff-change',
+  'sync': 'specbase-sync-specs',
+  'archive': 'specbase-archive-change',
+  'bulk-archive': 'specbase-bulk-archive-change',
+  'verify': 'specbase-verify-change',
+  'onboard': 'specbase-onboard',
+  'propose': 'specbase-propose',
   // Governed-only, not a profile workflow; present here so delivery switches can
   // still sweep its skill directory.
-  'review-panel': 'openspec-review-panel',
+  'review-panel': 'specbase-review-panel',
 };
 
 // -----------------------------------------------------------------------------
@@ -146,13 +146,15 @@ export class InitCommand {
 
   async execute(targetPath: string): Promise<void> {
     const projectPath = path.resolve(targetPath);
-    const openspecDir = OPENSPEC_DIR_NAME;
-    const openspecPath = path.join(projectPath, openspecDir);
+    // Resolve the planning dir name for this project: an existing specbase/
+    // root keeps its name (extend), a fresh project initializes specbase/.
+    const specbaseDir = resolvePlanningDirName(projectPath);
+    const specbasePath = path.join(projectPath, specbaseDir);
 
     // Validation happens silently in the background
-    const extendMode = await this.validate(projectPath, openspecPath);
+    const extendMode = await this.validate(projectPath, specbasePath);
 
-    // Pointer guard (slice 3.2): a config-only openspec/ with a store:
+    // Pointer guard (slice 3.2): a config-only specbase/ with a store:
     // declaration is externalized planning, not a root to extend — and a
     // subdirectory of such a repo must not silently grow a nested root.
     // Refuse before legacy cleanup, migration, or prompts touch anything.
@@ -161,19 +163,19 @@ export class InitCommand {
     // refuse exactly where a normal command would resolve the pointer).
     const guardRoot = findRepoPlanningRootSync(projectPath);
     if (guardRoot) {
-      const { hasPlanningShape, pointer } = classifyOpenSpecDir(guardRoot);
+      const { hasPlanningShape, pointer } = classifySpecbaseDir(guardRoot);
       if (!hasPlanningShape) {
         if (pointer.malformed) {
           throw new Error(
             `The store declaration in ${pointer.filePath} is invalid (` +
               storePointerProblem(pointer.malformed) +
-              `). Fix or remove the store: line before running openspec init.`
+              `). Fix or remove the store: line before running specbase init.`
           );
         }
         if (pointer.value !== undefined) {
           throw new Error(
             `This repo's planning is externalized to store '${pointer.value}' (${pointer.filePath}). ` +
-              `Remove the store: line first to convert this repo to a local OpenSpec root.`
+              `Remove the store: line first to convert this repo to a local Specbase root.`
           );
         }
       }
@@ -211,7 +213,7 @@ export class InitCommand {
     const validatedTools = this.validateTools(selectedToolIds, toolStates);
 
     // Create directory structure
-    await this.createDirectoryStructure(openspecPath, extendMode);
+    await this.createDirectoryStructure(specbasePath, extendMode);
 
     // Plane picker (fresh, interactive init only). Selecting one or more planes
     // makes the project governed; selecting none keeps the flat setup
@@ -222,7 +224,7 @@ export class InitCommand {
     // Create config.yaml BEFORE generating skills: skill generation reads the
     // resolved spec model from the on-disk config, so the governed schema must
     // be written first for governed skills/commands to be emitted.
-    const configStatus = await this.createConfig(openspecPath, extendMode, planeSelection);
+    const configStatus = await this.createConfig(specbasePath, extendMode, planeSelection);
 
     // Generate skills and commands for each tool
     const results = await this.generateSkillsAndCommands(projectPath, validatedTools);
@@ -243,9 +245,9 @@ export class InitCommand {
 
   private async validate(
     projectPath: string,
-    openspecPath: string
+    specbasePath: string
   ): Promise<boolean> {
-    const extendMode = await FileSystemUtils.directoryExists(openspecPath);
+    const extendMode = await FileSystemUtils.directoryExists(specbasePath);
 
     // Check write permissions
     if (!(await FileSystemUtils.ensureWritePermissions(projectPath))) {
@@ -293,7 +295,7 @@ export class InitCommand {
 
     if (this.force || !canPrompt) {
       // --force flag or non-interactive mode: proceed with cleanup automatically.
-      // Legacy slash commands are 100% OpenSpec-managed, and config file cleanup
+      // Legacy slash commands are 100% Specbase-managed, and config file cleanup
       // only removes markers (never deletes files), so auto-cleanup is safe.
       await this.performLegacyCleanup(projectPath, detection);
       return;
@@ -406,7 +408,7 @@ export class InitCommand {
       .map((toolId) => AI_TOOLS.find((t) => t.value === toolId)?.name || toolId);
 
     if (configuredNames.length > 0) {
-      console.log(`OpenSpec configured: ${configuredNames.join(', ')} (pre-selected)`);
+      console.log(`Specbase configured: ${configuredNames.join(', ')} (pre-selected)`);
     }
 
     const detectedOnlyNames = detectedTools
@@ -535,14 +537,14 @@ export class InitCommand {
   // DIRECTORY STRUCTURE
   // ═══════════════════════════════════════════════════════════
 
-  private async createDirectoryStructure(openspecPath: string, extendMode: boolean): Promise<void> {
+  private async createDirectoryStructure(specbasePath: string, extendMode: boolean): Promise<void> {
     if (extendMode) {
       // In extend mode, just ensure directories exist without spinner
       const directories = [
-        openspecPath,
-        path.join(openspecPath, 'specs'),
-        path.join(openspecPath, 'changes'),
-        path.join(openspecPath, 'changes', 'archive'),
+        specbasePath,
+        path.join(specbasePath, 'specs'),
+        path.join(specbasePath, 'changes'),
+        path.join(specbasePath, 'changes', 'archive'),
       ];
 
       for (const dir of directories) {
@@ -551,13 +553,13 @@ export class InitCommand {
       return;
     }
 
-    const spinner = this.startSpinner('Creating OpenSpec structure...');
+    const spinner = this.startSpinner('Creating Specbase structure...');
 
     const directories = [
-      openspecPath,
-      path.join(openspecPath, 'specs'),
-      path.join(openspecPath, 'changes'),
-      path.join(openspecPath, 'changes', 'archive'),
+      specbasePath,
+      path.join(specbasePath, 'specs'),
+      path.join(specbasePath, 'changes'),
+      path.join(specbasePath, 'changes', 'archive'),
     ];
 
     for (const dir of directories) {
@@ -566,7 +568,7 @@ export class InitCommand {
 
     spinner.stopAndPersist({
       symbol: PALETTE.white('▌'),
-      text: PALETTE.white('OpenSpec structure created'),
+      text: PALETTE.white('Specbase structure created'),
     });
   }
 
@@ -625,7 +627,7 @@ export class InitCommand {
             // Generate SKILL.md content with YAML frontmatter including generatedBy
             // Use hyphen-based command references for tools where filename === command name (oh-my-pi, opencode, pi)
             const transformer = (tool.value === 'opencode' || tool.value === 'pi' || tool.value === 'oh-my-pi') ? transformToHyphenCommands : undefined;
-            const skillContent = generateSkillContent(template, OPENSPEC_VERSION, transformer);
+            const skillContent = generateSkillContent(template, SPECBASE_VERSION, transformer);
 
             // Write the skill file
             await FileSystemUtils.writeFile(skillFile, skillContent);
@@ -682,12 +684,12 @@ export class InitCommand {
   // ═══════════════════════════════════════════════════════════
 
   private async createConfig(
-    openspecPath: string,
+    specbasePath: string,
     extendMode: boolean,
     selection: PlaneSelection = { governed: false, planes: [], selectedIds: [] }
   ): Promise<'created' | 'exists' | 'skipped'> {
-    const configPath = path.join(openspecPath, 'config.yaml');
-    const configYmlPath = path.join(openspecPath, 'config.yml');
+    const configPath = path.join(specbasePath, 'config.yaml');
+    const configYmlPath = path.join(specbasePath, 'config.yml');
     const configYamlExists = fs.existsSync(configPath);
     const configYmlExists = fs.existsSync(configYmlPath);
 
@@ -767,10 +769,11 @@ export class InitCommand {
     const schemaDir = getSchemaDir(GOVERNED_SCHEMA, projectPath);
     if (!schemaDir) return;
     const baselineRoot = path.join(schemaDir, 'templates', 'baseline', 'agents');
+    const planningDirName = resolvePlanningDirName(projectPath);
     for (const locator of locators) {
       for (const file of ['spec.md', 'enforcement.md']) {
         const src = path.join(baselineRoot, locator, file);
-        const dest = path.join(projectPath, 'openspec', 'specs', 'agents', locator, file);
+        const dest = path.join(projectPath, planningDirName, 'specs', 'agents', locator, file);
         if (fs.existsSync(dest) || !fs.existsSync(src)) continue;
         await FileSystemUtils.writeFile(dest, fs.readFileSync(src, 'utf-8'));
       }
@@ -795,7 +798,7 @@ export class InitCommand {
     configStatus: 'created' | 'exists' | 'skipped'
   ): void {
     console.log();
-    console.log(chalk.bold('OpenSpec Setup Complete'));
+    console.log(chalk.bold('Specbase Setup Complete'));
     console.log();
 
     // Show created vs refreshed tools
@@ -852,16 +855,17 @@ export class InitCommand {
     }
 
     // Config status
+    const planningDirName = resolvePlanningDirName(projectPath);
     if (configStatus === 'created') {
       const createdSchema =
         resolveProjectSpecModel(projectPath).kind === 'governed' ? GOVERNED_SCHEMA : DEFAULT_SCHEMA;
-      console.log(`Config: openspec/config.yaml (schema: ${createdSchema})`);
+      console.log(`Config: ${planningDirName}/config.yaml (schema: ${createdSchema})`);
     } else if (configStatus === 'exists') {
       // Show actual filename (config.yaml or config.yml)
-      const configYaml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yaml');
-      const configYml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yml');
+      const configYaml = path.join(projectPath, planningDirName, 'config.yaml');
+      const configYml = path.join(projectPath, planningDirName, 'config.yml');
       const configName = fs.existsSync(configYaml) ? 'config.yaml' : fs.existsSync(configYml) ? 'config.yml' : 'config.yaml';
-      console.log(`Config: openspec/${configName} (exists)`);
+      console.log(`Config: ${planningDirName}/${configName} (exists)`);
     } else {
       console.log(chalk.dim(`Config: skipped (non-interactive mode)`));
     }
@@ -873,18 +877,18 @@ export class InitCommand {
     console.log();
     if (activeWorkflows.includes('propose')) {
       console.log(chalk.bold('Getting started:'));
-      console.log('  Start your first change: /opsx:propose "your idea"');
+      console.log('  Start your first change: /spcb:propose "your idea"');
     } else if (activeWorkflows.includes('new')) {
       console.log(chalk.bold('Getting started:'));
-      console.log('  Start your first change: /opsx:new "your idea"');
+      console.log('  Start your first change: /spcb:new "your idea"');
     } else {
-      console.log("Done. Run 'openspec config profile' to configure your workflows.");
+      console.log("Done. Run 'specbase config profile' to configure your workflows.");
     }
 
     // Links
     console.log();
-    console.log(`Learn more: ${chalk.cyan('https://github.com/Fission-AI/OpenSpec')}`);
-    console.log(`Feedback:   ${chalk.cyan('https://github.com/Fission-AI/OpenSpec/issues')}`);
+    console.log(`Learn more: ${chalk.cyan('https://github.com/AwareByDefault/specbase')}`);
+    console.log(`Feedback:   ${chalk.cyan('https://github.com/AwareByDefault/specbase/issues')}`);
 
     // Restart instruction if any tools were configured
     if (results.createdTools.length > 0 || results.refreshedTools.length > 0) {

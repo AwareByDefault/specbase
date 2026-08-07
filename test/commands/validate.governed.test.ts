@@ -48,7 +48,7 @@ async function writePair(
   locator: string,
   opts: { spec?: string; enforcement?: string; target?: string }
 ): Promise<void> {
-  const dir = path.join(tempDir, 'openspec', 'specs', ...locator.split('/'));
+  const dir = path.join(tempDir, 'specbase', 'specs', ...locator.split('/'));
   await fs.mkdir(dir, { recursive: true });
   if (opts.spec !== undefined) await fs.writeFile(path.join(dir, 'spec.md'), opts.spec);
   if (opts.enforcement !== undefined)
@@ -62,7 +62,7 @@ async function writePair(
 
 /** A valid change with a single ADDED-requirement delta under specs/<cap>/. */
 async function writeChange(name: string, cap = 'auth'): Promise<void> {
-  const changeDir = path.join(tempDir, 'openspec', 'changes', name);
+  const changeDir = path.join(tempDir, 'specbase', 'changes', name);
   await fs.mkdir(changeDir, { recursive: true });
   await fs.writeFile(
     path.join(changeDir, 'proposal.md'),
@@ -75,7 +75,7 @@ async function writeChange(name: string, cap = 'auth'): Promise<void> {
     '',
     '#### Scenario: Apply delta',
     '- **GIVEN** the test change delta',
-    '- **WHEN** openspec validate runs',
+    '- **WHEN** specbase validate runs',
     '- **THEN** the validator reports the change as valid',
   ].join('\n');
   const deltaDir = path.join(changeDir, 'specs', cap);
@@ -84,9 +84,9 @@ async function writeChange(name: string, cap = 'auth'): Promise<void> {
 }
 
 async function writeConfig(schema: string): Promise<void> {
-  const openspec = path.join(tempDir, 'openspec');
-  await fs.mkdir(openspec, { recursive: true });
-  await fs.writeFile(path.join(openspec, 'config.yaml'), `schema: ${schema}\n`);
+  const specbase = path.join(tempDir, 'specbase');
+  await fs.mkdir(specbase, { recursive: true });
+  await fs.writeFile(path.join(specbase, 'config.yaml'), `schema: ${schema}\n`);
 }
 
 async function runValidate(item: string | undefined, options: Record<string, unknown> = {}): Promise<void> {
@@ -94,7 +94,7 @@ async function runValidate(item: string | undefined, options: Record<string, unk
 }
 
 beforeEach(async () => {
-  tempDir = path.join(os.tmpdir(), `openspec-validate-gov-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  tempDir = path.join(os.tmpdir(), `specbase-validate-gov-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   await fs.mkdir(tempDir, { recursive: true });
   originalCwd = process.cwd();
   process.chdir(tempDir);
@@ -384,7 +384,7 @@ describe('governed validate — change targets route to the change validator (#2
     await writeConfig(GOVERNED_SCHEMA);
     // A change directory with no deltas is a change-validation failure, not a
     // "spec not found" dead-end.
-    const emptyChange = path.join(tempDir, 'openspec', 'changes', 'empty-change');
+    const emptyChange = path.join(tempDir, 'specbase', 'changes', 'empty-change');
     await fs.mkdir(emptyChange, { recursive: true });
     await fs.writeFile(
       path.join(emptyChange, 'proposal.md'),
@@ -420,7 +420,7 @@ describe('governed validate — legacy unchanged', () => {
     await writeConfig(LEGACY_SCHEMA);
     const legacyDoc =
       '## Purpose\nAuth capability for the validation harness exercised by tests.\n\n## Requirements\n\n### Requirement: Users SHALL log in\nUsers SHALL authenticate before access.\n\n#### Scenario: Successful login\n- **WHEN** valid credentials are supplied\n- **THEN** access is granted\n';
-    const dir = path.join(tempDir, 'openspec', 'specs', 'auth');
+    const dir = path.join(tempDir, 'specbase', 'specs', 'auth');
     await fs.mkdir(dir, { recursive: true });
     await fs.writeFile(path.join(dir, 'spec.md'), legacyDoc);
 

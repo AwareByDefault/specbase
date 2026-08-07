@@ -28,7 +28,7 @@ export const ApplyPhaseSchema = z.object({
 // optional `reviewLens` names the lens that judges this plane's specs. A
 // `crossCutting` plane has no storage home and participates as a lens only.
 //
-// `defaultSelected` drives the `openspec init` plane picker: a schema declares
+// `defaultSelected` drives the `specbase init` plane picker: a schema declares
 // ONE offer-able plane list, and each record's `defaultSelected` sets its
 // initial checkbox state. Planes with `defaultSelected: true` also form the
 // resolved default set for a project that declares no plane override, so

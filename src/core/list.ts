@@ -5,6 +5,7 @@ import { readFileSync, type Dirent } from 'fs';
 import { join } from 'path';
 import { MarkdownParser } from './parsers/markdown-parser.js';
 import type { RootOutput } from './root-selection.js';
+import { planningDir } from './planning-dir.js';
 import { resolveProjectSpecModel } from './shared/skill-generation.js';
 import {
   loadGovernedRepository,
@@ -151,7 +152,7 @@ export class ListCommand {
     const { sort = 'recent', json = false, root } = options;
 
     if (mode === 'changes') {
-      const changesDir = path.join(targetPath, 'openspec', 'changes');
+      const changesDir = path.join(planningDir(targetPath), 'changes');
 
       // Get all directories in changes (excluding archive)
       const entries = await readChangeDirectoryEntries(changesDir);
@@ -225,7 +226,7 @@ export class ListCommand {
       return;
     }
 
-    const specsDir = path.join(targetPath, 'openspec', 'specs');
+    const specsDir = path.join(planningDir(targetPath), 'specs');
     try {
       await fs.access(specsDir);
     } catch {
@@ -291,8 +292,8 @@ export class ListCommand {
     planes?: string[]
   ): Promise<void> {
     const { json, root } = output;
-    const openspecRoot = path.join(projectRoot, 'openspec');
-    const repository = await loadGovernedRepository(openspecRoot, planes);
+    const specbaseRoot = planningDir(projectRoot);
+    const repository = await loadGovernedRepository(specbaseRoot, planes);
 
     if (repository.indexedPairs.length === 0) {
       if (json) {

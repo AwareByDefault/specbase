@@ -47,7 +47,7 @@ export interface GovernedPlaneRoot {
   plane: SpecPlane;
   /** Native delta plane root under the change dir (`specs/<plane>`). */
   deltaRoot: string;
-  /** Native current plane root under the openspec root (`specs/<plane>`). */
+  /** Native current plane root under the specbase root (`specs/<plane>`). */
   currentRoot: string;
 }
 
@@ -100,11 +100,11 @@ export interface GovernedContextResult {
 }
 
 /**
- * The openspec root that holds the permanent governed pairs, derived from the
- * change directory (`<openspecRoot>/changes/<change>` → `<openspecRoot>`). This
+ * The specbase root that holds the permanent governed pairs, derived from the
+ * change directory (`<specbaseRoot>/changes/<change>` → `<specbaseRoot>`). This
  * matches the repo and store layouts without threading a separate root through.
  */
-function openspecRootForChange(changeDir: string): string {
+function specbaseRootForChange(changeDir: string): string {
   return path.resolve(changeDir, '..', '..');
 }
 
@@ -127,14 +127,14 @@ export async function loadGovernedContext(
   }
 
   const changeDir = context.changeDir;
-  const openspecRoot = openspecRootForChange(changeDir);
+  const specbaseRoot = specbaseRootForChange(changeDir);
 
   // Change deltas live under `<changeDir>/specs/<plane>/...`; permanent pairs
-  // under `<openspecRoot>/specs/<plane>/...`. Both use the governed discovery.
+  // under `<specbaseRoot>/specs/<plane>/...`. Both use the governed discovery.
   const planes = specModel.planes.map((p) => p.id);
   const [deltaDiscovery, repository] = await Promise.all([
     discoverGovernedPairs(changeDir, planes),
-    loadGovernedRepository(openspecRoot, planes),
+    loadGovernedRepository(specbaseRoot, planes),
   ]);
 
   const currentByLocator = new Map<string, IndexedPair>();
@@ -181,7 +181,7 @@ export async function loadGovernedContext(
   const planeRoots: GovernedPlaneRoot[] = planes.map((plane) => ({
     plane,
     deltaRoot: planeRoot(changeDir, plane),
-    currentRoot: planeRoot(openspecRoot, plane),
+    currentRoot: planeRoot(specbaseRoot, plane),
   }));
 
   return { specModel, governed: { planeRoots, deltaPairs } };

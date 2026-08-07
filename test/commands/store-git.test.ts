@@ -11,7 +11,7 @@ import {
   writeStoreRegistryState,
 } from '../../src/core/index.js';
 import { runCLI, type RunCLIResult } from '../helpers/run-cli.js';
-import { createHealthyOpenSpecRoot, isolatedGitEnv } from '../helpers/store-git.js';
+import { createHealthySpecbaseRoot, isolatedGitEnv } from '../helpers/store-git.js';
 import { cleanupTempPath } from '../helpers/temp-cleanup.js';
 
 vi.mock('@inquirer/prompts', () => ({
@@ -23,7 +23,7 @@ async function runStoreCommand(args: string[]): Promise<void> {
   const { registerStoreCommand } = await import('../../src/commands/store.js');
   const program = new Command();
   registerStoreCommand(program);
-  await program.parseAsync(['node', 'openspec', 'store', ...args]);
+  await program.parseAsync(['node', 'specbase', 'store', ...args]);
 }
 
 async function getPromptMocks(): Promise<{
@@ -57,14 +57,14 @@ describe('store git lifecycle', () => {
   beforeEach(() => {
     vi.resetModules();
 
-    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-store-git-'));
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'specbase-store-git-'));
     dataHome = path.join(tempDir, 'data');
     configHome = path.join(tempDir, 'config');
     env = {
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
       OPEN_SPEC_INTERACTIVE: '0',
-      OPENSPEC_TELEMETRY: '0',
+      SPECBASE_TELEMETRY: '0',
     };
     globalDataDir = getGlobalDataDir({ env });
 
@@ -107,7 +107,7 @@ describe('store git lifecycle', () => {
       ...process.env,
       XDG_DATA_HOME: dataHome,
       XDG_CONFIG_HOME: configHome,
-      OPENSPEC_TELEMETRY: '0',
+      SPECBASE_TELEMETRY: '0',
       ...isolatedGitEnv(tempDir),
     };
     delete process.env.OPEN_SPEC_INTERACTIVE;
@@ -140,15 +140,15 @@ describe('store git lifecycle', () => {
     const committed = execFileSync('git', ['log', '--format=%s'], { cwd: storeRoot })
       .toString()
       .trim();
-    expect(committed).toBe('Initialize OpenSpec store interactive-context');
+    expect(committed).toBe('Initialize Specbase store interactive-context');
     expect(process.exitCode).toBeUndefined();
   });
 
   it('commits the full store shape when initializing Git on an existing root', async () => {
     const storeRoot = mkdir('convert-context');
     const gitEnv = { ...env, ...isolatedGitEnv(tempDir) };
-    createHealthyOpenSpecRoot(storeRoot);
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'specs', 'keep-me.md'), 'user spec\n');
+    createHealthySpecbaseRoot(storeRoot);
+    fs.writeFileSync(path.join(storeRoot, 'specbase', 'specs', 'keep-me.md'), 'user spec\n');
     // Old beta files outside the store shape stay out of the commit.
     fs.writeFileSync(path.join(storeRoot, 'workspace.yaml'), 'old: beta\n');
 
@@ -173,10 +173,10 @@ describe('store git lifecycle', () => {
       .split('\n')
       .sort();
     expect(committedFiles).toEqual([
-      '.openspec-store/store.yaml',
-      'openspec/changes/archive/.gitkeep',
-      'openspec/config.yaml',
-      'openspec/specs/keep-me.md',
+      '.specbase-store/store.yaml',
+      'specbase/changes/archive/.gitkeep',
+      'specbase/config.yaml',
+      'specbase/specs/keep-me.md',
     ]);
 
     // A clone of the converted store is immediately a healthy root.
@@ -186,10 +186,10 @@ describe('store git lifecycle', () => {
       stdio: 'ignore',
     });
     for (const required of [
-      'openspec/config.yaml',
-      'openspec/specs/keep-me.md',
-      'openspec/changes/archive/.gitkeep',
-      '.openspec-store/store.yaml',
+      'specbase/config.yaml',
+      'specbase/specs/keep-me.md',
+      'specbase/changes/archive/.gitkeep',
+      '.specbase-store/store.yaml',
     ]) {
       expect(fs.existsSync(path.join(cloneRoot, required))).toBe(true);
     }
@@ -206,8 +206,8 @@ describe('store git lifecycle', () => {
       XDG_DATA_HOME: path.join(tempDir, 'empty-teammate-data'),
       XDG_CONFIG_HOME: path.join(tempDir, 'empty-teammate-config'),
     };
-    fs.mkdirSync(path.join(storeRoot, 'openspec'), { recursive: true });
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+    fs.mkdirSync(path.join(storeRoot, 'specbase'), { recursive: true });
+    fs.writeFileSync(path.join(storeRoot, 'specbase', 'config.yaml'), 'schema: spec-driven\n');
     await writeStoreMetadataState(storeRoot, { version: 1, id: 'empty-team-context' });
     execFileSync('git', ['init'], { cwd: storeRoot, stdio: 'ignore' });
     execFileSync('git', ['add', '-A'], { cwd: storeRoot, env: gitExecEnv });
@@ -221,8 +221,8 @@ describe('store git lifecycle', () => {
       env: gitExecEnv,
       stdio: 'ignore',
     });
-    expect(fs.existsSync(path.join(cloneRoot, 'openspec', 'changes'))).toBe(false);
-    expect(fs.existsSync(path.join(cloneRoot, 'openspec', 'specs'))).toBe(false);
+    expect(fs.existsSync(path.join(cloneRoot, 'specbase', 'changes'))).toBe(false);
+    expect(fs.existsSync(path.join(cloneRoot, 'specbase', 'specs'))).toBe(false);
 
     const registered = await runCLI(['store', 'register', cloneRoot, '--json'], {
       cwd: tempDir,
@@ -242,14 +242,14 @@ describe('store git lifecycle', () => {
       XDG_DATA_HOME: path.join(tempDir, 'teammate-data'),
       XDG_CONFIG_HOME: path.join(tempDir, 'teammate-config'),
     };
-    fs.mkdirSync(path.join(storeRoot, 'openspec', 'changes', 'add-widget'), { recursive: true });
-    fs.writeFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+    fs.mkdirSync(path.join(storeRoot, 'specbase', 'changes', 'add-widget'), { recursive: true });
+    fs.writeFileSync(path.join(storeRoot, 'specbase', 'config.yaml'), 'schema: spec-driven\n');
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'changes', 'add-widget', 'proposal.md'),
+      path.join(storeRoot, 'specbase', 'changes', 'add-widget', 'proposal.md'),
       '# Proposal\n'
     );
     fs.writeFileSync(
-      path.join(storeRoot, 'openspec', 'changes', 'add-widget', 'tasks.md'),
+      path.join(storeRoot, 'specbase', 'changes', 'add-widget', 'tasks.md'),
       '# Tasks\n'
     );
     await writeStoreMetadataState(storeRoot, { version: 1, id: 'planned-context' });
@@ -269,20 +269,20 @@ describe('store git lifecycle', () => {
       .split('\n')
       .sort();
     expect(committedFiles).toEqual([
-      '.openspec-store/store.yaml',
-      'openspec/changes/add-widget/proposal.md',
-      'openspec/changes/add-widget/tasks.md',
-      'openspec/config.yaml',
+      '.specbase-store/store.yaml',
+      'specbase/changes/add-widget/proposal.md',
+      'specbase/changes/add-widget/tasks.md',
+      'specbase/config.yaml',
     ]);
-    expect(committedFiles).not.toContain('openspec/specs/.gitkeep');
-    expect(committedFiles).not.toContain('openspec/changes/archive/.gitkeep');
+    expect(committedFiles).not.toContain('specbase/specs/.gitkeep');
+    expect(committedFiles).not.toContain('specbase/changes/archive/.gitkeep');
 
     execFileSync('git', ['clone', storeRoot, cloneRoot], {
       env: gitExecEnv,
       stdio: 'ignore',
     });
-    expect(fs.existsSync(path.join(cloneRoot, 'openspec', 'specs'))).toBe(false);
-    expect(fs.existsSync(path.join(cloneRoot, 'openspec', 'changes', 'archive'))).toBe(false);
+    expect(fs.existsSync(path.join(cloneRoot, 'specbase', 'specs'))).toBe(false);
+    expect(fs.existsSync(path.join(cloneRoot, 'specbase', 'changes', 'archive'))).toBe(false);
 
     const registered = await runCLI(['store', 'register', cloneRoot, '--json'], {
       cwd: tempDir,
@@ -296,7 +296,7 @@ describe('store git lifecycle', () => {
     const storeRoot = mkdir('staged-context');
     const gitEnv = { ...env, ...isolatedGitEnv(tempDir) };
     const gitExecEnv = { ...process.env, ...gitEnv };
-    createHealthyOpenSpecRoot(storeRoot);
+    createHealthySpecbaseRoot(storeRoot);
     execFileSync('git', ['init'], { cwd: storeRoot, stdio: 'ignore' });
     execFileSync('git', ['add', '-A'], { cwd: storeRoot, env: gitExecEnv });
     execFileSync('git', ['commit', '-m', 'user base'], { cwd: storeRoot, env: gitExecEnv, stdio: 'ignore' });
@@ -319,9 +319,9 @@ describe('store git lifecycle', () => {
       .split('\n')
       .sort();
     expect(committedFiles).toEqual([
-      '.openspec-store/store.yaml',
-      'openspec/changes/archive/.gitkeep',
-      'openspec/specs/.gitkeep',
+      '.specbase-store/store.yaml',
+      'specbase/changes/archive/.gitkeep',
+      'specbase/specs/.gitkeep',
     ]);
 
     // The user's staged file stays staged and uncommitted.
@@ -346,9 +346,9 @@ describe('store git lifecycle', () => {
   it('flags clone-fragile directories and commitless clones', async () => {
     const storeRoot = mkdir('fragile-context');
     const gitExecEnv = { ...process.env, ...isolatedGitEnv(tempDir) };
-    createHealthyOpenSpecRoot(storeRoot);
+    createHealthySpecbaseRoot(storeRoot);
     execFileSync('git', ['init'], { cwd: storeRoot, stdio: 'ignore' });
-    execFileSync('git', ['add', 'openspec/config.yaml'], { cwd: storeRoot, env: gitExecEnv });
+    execFileSync('git', ['add', 'specbase/config.yaml'], { cwd: storeRoot, env: gitExecEnv });
     execFileSync('git', ['commit', '-m', 'partial'], { cwd: storeRoot, env: gitExecEnv, stdio: 'ignore' });
     await writeStoreMetadataState(storeRoot, { version: 1, id: 'fragile-context' });
     await writeStoreRegistryState(
@@ -374,7 +374,7 @@ describe('store git lifecycle', () => {
       expect.objectContaining({
         severity: 'warning',
         code: 'store_clone_fragile_directories',
-        message: expect.stringContaining('openspec/specs/'),
+        message: expect.stringContaining('specbase/specs/'),
       }),
     ]);
 

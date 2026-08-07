@@ -26,20 +26,20 @@ function injectOmpArgs(body: string): string {
 
 /**
  * Oh My Pi adapter for command generation.
- * File path: .omp/commands/opsx-<id>.md
+ * File path: .omp/commands/spcb-<id>.md
  * Frontmatter: description
  *
  * OMP uses the filename (minus .md) as the slash command name, so
- * opsx-propose.md → /opsx-propose. Command references in the body
- * are transformed from /opsx: to /opsx- for consistency, and
+ * spcb-propose.md → /spcb-propose. Command references in the body
+ * are transformed from /spcb: to /spcb- for consistency, and
  * $@ is injected after **Input**: headings so user-supplied arguments
- * (e.g. /opsx-propose my-feature) are visible to the agent.
+ * (e.g. /spcb-propose my-feature) are visible to the agent.
  */
 export const ohMyPiAdapter: ToolCommandAdapter = {
   toolId: 'oh-my-pi',
 
   getFilePath(commandId: string): string {
-    return path.join('.omp', 'commands', `opsx-${commandId}.md`);
+    return path.join('.omp', 'commands', `spcb-${commandId}.md`);
   },
 
   formatFile(content: CommandContent): string {

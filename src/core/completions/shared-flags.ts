@@ -29,7 +29,7 @@ export const COMMON_FLAGS = {
   store: {
     name: 'store',
     description:
-      "Store id to use as the OpenSpec root (a store is a standalone OpenSpec repo you've registered)",
+      "Store id to use as the Specbase root (a store is a standalone Specbase repo you've registered)",
     takesValue: true,
   } as FlagDefinition,
 } as const;

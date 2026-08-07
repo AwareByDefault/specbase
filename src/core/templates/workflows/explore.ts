@@ -11,11 +11,11 @@ import { withGovernedGuidance, GOVERNED_EXPLORE_GUIDANCE } from './governed-guid
 
 export function getExploreSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
-    name: 'openspec-explore',
+    name: 'specbase-explore',
     description: 'Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.',
     instructions: withGovernedGuidance(`Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
 
-**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create OpenSpec artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
+**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create Specbase artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
@@ -81,15 +81,15 @@ Depending on what the user brings, you might:
 
 ---
 
-## OpenSpec Awareness
+## Specbase Awareness
 
-You have full context of the OpenSpec system. Use it naturally, don't force it.
+You have full context of the Specbase system. Use it naturally, don't force it.
 
 ### Check for context
 
 At the start, quickly check what exists:
 \`\`\`bash
-openspec list --json
+specbase list --json
 \`\`\`
 
 This tells you:
@@ -109,7 +109,7 @@ Think freely. When insights crystallize, you might offer:
 If the user mentions a change or you detect one is relevant:
 
 1. **Resolve and read existing artifacts for context**
-   - Run \`openspec status --change "<name>" --json\`.
+   - Run \`specbase status --change "<name>" --json\`.
    - Use \`changeRoot\`, \`artifactPaths\`, and \`actionContext\` from the status JSON.
    - Read existing files from \`artifactPaths.<artifact>.existingOutputPaths\`.
 
@@ -206,7 +206,7 @@ You: [reads codebase]
 
 **User is stuck mid-implementation:**
 \`\`\`
-User: /opsx:explore add-auth-system
+User: /spcb:explore add-auth-system
       The OAuth integration is more complex than expected
 
 You: [reads change artifacts]
@@ -283,7 +283,7 @@ But this summary is optional. Sometimes the thinking IS the value.
 
 ## Guardrails
 
-- **Don't implement** - Never write code or implement features. Creating OpenSpec artifacts is fine, writing application code is not.
+- **Don't implement** - Never write code or implement features. Creating Specbase artifacts is fine, writing application code is not.
 - **Don't fake understanding** - If something is unclear, dig deeper
 - **Don't rush** - Discovery is thinking time, not task time
 - **Don't force structure** - Let patterns emerge naturally
@@ -292,26 +292,26 @@ But this summary is optional. Sometimes the thinking IS the value.
 - **Do explore the codebase** - Ground discussions in reality
 - **Do question assumptions** - Including the user's and your own`, specModel, GOVERNED_EXPLORE_GUIDANCE),
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires specbase CLI.',
+    metadata: { author: 'specbase', version: '1.0' },
   };
 }
 
-export function getOpsxExploreCommandTemplate(specModel?: SpecModel): CommandTemplate {
+export function getSpcbExploreCommandTemplate(specModel?: SpecModel): CommandTemplate {
   return {
-    name: 'OPSX: Explore',
+    name: 'SPCB: Explore',
     description: 'Enter explore mode - think through ideas, investigate problems, clarify requirements',
     category: 'Workflow',
     tags: ['workflow', 'explore', 'experimental', 'thinking'],
     content: withGovernedGuidance(`Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
 
-**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create OpenSpec artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
+**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY create Specbase artifacts (proposals, designs, specs) if the user asks—that's capturing thinking, not implementing.
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
 ${STORE_SELECTION_GUIDANCE}
 
-**Input**: The argument after \`/opsx:explore\` is whatever the user wants to think about. Could be:
+**Input**: The argument after \`/spcb:explore\` is whatever the user wants to think about. Could be:
 - A vague idea: "real-time collaboration"
 - A specific problem: "the auth system is getting unwieldy"
 - A change name: "add-dark-mode" (to explore in context of that change)
@@ -378,15 +378,15 @@ Depending on what the user brings, you might:
 
 ---
 
-## OpenSpec Awareness
+## Specbase Awareness
 
-You have full context of the OpenSpec system. Use it naturally, don't force it.
+You have full context of the Specbase system. Use it naturally, don't force it.
 
 ### Check for context
 
 At the start, quickly check what exists:
 \`\`\`bash
-openspec list --json
+specbase list --json
 \`\`\`
 
 This tells you:
@@ -408,7 +408,7 @@ Think freely. When insights crystallize, you might offer:
 If the user mentions a change or you detect one is relevant:
 
 1. **Resolve and read existing artifacts for context**
-   - Run \`openspec status --change "<name>" --json\`.
+   - Run \`specbase status --change "<name>" --json\`.
    - Use \`changeRoot\`, \`artifactPaths\`, and \`actionContext\` from the status JSON.
    - Read existing files from \`artifactPaths.<artifact>.existingOutputPaths\`.
 
@@ -462,7 +462,7 @@ When things crystallize, you might offer a summary - but it's optional. Sometime
 
 ## Guardrails
 
-- **Don't implement** - Never write code or implement features. Creating OpenSpec artifacts is fine, writing application code is not.
+- **Don't implement** - Never write code or implement features. Creating Specbase artifacts is fine, writing application code is not.
 - **Don't fake understanding** - If something is unclear, dig deeper
 - **Don't rush** - Discovery is thinking time, not task time
 - **Don't force structure** - Let patterns emerge naturally

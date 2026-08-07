@@ -480,11 +480,11 @@ async function scanUnboundEvidence(
  * that. Every array in the result is deterministically sorted.
  */
 export async function computeRepoCoverage(
-  openspecRoot: string,
+  specbaseRoot: string,
   projectRoot: string,
   options: RepoCoverageOptions = {}
 ): Promise<RepoCoverage> {
-  const repository = await loadGovernedRepository(openspecRoot);
+  const repository = await loadGovernedRepository(specbaseRoot);
 
   const analyses = new Map<string, GovernedPairAnalysis>();
   const specs: SpecCoverageRecord[] = [];

@@ -1,18 +1,18 @@
 ---
-name: openspec-archive-change
+name: specbase-archive-change
 description: Archive a completed change in the experimental workflow. Use when the user wants to finalize and archive a change after implementation is complete.
-allowed-tools: Bash(openspec:*)
+allowed-tools: Bash(specbase:*)
 license: MIT
-compatibility: Requires openspec CLI.
+compatibility: Requires specbase CLI.
 metadata:
-  author: openspec
+  author: specbase
   version: "1.0"
   generatedBy: "1.6.0"
 ---
 
 Archive a completed change in the experimental workflow.
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
+**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
@@ -20,7 +20,7 @@ Archive a completed change in the experimental workflow.
 
 1. **If no change name provided, prompt for selection**
 
-   Run `openspec list --json` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run `specbase list --json` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show only active changes (not already archived).
    Include the schema used for each change if available.
@@ -29,7 +29,7 @@ Archive a completed change in the experimental workflow.
 
 2. **Check artifact completion status**
 
-   Run `openspec status --change "<name>" --json` to check artifact completion.
+   Run `specbase status --change "<name>" --json` to check artifact completion.
 
    Parse the JSON to understand:
    - `schemaName`: The workflow being used
@@ -67,7 +67,7 @@ Archive a completed change in the experimental workflow.
    - If changes needed: "Sync now (recommended)", "Archive without syncing"
    - If already synced: "Archive now", "Sync anyway", "Cancel"
 
-   If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke openspec-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
+   If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke specbase-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
 
 5. **Perform the archive**
 
@@ -110,11 +110,11 @@ All artifacts complete. All tasks complete.
 
 **Guardrails**
 - Always prompt for change selection if not provided
-- Use artifact graph (openspec status --json) for completion checking
+- Use artifact graph (specbase status --json) for completion checking
 - Don't block archive on warnings - just inform and confirm
 - Preserve .openspec.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened
-- If sync is requested, use openspec-sync-specs approach (agent-driven)
+- If sync is requested, use specbase-sync-specs approach (agent-driven)
 - If delta specs exist, always run the sync assessment and show the combined summary before prompting
 
 ## Governed spec model
@@ -122,14 +122,14 @@ All artifacts complete. All tasks complete.
 This project uses the governed spec model (2 permanent truth planes with paired enforcement). Do NOT assume the flat `specs/<capability>/spec.md` layout.
 
 **Confirm the model from the CLI, do not guess:**
-- Run `openspec status --change "<name>" --json` and read `specModel`.
+- Run `specbase status --change "<name>" --json` and read `specModel`.
 - The governed model reports `specModel.kind == "governed"` with
   `planes: [behavior, architecture]` and `pairedEnforcement: true`.
 - If `specModel.kind` is `legacy` (or absent), follow the flat-spec guidance
   above unchanged.
 
 **Under the governed model, derive concrete paths from CLI output** (`status`
-`artifactPaths` and `openspec instructions <artifact> --change ... --json`),
+`artifactPaths` and `specbase instructions <artifact> --change ... --json`),
 never hardcode them. Durable truth lives in the declared planes:
 - behavior: User/client-visible outcomes (enforcement: tests / property tests) → `specs/behavior/<locator>/{spec.md,enforcement.md}`
 - architecture: Package responsibilities, boundaries, and structural invariants (enforcement: lint / static-analysis / conformance) → `specs/architecture/<locator>/{spec.md,enforcement.md}`
@@ -157,8 +157,8 @@ enforcement. The legacy artifact/task/delta prompts above still apply; the
 governed gate below is ADDITIONAL and authoritative.
 
 - **Require governed readiness BEFORE archiving.** Do not archive until the
-  affected `spec.md`/`enforcement.md` PAIRS validate together (`openspec
-  validate` / `openspec spec validate`), coverage is satisfied (no **hanging**
+  affected `spec.md`/`enforcement.md` PAIRS validate together (`specbase
+  validate` / `specbase spec validate`), coverage is satisfied (no **hanging**
   mandatory SHALL/MUST claims, no **stale** or uncovered bindings), every active
   binding's declared `targets` exist, and NO `planned`, unenforced, unresolved,
   **broken**, or failing-mandatory bindings remain. Reuse the `/spcb-verify`

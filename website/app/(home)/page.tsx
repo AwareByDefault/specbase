@@ -55,7 +55,7 @@ function Hero() {
           Then build confidently.
         </h1>
         <p className="mt-6 max-w-2xl text-balance text-lg text-fd-muted-foreground">
-          OpenSpec is a tiny agreement layer between you and your AI. You write
+          Specbase is a tiny agreement layer between you and your AI. You write
           down what a change should do, the AI drafts the details, you both look
           at the same plan, and <em>only then</em> does code get written. No more
           discovering halfway through that it built the wrong thing.
@@ -94,7 +94,7 @@ function Terminal() {
         </div>
         <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
           <code>
-            <span className="text-fd-primary">/opsx:propose</span> add-dark-mode
+            <span className="text-fd-primary">/spcb:propose</span> add-dark-mode
             {'\n'}
             <span className="text-fd-muted-foreground">
               {'  '}✓ proposal.md — why we are doing this, what changes{'\n'}
@@ -103,13 +103,13 @@ function Terminal() {
               {'  '}✓ tasks.md — implementation checklist{'\n'}
             </span>
             {'\n'}
-            <span className="text-fd-primary">/opsx:apply</span>
+            <span className="text-fd-primary">/spcb:apply</span>
             {'\n'}
             <span className="text-fd-muted-foreground">
               {'  '}✓ working through tasks, checking each one off…{'\n'}
             </span>
             {'\n'}
-            <span className="text-fd-primary">/opsx:archive</span>
+            <span className="text-fd-primary">/spcb:archive</span>
             {'\n'}
             <span className="text-fd-muted-foreground">
               {'  '}✓ specs updated · change filed away · ready for the next one
@@ -151,7 +151,7 @@ function TwoFolders() {
           The whole idea, in two folders
         </h2>
         <p className="mt-4 text-fd-muted-foreground">
-          OpenSpec lives in one <code className="text-fd-primary">openspec/</code>{' '}
+          Specbase lives in one <code className="text-fd-primary">specbase/</code>{' '}
           directory in your repo. Two folders inside it carry the entire mental
           model.
         </p>
@@ -203,7 +203,7 @@ const IDEAS = [
   {
     icon: Layers,
     title: 'Deltas, not rewrites',
-    body: 'You describe what is changing — ADDED, MODIFIED, REMOVED — not the whole world. That is the trick that makes OpenSpec great at brownfield code.',
+    body: 'You describe what is changing — ADDED, MODIFIED, REMOVED — not the whole world. That is the trick that makes Specbase great at brownfield code.',
   },
   {
     icon: Compass,
@@ -221,7 +221,7 @@ function FiveIdeas() {
             Learn four ideas, and the rest is detail
           </h2>
           <p className="mt-4 text-fd-muted-foreground">
-            Everything in OpenSpec is built from a handful of simple concepts.
+            Everything in Specbase is built from a handful of simple concepts.
           </p>
         </div>
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
@@ -244,23 +244,23 @@ function FiveIdeas() {
 const STEPS = [
   {
     icon: Compass,
-    cmd: '/opsx:explore',
+    cmd: '/spcb:explore',
     label: 'optional',
     body: 'A no-stakes thinking partner. It reads your code, weighs options, and turns a fuzzy idea into a concrete plan.',
   },
   {
     icon: FileText,
-    cmd: '/opsx:propose',
+    cmd: '/spcb:propose',
     body: 'The AI drafts the proposal, spec deltas, design, and a task list. You read it and adjust before any code is written.',
   },
   {
     icon: Hammer,
-    cmd: '/opsx:apply',
+    cmd: '/spcb:apply',
     body: 'The AI builds it, working through the tasks and checking each one off as it goes.',
   },
   {
     icon: Archive,
-    cmd: '/opsx:archive',
+    cmd: '/spcb:archive',
     body: 'Spec deltas merge into the truth and the change is filed away with a date stamp. Ready for the next one.',
   },
 ];
@@ -306,7 +306,7 @@ function Why() {
             Why bother with the extra step?
           </h2>
           <p className="mt-4 text-fd-muted-foreground">
-            OpenSpec adds one small step — a short plan before building. Here is
+            Specbase adds one small step — a short plan before building. Here is
             what you get for it.
           </p>
         </div>
@@ -347,7 +347,7 @@ const TEAM_SCENARIOS = [
   {
     icon: Share2,
     title: 'Cross-repo features',
-    body: 'One change, one plan — even when the code lands in the API server, the web app, and a shared library. No more "whose openspec/ folder does this live in?"',
+    body: 'One change, one plan — even when the code lands in the API server, the web app, and a shared library. No more "whose specbase/ folder does this live in?"',
   },
   {
     icon: Boxes,
@@ -370,12 +370,12 @@ function Teams() {
             For teams
           </p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
-            Why teams adopt OpenSpec
+            Why teams adopt Specbase
           </h2>
           <p className="mt-4 text-fd-muted-foreground">
-            Solo, OpenSpec keeps you and your AI honest on one repo. On a team,
+            Solo, Specbase keeps you and your AI honest on one repo. On a team,
             the hard part moves: work spans repos, requirements cross team lines,
-            and planning starts before code exists. OpenSpec{' '}
+            and planning starts before code exists. Specbase{' '}
             <Link href={`${docsRoute}/stores`} className="font-medium text-fd-primary underline">
               stores
             </Link>{' '}
@@ -561,7 +561,7 @@ const ROWS = [
     us: false,
   },
   {
-    name: 'OpenSpec',
+    name: 'Specbase',
     by: '',
     good: 'Lightweight, fluid, lives in your repo',
     catch: 'Adds one small step — worth it whenever agreement matters',
@@ -575,7 +575,7 @@ function Comparison() {
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="text-3xl font-bold tracking-tight">The honest middle</h2>
         <p className="mt-4 text-fd-muted-foreground">
-          Heavier tools exist. So does doing nothing. OpenSpec aims for the
+          Heavier tools exist. So does doing nothing. Specbase aims for the
           spot where the value clearly beats the cost.
         </p>
       </div>
@@ -620,7 +620,7 @@ function FinalCta() {
       </p>
       <div className="mt-8 inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-card px-4 py-3 font-mono text-sm">
         <span className="text-fd-muted-foreground">$</span>
-        npm install -g @fission-ai/openspec@latest
+        npm install -g @awarebydefault/specbase@latest
       </div>
       <div className="mt-8">
         <Link

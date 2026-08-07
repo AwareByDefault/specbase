@@ -1,11 +1,11 @@
 ---
-name: openspec-propose
+name: specbase-propose
 description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
-allowed-tools: Bash(openspec:*)
+allowed-tools: Bash(specbase:*)
 license: MIT
-compatibility: Requires openspec CLI.
+compatibility: Requires specbase CLI.
 metadata:
-  author: openspec
+  author: specbase
   version: "1.0"
   generatedBy: "1.6.0"
 ---
@@ -21,7 +21,7 @@ When ready to implement, run /spcb-apply
 
 ---
 
-**Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
+**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
 
 **Input**: The user's request should include a change name (kebab-case) OR a description of what they want to build.
 
@@ -38,13 +38,13 @@ When ready to implement, run /spcb-apply
 
 2. **Create the change directory**
    ```bash
-   openspec new change "<name>"
+   specbase new change "<name>"
    ```
    This creates a scaffolded change in the planning home resolved by the CLI with `.openspec.yaml`.
 
 3. **Get the artifact build order**
    ```bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    ```
    Parse the JSON to get:
    - `applyRequires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
@@ -60,7 +60,7 @@ When ready to implement, run /spcb-apply
    a. **For each artifact that is `ready` (dependencies satisfied)**:
       - Get instructions:
         ```bash
-        openspec instructions <artifact-id> --change "<name>" --json
+        specbase instructions <artifact-id> --change "<name>" --json
         ```
       - The instructions JSON includes:
         - `context`: Project background (constraints for you - do NOT include in output)
@@ -75,7 +75,7 @@ When ready to implement, run /spcb-apply
       - Show brief progress: "Created <artifact-id>"
 
    b. **Continue until all `applyRequires` artifacts are complete**
-      - After creating each artifact, re-run `openspec status --change "<name>" --json`
+      - After creating each artifact, re-run `specbase status --change "<name>" --json`
       - Check if every artifact ID in `applyRequires` has `status: "done"` in the artifacts array
       - Stop when all `applyRequires` artifacts are done
 
@@ -85,7 +85,7 @@ When ready to implement, run /spcb-apply
 
 5. **Show final status**
    ```bash
-   openspec status --change "<name>"
+   specbase status --change "<name>"
    ```
 
 **Output**
@@ -98,7 +98,7 @@ After completing all artifacts, summarize:
 
 **Artifact Creation Guidelines**
 
-- Follow the `instruction` field from `openspec instructions` for each artifact type
+- Follow the `instruction` field from `specbase instructions` for each artifact type
 - The schema defines what each artifact should contain - follow it
 - Read dependency artifacts for context before creating new ones
 - Use `template` as the structure for your output file - fill in its sections
@@ -118,14 +118,14 @@ After completing all artifacts, summarize:
 This project uses the governed spec model (2 permanent truth planes with paired enforcement). Do NOT assume the flat `specs/<capability>/spec.md` layout.
 
 **Confirm the model from the CLI, do not guess:**
-- Run `openspec status --change "<name>" --json` and read `specModel`.
+- Run `specbase status --change "<name>" --json` and read `specModel`.
 - The governed model reports `specModel.kind == "governed"` with
   `planes: [behavior, architecture]` and `pairedEnforcement: true`.
 - If `specModel.kind` is `legacy` (or absent), follow the flat-spec guidance
   above unchanged.
 
 **Under the governed model, derive concrete paths from CLI output** (`status`
-`artifactPaths` and `openspec instructions <artifact> --change ... --json`),
+`artifactPaths` and `specbase instructions <artifact> --change ... --json`),
 never hardcode them. Durable truth lives in the declared planes:
 - behavior: User/client-visible outcomes (enforcement: tests / property tests) → `specs/behavior/<locator>/{spec.md,enforcement.md}`
 - architecture: Package responsibilities, boundaries, and structural invariants (enforcement: lint / static-analysis / conformance) → `specs/architecture/<locator>/{spec.md,enforcement.md}`
@@ -152,7 +152,7 @@ purpose best fits the claim's nature. The shipped defaults are behavior, archite
   so, author **separate deltas for each plane**, each with its own stable spec ID.
 - **Create specifications THEN enforcement**, following the schema's artifact
   order (`specs` before `enforcement`). Get each artifact's guidance and output
-  path from `openspec instructions <artifact> --change "<name>" --json` and write
+  path from `specbase instructions <artifact> --change "<name>" --json` and write
   to the CLI-reported paths.
 - **Assign stable identity when authoring:** a project-unique spec `id` in the
   `spec.md` frontmatter, and pair-local `**ID:**` slugs for each requirement,

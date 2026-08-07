@@ -1,7 +1,7 @@
 /**
  * Referenced-store index assembly (slice 3.1).
  *
- * A root's `openspec/config.yaml` may declare `references:` — store ids
+ * A root's `specbase/config.yaml` may declare `references:` — store ids
  * whose specs the root's work draws on. Instructions output carries an
  * INDEX of those stores' specs (id, one-line summary, fetch recipe via
  * `--store`), built live from the registered checkouts at assembly time.
@@ -19,7 +19,8 @@ import {
   readStoreRegistryState,
 } from './store/foundation.js';
 import { getStoreRootForBackend } from './store/registry.js';
-import { inspectRegisteredStore, type ResolvedOpenSpecRoot } from './root-selection.js';
+import { inspectRegisteredStore, type ResolvedSpecbaseRoot } from './root-selection.js';
+import { planningDir } from './planning-dir.js';
 import { getSpecIds } from '../utils/item-discovery.js';
 import { FileSystemUtils } from '../utils/file-system.js';
 import { MAX_CONTEXT_SIZE, type DeclarationEntry } from './project-config.js';
@@ -66,14 +67,14 @@ function registerFix(id: string, remote?: string): string {
     // expands outside a shell and agent JSON consumers execute argv.
     // The checkout is quoted (homedirs may contain spaces); the remote
     // is unquoted but gated by isShellSafeRemote above.
-    const checkout = path.join(os.homedir(), 'openspec', id);
+    const checkout = path.join(planningDir(os.homedir()), id);
     // The fix renders on the machine that will paste it: POSIX shells
     // get single quotes; cmd/PowerShell treat single quotes as literal
     // characters, so win32 gets double quotes (valid everywhere).
     const quoted = process.platform === 'win32' ? `"${checkout}"` : `'${checkout}'`;
-    return `git clone -- ${remote} ${quoted} && openspec store register ${quoted} --id ${id}`;
+    return `git clone -- ${remote} ${quoted} && specbase store register ${quoted} --id ${id}`;
   }
-  return `Get a checkout from a teammate and run: openspec store register <path> --id ${id}`;
+  return `Get a checkout from a teammate and run: specbase store register <path> --id ${id}`;
 }
 
 /**
@@ -128,7 +129,7 @@ async function collectSpecEntries(referencedRoot: string): Promise<ReferenceSpec
       let summary = '';
       try {
         const content = await fs.readFile(
-          path.join(referencedRoot, 'openspec', 'specs', specId, 'spec.md'),
+          path.join(planningDir(referencedRoot), 'specs', specId, 'spec.md'),
           'utf-8'
         );
         summary = sanitizeInline(extractFirstPurposeLine(content));
@@ -141,7 +142,7 @@ async function collectSpecEntries(referencedRoot: string): Promise<ReferenceSpec
 }
 
 export function fetchRecipe(storeId: string): string {
-  return `openspec show <spec-id> --type spec --store ${storeId}`;
+  return `specbase show <spec-id> --type spec --store ${storeId}`;
 }
 
 function specLine(spec: ReferenceSpecEntry): string {
@@ -234,7 +235,7 @@ function renderedByteSize(entries: ReferenceIndexEntry[]): number {
 
 export interface AssembleReferenceIndexInput {
   references: DeclarationEntry[];
-  resolvedRoot: ResolvedOpenSpecRoot;
+  resolvedRoot: ResolvedSpecbaseRoot;
   globalDataDir?: string;
   /**
    * Health mode (3.6): false skips the spec-file reads AND the byte
@@ -313,7 +314,7 @@ export async function assembleReferenceIndex(
           warning(
             'reference_registry_unreadable',
             `Referenced store '${id}' cannot be checked: the store registry is unreadable.`,
-            'Run: openspec store doctor'
+            'Run: specbase store doctor'
           ),
         ],
       });
@@ -350,7 +351,7 @@ export async function assembleReferenceIndex(
           warning(
             'reference_root_unhealthy',
             `Referenced store '${id}' is registered but not usable (${inspection.kind.replace(/_/g, ' ')}).`,
-            `Run: openspec store doctor ${id}`
+            `Run: specbase store doctor ${id}`
           ),
         ],
       });
@@ -397,7 +398,7 @@ export async function assembleReferenceIndex(
         warning(
           'reference_index_truncated',
           `Referenced store '${id}' index truncated at the 50KB budget (${low} of ${specs.length} specs listed).`,
-          `List the rest directly: openspec list --specs --store ${id}`
+          `List the rest directly: specbase list --specs --store ${id}`
         )
       );
     }

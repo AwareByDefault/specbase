@@ -9,7 +9,7 @@ Read this file only after the npm package, tag, and GitHub Release exist, or whe
    ```bash
    tag="vX.Y.Z"
    previous_tag="vA.B.C"
-   gh release view "$tag" --repo Fission-AI/OpenSpec \
+   gh release view "$tag" --repo AwareByDefault/specbase \
      --json body,name,isPrerelease,url
    ```
 
@@ -17,7 +17,7 @@ Read this file only after the npm package, tag, and GitHub Release exist, or whe
 3. Fetch GitHub-generated notes to recover first-time contributor attribution and the full changelog link:
 
    ```bash
-   gh api repos/Fission-AI/OpenSpec/releases/generate-notes \
+   gh api repos/AwareByDefault/specbase/releases/generate-notes \
      -f "tag_name=$tag" -f "previous_tag_name=$previous_tag" -q '.body'
    ```
 
@@ -63,7 +63,7 @@ Use only the sections that contain content:
 
 ## Voice and cleanup
 
-- Write for developers using OpenSpec with AI coding assistants.
+- Write for developers using Specbase with AI coding assistants.
 - Be direct and practical; avoid marketing language.
 - Lead with user capability or impact, not implementation.
 - Keep each item to one or two sentences.
@@ -82,7 +82,7 @@ Create a temporary file, write the body to it with the available file-editing to
 notes_file="$(mktemp)"
 title="$tag - Release Theme"
 # Write the polished Markdown body to "$notes_file" before continuing.
-gh release edit "$tag" --repo Fission-AI/OpenSpec \
+gh release edit "$tag" --repo AwareByDefault/specbase \
   --title "$title" --notes-file "$notes_file"
 ```
 

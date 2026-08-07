@@ -6,8 +6,8 @@ import { runCLI } from '../helpers/run-cli.js';
 describe('top-level validate command', () => {
   const projectRoot = process.cwd();
   const testDir = path.join(projectRoot, 'test-validate-command-tmp');
-  const changesDir = path.join(testDir, 'openspec', 'changes');
-  const specsDir = path.join(testDir, 'openspec', 'specs');
+  const changesDir = path.join(testDir, 'specbase', 'changes');
+  const specsDir = path.join(testDir, 'specbase', 'specs');
 
   beforeEach(async () => {
     await fs.mkdir(changesDir, { recursive: true });
@@ -42,7 +42,7 @@ describe('top-level validate command', () => {
       '',
       '#### Scenario: Apply alpha delta',
       '- **GIVEN** the test change delta',
-      '- **WHEN** openspec validate runs',
+      '- **WHEN** specbase validate runs',
       '- **THEN** the validator reports the change as valid',
     ].join('\n');
     const c1DeltaDir = path.join(changesDir, 'c1', 'specs', 'alpha');
@@ -119,7 +119,7 @@ describe('top-level validate command', () => {
       '',
       '#### Scenario: Validate CRLF change',
       '- **GIVEN** a change proposal saved with CRLF line endings',
-      '- **WHEN** a developer runs openspec validate on the proposal',
+      '- **WHEN** a developer runs specbase validate on the proposal',
       '- **THEN** validation succeeds without section errors',
     ]);
 
@@ -140,7 +140,7 @@ describe('top-level validate command', () => {
     '',
     '#### Scenario: Validate scaffolded change',
     '- **GIVEN** a change directory with no proposal.md',
-    '- **WHEN** openspec validate runs',
+    '- **WHEN** specbase validate runs',
     '- **THEN** the change resolves and its deltas are validated',
   ].join('\n');
 
@@ -169,7 +169,7 @@ describe('top-level validate command', () => {
 
   it('includes a sole proposal-less change in --all (not "No items found") (#1182)', async () => {
     const isoRoot = path.join(projectRoot, 'test-validate-iso-tmp');
-    const isoChanges = path.join(isoRoot, 'openspec', 'changes');
+    const isoChanges = path.join(isoRoot, 'specbase', 'changes');
     const deltaDir = path.join(isoChanges, 'only', 'specs', 'alpha');
     await fs.mkdir(deltaDir, { recursive: true });
     try {

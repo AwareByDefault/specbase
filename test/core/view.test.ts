@@ -12,7 +12,7 @@ describe('ViewCommand', () => {
   let logOutput: string[] = [];
 
   beforeEach(async () => {
-    tempDir = path.join(os.tmpdir(), `openspec-view-test-${Date.now()}`);
+    tempDir = path.join(os.tmpdir(), `specbase-view-test-${Date.now()}`);
     await fs.mkdir(tempDir, { recursive: true });
 
     originalLog = console.log;
@@ -29,7 +29,7 @@ describe('ViewCommand', () => {
   });
 
   it('shows changes with no tasks in Draft section, not Completed', async () => {
-    const changesDir = path.join(tempDir, 'openspec', 'changes');
+    const changesDir = path.join(tempDir, 'specbase', 'changes');
     await fs.mkdir(changesDir, { recursive: true });
 
     // Empty change (no tasks.md) - should show in Draft
@@ -79,7 +79,7 @@ describe('ViewCommand', () => {
   });
 
   it('sorts active changes by completion percentage ascending with deterministic tie-breakers', async () => {
-    const changesDir = path.join(tempDir, 'openspec', 'changes');
+    const changesDir = path.join(tempDir, 'specbase', 'changes');
     await fs.mkdir(changesDir, { recursive: true });
 
     await fs.mkdir(path.join(changesDir, 'gamma-change'), { recursive: true });
@@ -127,12 +127,12 @@ describe('ViewCommand', () => {
   });
 
   it('classifies a nested glob-tasks change as Active, not Draft (#1202)', async () => {
-    const openspecDir = path.join(tempDir, 'openspec');
-    const changesDir = path.join(openspecDir, 'changes');
+    const specbaseDir = path.join(tempDir, 'specbase');
+    const changesDir = path.join(specbaseDir, 'changes');
     await fs.mkdir(changesDir, { recursive: true });
 
     // Project-local schema whose tasks artifact resolves a nested glob.
-    const schemaDir = path.join(openspecDir, 'schemas', 'glob-tasks');
+    const schemaDir = path.join(specbaseDir, 'schemas', 'glob-tasks');
     await fs.mkdir(schemaDir, { recursive: true });
     await fs.writeFile(
       path.join(schemaDir, 'schema.yaml'),

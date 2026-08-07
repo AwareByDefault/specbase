@@ -7,7 +7,7 @@ import { resolveArtifactOutputs } from '../../src/core/artifact-graph/index.js';
 
 /**
  * #1202 — task progress is resolved through the tracked-tasks artifact's
- * `generates` glob (the same file-resolution `openspec status` uses), not a
+ * `generates` glob (the same file-resolution `specbase status` uses), not a
  * fixed `changes/<name>/tasks.md` path.
  */
 describe('getTaskProgressForChange (#1202 tracked-tasks resolution)', () => {
@@ -36,8 +36,8 @@ describe('getTaskProgressForChange (#1202 tracked-tasks resolution)', () => {
   ].join('\n');
 
   beforeEach(async () => {
-    projectRoot = path.join(os.tmpdir(), `openspec-taskprogress-${Date.now()}-${Math.round(performance.now())}`);
-    changesDir = path.join(projectRoot, 'openspec', 'changes');
+    projectRoot = path.join(os.tmpdir(), `specbase-taskprogress-${Date.now()}-${Math.round(performance.now())}`);
+    changesDir = path.join(projectRoot, 'specbase', 'changes');
     await fs.mkdir(changesDir, { recursive: true });
   });
 
@@ -46,7 +46,7 @@ describe('getTaskProgressForChange (#1202 tracked-tasks resolution)', () => {
   });
 
   async function writeGlobSchema(): Promise<void> {
-    const schemaDir = path.join(projectRoot, 'openspec', 'schemas', 'glob-tasks');
+    const schemaDir = path.join(projectRoot, 'specbase', 'schemas', 'glob-tasks');
     await fs.mkdir(schemaDir, { recursive: true });
     await fs.writeFile(path.join(schemaDir, 'schema.yaml'), GLOB_SCHEMA, 'utf-8');
   }
@@ -112,7 +112,7 @@ describe('getTaskProgressForChange (#1202 tracked-tasks resolution)', () => {
   });
 
   it('identifies the tracked artifact by apply.tracks even when it is not named "tasks"', async () => {
-    const schemaDir = path.join(projectRoot, 'openspec', 'schemas', 'custom-track');
+    const schemaDir = path.join(projectRoot, 'specbase', 'schemas', 'custom-track');
     await fs.mkdir(schemaDir, { recursive: true });
     await fs.writeFile(
       path.join(schemaDir, 'schema.yaml'),
