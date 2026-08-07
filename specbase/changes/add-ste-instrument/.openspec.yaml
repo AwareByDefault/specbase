@@ -1,0 +1,4 @@
+schema: spec-driven-governed
+created: 2026-08-07
+goal: Add opt-in STE (Simplified Technical English) writing skill + linter to
+  the governed baseline
