@@ -1,23 +1,29 @@
 /**
- * Review-panel lens vocabulary and routing (add-review-panel-enforcement).
+ * Review-panel lens vocabulary and routing (add-review-panel-enforcement,
+ * refactor-review-panel-lens-projection).
  *
  * A lens is a focused reviewer that judges exactly one concern and is blind to
  * the others. Its scope is a plane-qualified locator subtree; the router assigns
  * each governed pair to the MOST-SPECIFIC lens whose subtree covers it, falling
  * back up the tree to a plane-wide default — the same most-specific-wins rule as
- * locator resolution. The defaults fall out of the governed model's own plane
- * structure (a per-plane lens plus a cross-cutting enforcement layer):
+ * locator resolution.
  *
- *   architectural → architecture/**   behavioural  → behavior/**
- *   ops           → ops/**            code-quality → code-quality/**
- *   design        → design-system/**  enforcement  → every pair
+ * The BASE lens set is a PROJECTION of the resolved review model, never a
+ * hand-typed copy: one lens per resolved plane that declares a `reviewLens`
+ * (scope = the plane's storage subtree), plus the cross-cutting `enforcement`
+ * lens, plus any declared augmentation lenses (scoped sub-lenses or extra
+ * cross-cutting lenses). `DEFAULT_LENSES` below is the projection of the shipped
+ * default roster, so it stays the six-lens set historically shipped — but the
+ * data now derives from the plane roster instead of being a separate constant
+ * that could drift from it.
  *
- * This module is PURE and never runs a reviewer: it only defines the defaults
- * and resolves a binding's declared/default lens so coverage and the workflows
- * can surface lens allocation, un-lensed gaps, and split pressure. Lenses grow
- * or split by PROPOSAL (a normal change), never automatically — the tool only
- * makes the pressure visible.
+ * This module is PURE and never runs a reviewer: it only derives the lens set
+ * from a resolved model and resolves a binding's declared/default lens so
+ * coverage and the workflows can surface lens allocation, un-lensed gaps, and
+ * split pressure. Lenses grow or split by PROPOSAL (a normal change), never
+ * automatically — the tool only makes the pressure visible.
  */
+import type { Plane } from '../artifact-graph/types.js';
 
 /** A review-panel lens: an id, the concern it judges, and its scope subtree. */
 export interface LensDefinition {
@@ -38,45 +44,125 @@ export interface LensDefinition {
   crossCutting: boolean;
 }
 
-/** The default lenses, always available under the governed model. */
-export const DEFAULT_LENSES: readonly LensDefinition[] = [
+/**
+ * The canonical question each shipped lens asks, keyed by lens id. A plane whose
+ * `reviewLens` id is unknown (a declared augmentation or a project-defined
+ * plane) falls back to a generated question below rather than carrying none.
+ */
+export const LENS_QUESTIONS: Readonly<Record<string, string>> = {
+  architectural: "Does the code deviate from the architecture specs' invariants and boundaries?",
+  behavioural: 'Does the code produce the behavioral specs, consistently and unerringly?',
+  ops: 'Does the repo use what the ops specs declare and run it as declared?',
+  'code-quality': 'Is the code clean, simple, and free of cruft?',
+  design: 'Does the UI and copy honor the design tokens, principles, and voice?',
+  enforcement: 'Do the bound checks actually exercise the claim, not merely running?',
+};
+
+/** A resolved review model, or any shape carrying a resolved plane roster. */
+export interface ReviewModelLike {
+  planes: readonly Plane[];
+}
+
+/**
+ * Project the base lens set from a resolved review model: one NON-cross-cutting
+ * lens per plane that declares a `reviewLens` (scope = the plane's storage
+ * subtree), skipping planes without one, always appending the cross-cutting
+ * `enforcement` lens, then any declared augmentation lenses. A flat/legacy
+ * model (no planes, or no plane with a `reviewLens`) projects to just the
+ * `enforcement` lens — the general spec-conformance reviewer the panel falls
+ * back to — so the panel is never empty.
+ */
+export function lensesFromPlanes(
+  model: ReviewModelLike,
+  augmentation?: readonly LensDefinition[]
+): LensDefinition[] {
+  const lenses: LensDefinition[] = [];
+  for (const plane of model.planes) {
+    if (!plane.reviewLens) continue; // a plane without a reviewLens contributes no lens
+    lenses.push({
+      id: plane.reviewLens,
+      question:
+        LENS_QUESTIONS[plane.reviewLens] ??
+        `Does the implementation honor the ${plane.id} specs' declared intent?`,
+      scope: plane.id,
+      crossCutting: false,
+    });
+  }
+  lenses.push({
+    id: 'enforcement',
+    question: LENS_QUESTIONS.enforcement,
+    scope: '',
+    crossCutting: true,
+  });
+  if (augmentation) lenses.push(...augmentation);
+  return lenses;
+}
+
+/**
+ * The shipped default plane roster — the resolved default set of the
+ * `spec-driven-governed` schema. Kept here (not read from disk) so this module
+ * stays pure; the schema file and this constant are the same six planes and the
+ * projection conformance test pins that they agree.
+ */
+export const DEFAULT_PLANES: readonly Plane[] = [
   {
-    id: 'architectural',
-    question: "Does the code deviate from the architecture specs' invariants and boundaries?",
-    scope: 'architecture',
+    id: 'behavior',
+    purpose: 'User/client-visible outcomes that must remain true',
+    enforcementFlavor: 'tests / property tests',
+    reviewLens: 'behavioural',
     crossCutting: false,
+    defaultSelected: true,
   },
   {
-    id: 'behavioural',
-    question: 'Does the code produce the behavioral specs, consistently and unerringly?',
-    scope: 'behavior',
+    id: 'architecture',
+    purpose: 'Package responsibilities, boundaries, and structural invariants',
+    enforcementFlavor: 'lint / static-analysis / conformance',
+    reviewLens: 'architectural',
     crossCutting: false,
+    defaultSelected: true,
   },
   {
     id: 'ops',
-    question: 'Does the repo use what the ops specs declare and run it as declared?',
-    scope: 'ops',
+    purpose: 'What we use and how it runs: packages, dev env, IaC, deployment',
+    enforcementFlavor: 'lockfile audit / plan validate / drift detect',
+    reviewLens: 'ops',
     crossCutting: false,
+    defaultSelected: true,
   },
   {
     id: 'code-quality',
-    question: 'Is the code clean, simple, and free of cruft?',
-    scope: 'code-quality',
+    purpose: 'What good code looks like: smells, qualities, and rules',
+    enforcementFlavor: 'smell-lint + review',
+    reviewLens: 'code-quality',
     crossCutting: false,
+    defaultSelected: true,
   },
   {
-    id: 'design',
-    question: 'Does the UI and copy honor the design tokens, principles, and voice?',
-    scope: 'design-system',
+    id: 'design-system',
+    purpose: "The product's expressed identity: design tokens, principles, voice",
+    enforcementFlavor: 'token-lint / contrast + a11y checks + design review',
+    reviewLens: 'design',
     crossCutting: false,
+    defaultSelected: false,
   },
   {
-    id: 'enforcement',
-    question: 'Do the bound checks actually exercise the claim rather than merely running?',
-    scope: '',
-    crossCutting: true,
+    id: 'agents',
+    purpose: 'The repo\u2019s own agentic instruments',
+    enforcementFlavor: 'instrument conforms to its spec',
+    crossCutting: false,
+    defaultSelected: false,
   },
 ];
+
+/**
+ * The default lenses for a project resolving the shipped default roster. A
+ * PROJECTION, not a hand-typed copy: it is `lensesFromPlanes` over
+ * `DEFAULT_PLANES`. A project whose config overrides the roster should derive
+ * its own set via `lensesFromPlanes(resolvedModel)` (see governed-coverage).
+ */
+export const DEFAULT_LENSES: readonly LensDefinition[] = lensesFromPlanes({
+  planes: DEFAULT_PLANES,
+});
 
 /** How a binding's lens was resolved. */
 export type LensResolutionVia = 'declared' | 'default' | 'unresolved';

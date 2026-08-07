@@ -12,13 +12,14 @@ import path from 'node:path';
 import fg from 'fast-glob';
 import {
   loadGovernedRepository,
-  DEFAULT_LENSES,
   scopeDepth,
+  lensesFromPlanes,
   resolveLensForBinding,
   type GovernedRepository,
   type LensDefinition,
 } from '../governed/index.js';
 import { type SpecPlane } from './types.js';
+import { resolveProjectSpecModel } from '../shared/skill-generation.js';
 import {
   analyzeGovernedPair,
   type GovernedPairAnalysis,
@@ -486,6 +487,11 @@ export async function computeRepoCoverage(
 ): Promise<RepoCoverage> {
   const repository = await loadGovernedRepository(specbaseRoot);
 
+  // Route lens allocation over THIS project's projection of its resolved review
+  // model (not the shipped default constant), so a project that replaced or
+  // appended planes sees exactly its own lens set.
+  const projectedLenses = lensesFromPlanes(resolveProjectSpecModel(projectRoot));
+
   const analyses = new Map<string, GovernedPairAnalysis>();
   const specs: SpecCoverageRecord[] = [];
   const staleBindings: StaleBindingOrphan[] = [];
@@ -549,7 +555,7 @@ export async function computeRepoCoverage(
           specId: analysis.analysis.specId,
           bindingId: binding.id,
           declaredLens: binding.lens ?? null,
-          resolution: resolveLensForBinding(binding.lens, record.locator),
+          resolution: resolveLensForBinding(binding.lens, record.locator, projectedLenses),
         });
       }
     }
@@ -590,7 +596,7 @@ export async function computeRepoCoverage(
 
   const lenses = deriveLenses(
     reviewClaims,
-    DEFAULT_LENSES,
+    projectedLenses,
     options.splitThreshold ?? SPLIT_THRESHOLD
   );
 

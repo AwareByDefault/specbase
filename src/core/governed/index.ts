@@ -62,6 +62,9 @@ export {
 
 export {
   DEFAULT_LENSES,
+  DEFAULT_PLANES,
+  LENS_QUESTIONS,
+  lensesFromPlanes,
   scopeCovers,
   scopeDepth,
   resolveDefaultLens,
@@ -69,6 +72,7 @@ export {
   type LensDefinition,
   type LensResolution,
   type LensResolutionVia,
+  type ReviewModelLike,
 } from './lenses.js';
 
 export {

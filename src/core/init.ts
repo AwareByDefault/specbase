@@ -229,10 +229,26 @@ export class InitCommand {
     // Generate skills and commands for each tool
     const results = await this.generateSkillsAndCommands(projectPath, validatedTools);
 
-    // Plant agents-plane baseline specs as bootstrap scaffolding when the agents
-    // plane was selected (idempotent; never overwrites a customized baseline).
+    // Plant baseline spec pairs as bootstrap scaffolding when a governed plane
+    // was selected. The plane-parametric planter copies each pair from the
+    // schema's baseline templates to specs/<plane>/<locator> (idempotent; never
+    // overwrites a customized baseline).
+    const baselinePairs: BaselinePair[] = [];
     if (planeSelection.governed && planeSelection.selectedIds.includes('agents')) {
-      await this.plantAgentsBaseline(projectPath, true);
+      baselinePairs.push({ plane: 'agents', locator: 'spec-driven' });
+      baselinePairs.push({ plane: 'agents', locator: 'review-panel' });
+    }
+
+    // The STE bundle (agents/ste-writing + ops/ste) is a separate opt-in,
+    // gated the same shape as the agentic-review baseline: accepted, it plants
+    // the whole bundle; declined, it plants none of it. Never imposed.
+    if (planeSelection.governed && (await this.promptSteOptIn())) {
+      baselinePairs.push({ plane: 'agents', locator: 'ste-writing' });
+      baselinePairs.push({ plane: 'ops', locator: 'ste' });
+    }
+
+    if (baselinePairs.length > 0) {
+      await plantBaselines(projectPath, baselinePairs);
     }
 
     // Display success message
@@ -746,26 +762,34 @@ export class InitCommand {
   }
 
   /**
-   * Plant the agents-plane baseline specs as bootstrap scaffolding: the
+   * Plant the agents-plane baseline pairs as bootstrap scaffolding: the
    * `spec-driven` self-hosting spec always, and `review-panel` when agentic
-   * review was accepted. Copies each spec+enforcement pair from the governed
-   * schema's baseline templates directly under `specs/agents/`, with no change
-   * entry. Idempotent: an existing file is left untouched (never overwritten).
+   * review was accepted. Routes through the plane-parametric `plantBaselines`
+   * so the agents call site stays a single caller of the general routine.
    */
   private async plantAgentsBaseline(projectPath: string, agenticReview: boolean): Promise<void> {
-    const locators = agenticReview ? ['spec-driven', 'review-panel'] : ['spec-driven'];
-    const schemaDir = getSchemaDir(GOVERNED_SCHEMA, projectPath);
-    if (!schemaDir) return;
-    const baselineRoot = path.join(schemaDir, 'templates', 'baseline', 'agents');
-    const planningDirName = resolvePlanningDirName(projectPath);
-    for (const locator of locators) {
-      for (const file of ['spec.md', 'enforcement.md']) {
-        const src = path.join(baselineRoot, locator, file);
-        const dest = path.join(projectPath, planningDirName, 'specs', 'agents', locator, file);
-        if (fs.existsSync(dest) || !fs.existsSync(src)) continue;
-        await FileSystemUtils.writeFile(dest, fs.readFileSync(src, 'utf-8'));
-      }
+    const pairs: BaselinePair[] = [{ plane: 'agents', locator: 'spec-driven' }];
+    if (agenticReview) {
+      pairs.push({ plane: 'agents', locator: 'review-panel' });
     }
+    await plantBaselines(projectPath, pairs);
+  }
+
+  /**
+   * Opt-in STE baseline prompt, gated the same shape as the agentic-review
+   * selection: accepted, the planter plants the whole STE bundle
+   * (`agents/ste-writing` + `ops/ste`); declined, it plants none of it. Only
+   * offered on an interactive governed init, so a non-prompting run never
+   * imposes the baseline.
+   */
+  private async promptSteOptIn(): Promise<boolean> {
+    if (!this.canPromptInteractively()) return false;
+    const { confirm } = await import('@inquirer/prompts');
+    return confirm({
+      message:
+        'Adopt the Simplified Technical English (STE) writing baseline (agents/ste-writing + ops/ste) for this project?',
+      default: false,
+    });
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -899,7 +923,7 @@ export class InitCommand {
   private async removeSkillDirs(skillsDir: string): Promise<number> {
     let removed = 0;
 
-    // `review-panel` is governed-only and deliberately absent from ALL_WORKFLOWS
+    // `review-panel` is every-model and deliberately absent from ALL_WORKFLOWS
     // (see skill-generation.ts), so it must be swept explicitly — otherwise
     // switching delivery to `commands` would strand its skill directory.
     for (const workflow of [...ALL_WORKFLOWS, 'review-panel']) {
@@ -925,7 +949,7 @@ export class InitCommand {
     const adapter = CommandAdapterRegistry.get(toolId);
     if (!adapter) return 0;
 
-    // Governed-only `review-panel` swept explicitly; see removeSkillDirs.
+    // Every-model `review-panel` swept explicitly; see removeSkillDirs.
     for (const workflow of [...ALL_WORKFLOWS, 'review-panel']) {
       const cmdPath = adapter.getFilePath(workflow);
       const fullPath = path.isAbsolute(cmdPath) ? cmdPath : path.join(projectPath, cmdPath);
@@ -943,3 +967,45 @@ export class InitCommand {
     return removed;
   }
 }
+
+/**
+ * A baseline pair to plant: the plane and locator of an opt-in baseline spec
+ * pair, copied from `templates/baseline/<plane>/<locator>` to
+ * `specs/<plane>/<locator>`.
+ */
+export interface BaselinePair {
+  plane: string;
+  locator: string;
+}
+
+/**
+ * The plane-parametric baseline planter (`architecture.baseline-planting`).
+ * It plants a declared set of `{plane, locator}` baseline pairs across whichever
+ * planes each pair names, copying each `spec.md` + `enforcement.md` from the
+ * governed schema's `templates/baseline/<plane>/<locator>` into
+ * `<planningDir>/specs/<plane>/<locator>`, with no change entry.
+ *
+ * Idempotent and non-destructive: an already-present target file is left
+ * untouched (never overwritten, reset, or duplicated), so a customized baseline
+ * survives re-initialization.
+ */
+export async function plantBaselines(
+  projectPath: string,
+  pairs: BaselinePair[],
+  schemaName: string = GOVERNED_SCHEMA
+): Promise<void> {
+  const schemaDir = getSchemaDir(schemaName, projectPath);
+  if (!schemaDir || pairs.length === 0) return;
+  const planningDirName = resolvePlanningDirName(projectPath);
+  for (const { plane, locator } of pairs) {
+    for (const file of BASELINE_FILES) {
+      const src = path.join(schemaDir, 'templates', 'baseline', plane, locator, file);
+      const dest = path.join(projectPath, planningDirName, 'specs', plane, locator, file);
+      if (fs.existsSync(dest) || !fs.existsSync(src)) continue;
+      await FileSystemUtils.writeFile(dest, fs.readFileSync(src, 'utf-8'));
+    }
+  }
+}
+
+/** The files a baseline pair comprises. A directory without these is a namespace, not a pair. */
+const BASELINE_FILES = ['spec.md', 'enforcement.md'] as const;

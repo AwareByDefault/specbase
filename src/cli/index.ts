@@ -15,6 +15,7 @@ import { registerSpecCommand } from '../commands/spec.js';
 import { ChangeCommand } from '../commands/change.js';
 import { ValidateCommand } from '../commands/validate.js';
 import { CoverageCommand, type CoverageCommandOptions } from '../commands/coverage.js';
+import { SteLintCommand, type SteLintOptions } from '../commands/ste-lint.js';
 import { ShowCommand } from '../commands/show.js';
 import { CompletionCommand } from '../commands/completion.js';
 import { FeedbackCommand } from '../commands/feedback.js';
@@ -398,6 +399,31 @@ program
     }
   });
 
+// Top-level ste-lint command: score prose against Simplified Technical English
+// (a TS port of reference/ste-lint.py). Pure reporter, or a gate with --max.
+program
+  .command('ste-lint [paths...]')
+  .description('Score prose against the Simplified Technical English rule set (files, globs, or stdin)')
+  .option(
+    '--max <n>',
+    'Exit non-zero when any document\'s total_per100w exceeds the threshold (no --max: pure reporter)'
+  )
+  .option('--json', 'Output a single clean JSON aggregate (for agents)')
+  .action(async (paths?: string[], options?: SteLintOptions) => {
+    try {
+      const maxNumber =
+        typeof options?.max === 'string' ? parseThreshold(options.max) : undefined;
+      const steLintCommand = new SteLintCommand();
+      await steLintCommand.execute(paths ?? [], {
+        json: options?.json,
+        max: maxNumber,
+      });
+    } catch (error) {
+      failWithError(error, { enabled: options?.json, fallbackCode: 'ste_lint_error' });
+      process.exit(1);
+    }
+  });
+
 // Top-level show command
 program
   .command('show [item-name]')
@@ -601,6 +627,15 @@ newCmd
       process.exit(1);
     }
   });
+
+// Validate a non-negative `--max` threshold, rejecting non-numbers loudly.
+function parseThreshold(value: string): number | undefined {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n < 0) {
+    throw new Error(`Invalid --max threshold "${value}": expected a non-negative integer`);
+  }
+  return n;
+}
 
 export { program };
 

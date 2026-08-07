@@ -1,0 +1,110 @@
+{
+  "clean.md": {
+    "words": 22,
+    "sentences": 5,
+    "violations": {
+      "long_sentence(>20w)": 0,
+      "semicolon": 0,
+      "contraction": 0,
+      "passive_voice": 0,
+      "ing_main_verb": 0,
+      "nominalization": 0,
+      "phrasal_verb": 0,
+      "banned_word": 0,
+      "marketing_adjective": 0,
+      "modal_hedge": 0,
+      "long_paragraph(>6s)": 0
+    },
+    "total": 0,
+    "total_per100w": 0.0,
+    "em_dash(slop-marker)": 0,
+    "longest_sentence_words": 6,
+    "sample_marketing": [],
+    "sample_banned": []
+  },
+  "code-spans.md": {
+    "words": 35,
+    "sentences": 6,
+    "violations": {
+      "long_sentence(>20w)": 0,
+      "semicolon": 0,
+      "contraction": 0,
+      "passive_voice": 0,
+      "ing_main_verb": 0,
+      "nominalization": 0,
+      "phrasal_verb": 0,
+      "banned_word": 0,
+      "marketing_adjective": 0,
+      "modal_hedge": 0,
+      "long_paragraph(>6s)": 0
+    },
+    "total": 0,
+    "total_per100w": 0.0,
+    "em_dash(slop-marker)": 0,
+    "longest_sentence_words": 9,
+    "sample_marketing": [],
+    "sample_banned": []
+  },
+  "marketing-and-banned.md": {
+    "words": 74,
+    "sentences": 10,
+    "violations": {
+      "long_sentence(>20w)": 0,
+      "semicolon": 0,
+      "contraction": 0,
+      "passive_voice": 1,
+      "ing_main_verb": 0,
+      "nominalization": 2,
+      "phrasal_verb": 2,
+      "banned_word": 8,
+      "marketing_adjective": 5,
+      "modal_hedge": 0,
+      "long_paragraph(>6s)": 0
+    },
+    "total": 18,
+    "total_per100w": 24.32,
+    "em_dash(slop-marker)": 1,
+    "longest_sentence_words": 12,
+    "sample_marketing": [
+      "seamless",
+      "robust",
+      "cutting-edge",
+      "unlock",
+      "empowers"
+    ],
+    "sample_banned": [
+      "begin",
+      "utilize",
+      "leverage",
+      "prior to",
+      "demonstrate",
+      "furthermore"
+    ]
+  },
+  "stylistic.md": {
+    "words": 75,
+    "sentences": 6,
+    "violations": {
+      "long_sentence(>20w)": 0,
+      "semicolon": 1,
+      "contraction": 0,
+      "passive_voice": 5,
+      "ing_main_verb": 0,
+      "nominalization": 0,
+      "phrasal_verb": 0,
+      "banned_word": 2,
+      "marketing_adjective": 0,
+      "modal_hedge": 3,
+      "long_paragraph(>6s)": 0
+    },
+    "total": 11,
+    "total_per100w": 14.67,
+    "em_dash(slop-marker)": 1,
+    "longest_sentence_words": 17,
+    "sample_marketing": [],
+    "sample_banned": [
+      "commence",
+      "prior to"
+    ]
+  }
+}

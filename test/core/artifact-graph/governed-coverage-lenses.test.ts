@@ -35,6 +35,12 @@ beforeEach(async () => {
   );
   specbaseRoot = path.join(tempDir, 'specbase');
   await fs.mkdir(specbaseRoot, { recursive: true });
+  // Declare the governed model so the lens projection resolves the shipped
+  // default roster (the coverage lens views route over the resolved model).
+  await fs.writeFile(
+    path.join(specbaseRoot, 'config.yaml'),
+    'schema: spec-driven-governed\n'
+  );
 });
 
 afterEach(async () => {
@@ -54,12 +60,12 @@ describe('coverage lens rollup', () => {
 
     const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     const byLens = new Map(coverage.lenses.rollup.map((e) => [e.lens, e.reviewClaims]));
-    // All default lenses always appear (even at zero).
+    // All default-selected lenses always appear (even at zero); design-system
+    // opts out of the schema default roster, so no design lens resolves here.
     expect([...byLens.keys()].sort()).toEqual([
       'architectural',
       'behavioural',
       'code-quality',
-      'design',
       'enforcement',
       'ops',
     ]);

@@ -123,6 +123,24 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
     ],
   },
   {
+    name: 'ste-lint',
+    description: 'Score prose against the Simplified Technical English rule set (files, globs, or stdin)',
+    acceptsPositional: true,
+    positionalType: 'path',
+    positionals: [{ name: 'paths', type: 'path', optional: true }],
+    flags: [
+      {
+        name: 'max',
+        description: 'Exit non-zero when any document\'s total_per100w exceeds the threshold (no --max: pure reporter)',
+        takesValue: true,
+      },
+      {
+        name: 'json',
+        description: 'Output a single clean JSON aggregate (for agents)',
+      },
+    ],
+  },
+  {
     name: 'show',
     description: 'Show a change or spec',
     acceptsPositional: true,

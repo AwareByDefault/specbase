@@ -10,9 +10,9 @@ import type { SpecModel, Plane } from '../../../src/core/artifact-graph/types.js
 
 describe('skill-generation', () => {
   describe('getSkillTemplates', () => {
-    it('should return all 12 skill templates', () => {
+    it('should return all 13 skill templates (12 lifecycle + every-model review-panel)', () => {
       const templates = getSkillTemplates();
-      expect(templates).toHaveLength(12);
+      expect(templates).toHaveLength(13);
     });
 
     it('should have unique directory names', () => {
@@ -38,6 +38,7 @@ describe('skill-generation', () => {
       expect(dirNames).toContain('specbase-verify-change');
       expect(dirNames).toContain('specbase-onboard');
       expect(dirNames).toContain('specbase-propose');
+      expect(dirNames).toContain('specbase-review-panel');
     });
 
     it('should have valid template structure', () => {
@@ -59,14 +60,15 @@ describe('skill-generation', () => {
       expect(uniqueIds.size).toBe(templates.length);
     });
 
-    it('should filter by workflow IDs when provided', () => {
+    it('should filter by workflow IDs when provided (plus every-model review-panel)', () => {
       const filtered = getSkillTemplates(['propose', 'explore', 'apply', 'archive']);
-      expect(filtered).toHaveLength(4);
+      expect(filtered).toHaveLength(5);
       const ids = filtered.map(t => t.workflowId);
       expect(ids).toContain('propose');
       expect(ids).toContain('explore');
       expect(ids).toContain('apply');
       expect(ids).toContain('archive');
+      expect(ids).toContain('review-panel');
       expect(ids).not.toContain('new');
       expect(ids).not.toContain('ff');
     });
@@ -77,23 +79,25 @@ describe('skill-generation', () => {
       expect(noFilter).toHaveLength(all.length);
     });
 
-    it('should return empty array when filter matches nothing', () => {
+    it('should return only the every-model review-panel when filter matches nothing', () => {
       const filtered = getSkillTemplates(['nonexistent']);
-      expect(filtered).toHaveLength(0);
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].workflowId).toBe('review-panel');
     });
 
-    it('should return single template when filter has one workflow', () => {
+    it('should return single template filtered, plus every-model review-panel', () => {
       const filtered = getSkillTemplates(['propose']);
-      expect(filtered).toHaveLength(1);
+      expect(filtered).toHaveLength(2);
       expect(filtered[0].workflowId).toBe('propose');
       expect(filtered[0].dirName).toBe('specbase-propose');
+      expect(filtered.map((t) => t.workflowId)).toContain('review-panel');
     });
   });
 
   describe('getCommandTemplates', () => {
-    it('should return all 12 command templates', () => {
+    it('should return all 13 command templates (12 lifecycle + every-model review-panel)', () => {
       const templates = getCommandTemplates();
-      expect(templates).toHaveLength(12);
+      expect(templates).toHaveLength(13);
     });
 
     it('should have unique IDs', () => {
@@ -123,12 +127,13 @@ describe('skill-generation', () => {
 
     it('should filter by workflow IDs when provided', () => {
       const filtered = getCommandTemplates(['propose', 'explore', 'apply', 'archive']);
-      expect(filtered).toHaveLength(4);
+      expect(filtered).toHaveLength(5);
       const ids = filtered.map(t => t.id);
       expect(ids).toContain('propose');
       expect(ids).toContain('explore');
       expect(ids).toContain('apply');
       expect(ids).toContain('archive');
+      expect(ids).toContain('review-panel');
       expect(ids).not.toContain('new');
       expect(ids).not.toContain('ff');
     });
@@ -141,14 +146,15 @@ describe('skill-generation', () => {
 
     it('should return empty array when filter matches nothing', () => {
       const filtered = getCommandTemplates(['nonexistent']);
-      expect(filtered).toHaveLength(0);
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].id).toBe('review-panel');
     });
   });
 
   describe('getCommandContents', () => {
-    it('should return all 12 command contents', () => {
+    it('should return all 13 command contents (12 lifecycle + every-model review-panel)', () => {
       const contents = getCommandContents();
-      expect(contents).toHaveLength(12);
+      expect(contents).toHaveLength(13);
     });
 
     it('should have valid content structure', () => {
@@ -174,10 +180,11 @@ describe('skill-generation', () => {
 
     it('should filter by workflow IDs when provided', () => {
       const filtered = getCommandContents(['propose', 'explore']);
-      expect(filtered).toHaveLength(2);
+      expect(filtered).toHaveLength(3);
       const ids = filtered.map(c => c.id);
       expect(ids).toContain('propose');
       expect(ids).toContain('explore');
+      expect(ids).toContain('review-panel');
       expect(ids).not.toContain('new');
     });
 

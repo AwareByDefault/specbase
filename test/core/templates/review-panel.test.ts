@@ -12,17 +12,19 @@ import {
   getCommandContents,
 } from '../../../src/core/shared/skill-generation.js';
 import { LEGACY_SPEC_MODEL, type SpecModel } from '../../../src/core/artifact-graph/types.js';
+import { DEFAULT_PLANES } from '../../../src/core/governed/lenses.js';
 
+/** A governed model resolving the full shipped roster (six lens-carrying planes). */
 const GOVERNED: SpecModel = {
   kind: 'governed',
   version: 1,
-  planes: ['behavior', 'architecture'],
+  planes: DEFAULT_PLANES,
   pairedEnforcement: true,
 };
 
-describe('review-panel template — content', () => {
-  const skill = getReviewPanelSkillTemplate().instructions;
-  const command = getReviewPanelCommandTemplate().content;
+describe('review-panel template — content (governed projection)', () => {
+  const skill = getReviewPanelSkillTemplate(GOVERNED).instructions;
+  const command = getReviewPanelCommandTemplate(GOVERNED).content;
 
   it('is byte-identical across skill and command projections (parity)', () => {
     expect(skill).toBe(command);
@@ -42,12 +44,12 @@ describe('review-panel template — content', () => {
     }
   });
 
-  it('ships the four default lens methods scoped to the model structure', () => {
-    expect(skill).toContain('`architectural` — scope `architecture/**`');
-    expect(skill).toContain('`behavioural` — scope `behavior/**`');
+  it('projects the lens set from the resolved model, not a fixed four-lens table', () => {
+    expect(skill).toContain('`architectural` — scope: `architecture/**`');
+    expect(skill).toContain('`behavioural` — scope: `behavior/**`');
+    expect(skill).toContain('`design` — scope: `design-system/**`');
+    expect(skill).toContain('`ops` — scope: `ops/**`');
     expect(skill).toContain("`enforcement` — scope: every affected pair's bindings");
-    expect(skill).toContain('`code-quality` — scope: whole tree');
-    // Enforcement lens judges evidence adequacy and does not recurse into itself.
     expect(skill).toContain('do not review your own verdicts');
   });
 
@@ -58,30 +60,37 @@ describe('review-panel template — content', () => {
   });
 
   it('sources policy from the specs at review time and grows by proposal', () => {
-    expect(skill).toContain('sliced fresh from the governed specs');
+    expect(skill).toContain('sliced fresh from');
     expect(skill).toContain('never copy charter/rule text into a lens method');
     expect(skill).toContain('Growth by proposal, never automatic');
   });
 });
 
-describe('review-panel registration — governed only', () => {
-  it('is absent from the skill/command registries under legacy and with no model', () => {
-    for (const model of [undefined, LEGACY_SPEC_MODEL]) {
+describe('review-panel template — content (flat projection)', () => {
+  it('emits the single general spec-conformance reviewer and no plane lenses', () => {
+    const flatSkill = getReviewPanelSkillTemplate(LEGACY_SPEC_MODEL).instructions;
+    expect(flatSkill).toContain('`spec-conformance` — scope: every spec');
+    expect(flatSkill).not.toContain('`architectural` — scope');
+    expect(flatSkill).toContain('no-ops');
+  });
+});
+
+describe('review-panel registration — every model', () => {
+  it('is present in the skill/command registries for legacy, no-model, and governed', () => {
+    for (const model of [undefined, LEGACY_SPEC_MODEL, GOVERNED]) {
       const skills = getSkillTemplates(undefined, model).map((e) => e.workflowId);
       const commands = getCommandContents(undefined, model).map((c) => c.id);
-      expect(skills).not.toContain('review-panel');
-      expect(commands).not.toContain('review-panel');
+      expect(skills).toContain('review-panel');
+      expect(commands).toContain('review-panel');
     }
-    // Legacy registry length is unchanged (still the 12 lifecycle workflows).
-    expect(getSkillTemplates()).toHaveLength(12);
   });
 
-  it('appears in both registries under the governed model (parity)', () => {
-    const skills = getSkillTemplates(undefined, GOVERNED);
-    const commands = getCommandContents(undefined, GOVERNED);
-    expect(skills.map((e) => e.workflowId)).toContain('review-panel');
-    expect(commands.map((c) => c.id)).toContain('review-panel');
-    expect(skills).toHaveLength(13);
+  it('adds one skill (flat) and one more (governed, +ste-writing)', () => {
+    // 12 lifecycle workflows + the every-model review-panel.
+    expect(getSkillTemplates()).toHaveLength(13);
+    expect(getCommandContents()).toHaveLength(13);
+    // Governed additionally ships the governed-only STE writing skill.
+    expect(getSkillTemplates(undefined, GOVERNED).length).toBe(14);
   });
 });
 

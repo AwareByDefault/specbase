@@ -18,6 +18,7 @@ import {
   getOnboardSkillTemplate,
   getSpcbProposeSkillTemplate,
   getReviewPanelSkillTemplate,
+  getSteWritingSkillTemplate,
   getReviewPanelCommandTemplate,
   getSpcbExploreCommandTemplate,
   getSpcbNewCommandTemplate,
@@ -207,20 +208,31 @@ export function getSkillTemplates(
     ? all.filter(entry => filterSet.has(entry.workflowId))
     : all;
 
-  // The review-panel orchestration skill is GOVERNED-ONLY: it appears only under
-  // the governed spec model, so legacy generation (and the hash-locked/iterating
-  // parity tests, which run with no model) stay byte-identical.
-  //
-  // It is appended AFTER the profile filter on purpose: review-panel is a
-  // capability of the governed spec model, not a user-toggleable workflow, so it
-  // is deliberately absent from ALL_WORKFLOWS (see profiles.ts). Filtering it
-  // would drop it from every real `init`/`update`, which pass a profile-derived
-  // filter — leaving it unreachable dead template code.
+  // The review-panel orchestration skill ships to EVERY project, flat or
+  // governed, because the panel's one job — review whether the implementation
+  // produces the specs that were implemented — holds across that model
+  // spectrum; planes only partition that job into blind lenses, and the lens
+  // set is projected from the resolved model in the template itself. It remains
+  // appended AFTER the profile filter on purpose (see comment above about why it
+  // bypasses ALL_WORKFLOWS). In a flat project it registers the general
+  // spec-conformance reviewer; in a governed one the projected lens set.
+  selected.push({
+    template: getReviewPanelSkillTemplate(specModel),
+    dirName: 'specbase-review-panel',
+    workflowId: 'review-panel',
+  });
+
+  // The STE writing skill is governed-only for the same reason the review-panel
+  // is: it is a capability of the governed spec model's owned instruments (spec
+  // `agents.ste-writing`), not a user-toggleable workflow, so it is deliberately
+  // absent from ALL_WORKFLOWS. It ships to every governed project (capability
+  // ships; only the baseline spec pairs are opt-in), and stays byte-identical
+  // for legacy generation, which passes no governed model.
   if (isGovernedModel(specModel)) {
     selected.push({
-      template: getReviewPanelSkillTemplate(),
-      dirName: 'specbase-review-panel',
-      workflowId: 'review-panel',
+      template: getSteWritingSkillTemplate(),
+      dirName: 'specbase-ste-writing',
+      workflowId: 'ste-writing',
     });
   }
 
@@ -254,12 +266,9 @@ export function getCommandTemplates(
   const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
   const selected = filterSet ? all.filter(entry => filterSet.has(entry.id)) : all;
 
-  // Governed-only and appended after the filter, matching the skill projection
-  // (parity: skill == command). See getSkillTemplates for why it bypasses the
-  // profile filter.
-  if (isGovernedModel(specModel)) {
-    selected.push({ template: getReviewPanelCommandTemplate(), id: 'review-panel' });
-  }
+  // Every-model registration, matching the skill projection (parity: skill ==
+  // command). See getSkillTemplates for why it bypasses the profile filter.
+  selected.push({ template: getReviewPanelCommandTemplate(specModel), id: 'review-panel' });
 
   return selected;
 }

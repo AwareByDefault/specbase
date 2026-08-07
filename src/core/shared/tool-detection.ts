@@ -24,6 +24,7 @@ export const SKILL_NAMES = [
   'specbase-verify-change',
   'specbase-onboard',
   'specbase-propose',
+  'specbase-review-panel',
 ] as const;
 
 export type SkillName = (typeof SKILL_NAMES)[number];
