@@ -260,6 +260,110 @@ The command SHALL maintain backward compatibility with the experimental command.
 - **THEN** delegate to `openspec init`
 - **AND** the command SHALL be hidden from help output
 
+### Requirement: Agentic tooling prompt at init
+
+`openspec init` SHALL offer to enable the `agents` plane. When the user accepts, `init` SHALL append the `agents` plane to the project's resolved plane set via `specModel.planes+:` in `openspec/config.yaml` rather than adding it to the shipped resolved default set. When the user declines, `config.yaml` and the resolved plane set SHALL be unchanged.
+
+#### Scenario: User enables the agents plane
+
+- **WHEN** a user runs `openspec init` and accepts the agentic-tooling prompt
+- **THEN** `openspec/config.yaml` appends the `agents` plane under `specModel.planes+:` and the resolved plane set includes `agents`
+
+#### Scenario: User declines the agents plane
+
+- **WHEN** a user runs `openspec init` and declines the agentic-tooling prompt
+- **THEN** no `agents` plane is written to `config.yaml` and the resolved plane set is unchanged
+
+### Requirement: Agentic review opt-in
+
+When the `agents` plane is enabled, `openspec init` SHALL additionally prompt whether to enable agentic review. The answer SHALL control whether the `review-panel` baseline spec is planted, independently of the always-planted `spec-driven` baseline.
+
+#### Scenario: Agentic review accepted
+
+- **WHEN** a user enables the `agents` plane and accepts the agentic-review prompt
+- **THEN** `init` plants both `specs/agents/spec-driven/` and `specs/agents/review-panel/`
+
+#### Scenario: Agentic review declined
+
+- **WHEN** a user enables the `agents` plane but declines the agentic-review prompt
+- **THEN** `init` plants `specs/agents/spec-driven/` only, and does not plant `specs/agents/review-panel/`
+
+### Requirement: Baseline specs planted as scaffolding
+
+When the `agents` plane is enabled, `openspec init` SHALL write the selected baseline `agents` specs and their paired enforcement files directly into the project, as bootstrap scaffolding, without creating a change. `init` SHALL NOT overwrite an existing baseline spec that the user has already customized.
+
+#### Scenario: Baseline written without a change
+
+- **WHEN** `init` plants baseline `agents` specs
+- **THEN** the spec and enforcement files are written under `specs/agents/` directly, with no `openspec/changes/` entry created for them
+
+#### Scenario: Existing baseline preserved
+
+- **WHEN** `init` runs in a project that already has a planted baseline `agents` spec
+- **THEN** `init` leaves the existing spec in place and does not overwrite it
+
+### Requirement: Init presents planes as a single multi-select picker
+
+`openspec init` SHALL present the schema's offered planes as one multi-select picker with a select-all toggle at the top, replacing the binary governed prompt and the separate agentic-review opt-in. Each plane's initial checked state SHALL follow its `defaultSelected` value. The user's selection SHALL determine governance: selecting no planes leaves the project flat; selecting one or more makes it governed.
+
+#### Scenario: Picker replaces the governed yes/no prompt
+
+- **WHEN** a user runs `openspec init` interactively
+- **THEN** they are shown one plane multi-select (with select-all), not a governed-yes/no prompt followed by separate opt-ins
+
+#### Scenario: Select-all toggles every plane
+
+- **WHEN** the user activates the select-all toggle
+- **THEN** every offered plane's checked state flips together
+
+#### Scenario: Selecting no planes yields a flat project
+
+- **WHEN** the user confirms the picker with zero planes selected
+- **THEN** init produces a legacy flat project and writes no governed plane roster
+
+### Requirement: Init writes the selected planes and derived kind
+
+On completion `openspec init` SHALL write the selected plane set into the project config and record `specModel.kind` as derived from that set. It SHALL plant baseline specs only for selected planes; a plane left unselected (including `agents`) SHALL NOT have its baseline specs planted.
+
+#### Scenario: Config reflects the selection
+
+- **WHEN** the user selects `behavior`, `architecture`, and `design-system`
+- **THEN** the written config lists exactly those planes and a `kind` derived as `governed`
+
+#### Scenario: Baseline specs plant only for selected planes
+
+- **WHEN** the user does not select the `agents` plane
+- **THEN** init does not plant the `agents/spec-driven` baseline spec
+- **AND** the config plane roster still records the project's governed status
+
+### Requirement: Oh My Pi tool supported in init
+The `openspec init` command SHALL support Oh My Pi as a configurable tool, generating both skill files and command files using Oh My Pi's conventions when selected.
+
+#### Scenario: Selecting Oh My Pi during init
+- **WHEN** a user selects Oh My Pi during `openspec init`
+- **THEN** skill files are written to `.omp/skills/openspec-<id>/SKILL.md` for each active command
+- **AND** command files are written to `.omp/commands/opsx-<id>.md` for each active command
+- **AND** skill file bodies use hyphen-based `/opsx-<id>` command references
+- **AND** command file bodies have `**Provided arguments**: $@` injected after any `**Input**:` heading
+
+#### Scenario: Oh My Pi listed when .omp directory is detected
+- **WHEN** the project root contains a `.omp/` directory
+- **THEN** Oh My Pi is pre-checked in the tool selection during `openspec init`
+
+### Requirement: Init always writes selected planes into config
+
+`openspec init` SHALL write the selected plane set into `config.yaml` as a `specModel.planes:` list on every governed init, rather than omitting it when the selection equals the schema defaults. The serialized records SHALL be clean (no `defaultSelected`, no redundant `crossCutting: false`).
+
+#### Scenario: Default selection still writes an explicit plane list
+
+- **WHEN** a user completes init accepting the default plane selection
+- **THEN** the written `config.yaml` contains an explicit `specModel.planes:` list of those planes
+
+#### Scenario: Zero selection writes a flat config
+
+- **WHEN** a user completes init selecting no planes
+- **THEN** init writes a flat project config with no `specModel.planes:` list
+
 ## Why
 
 Manual creation of OpenSpec structure is error-prone and creates adoption friction. A standardized init command ensures:
