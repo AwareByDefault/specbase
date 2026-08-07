@@ -2,7 +2,6 @@
 
 ## Purpose
 Define how `openspec/config.yaml` is discovered, parsed, validated, and exposed to callers with safe fallbacks.
-
 ## Requirements
 ### Requirement: Load project config from openspec/config.yaml
 
@@ -119,4 +118,37 @@ The system SHALL continue operation with default values when config loading or p
 #### Scenario: Warning is visible to user
 - **WHEN** config loading fails
 - **THEN** system outputs warning message to stderr with details about the failure
+
+### Requirement: Derive specModel.kind from the resolved plane set
+
+Config loading SHALL derive `specModel.kind` from the resolved plane set: non-empty resolves to `governed`, empty resolves to `flat`. A `kind` value that disagrees with the resolved plane count SHALL NOT override the derivation. The resolved plane list SHALL be loaded from the schema's single offer-able plane list combined with the project config's append (`planes+:`) or replace (`planes:`) declarations.
+
+#### Scenario: Non-empty plane set loads as governed
+
+- **WHEN** the resolved plane set for a project is non-empty
+- **THEN** `specModel.kind` loads as `governed`
+
+#### Scenario: Empty plane set loads as flat
+
+- **WHEN** the resolved plane set for a project is empty
+- **THEN** `specModel.kind` loads as `flat`
+
+#### Scenario: Append and replace semantics preserved
+
+- **WHEN** a project config declares `specModel.planes+:` or `specModel.planes:`
+- **THEN** the resolved plane set applies append-vs-replace against the schema's offered planes as before
+
+### Requirement: A declared plane list is authoritative
+
+When a project config declares `specModel.planes:` (replace), config loading SHALL resolve the plane set to exactly that list, independent of the schema's declared planes. A plane the schema declares but the config omits SHALL NOT be resolved; an empty declared list SHALL resolve to the flat model.
+
+#### Scenario: Config list wins over schema defaults
+
+- **WHEN** a config declares `specModel.planes:` omitting a plane the schema declares
+- **THEN** the resolved plane set excludes that plane
+
+#### Scenario: Append and default paths are unchanged
+
+- **WHEN** a config uses `specModel.planes+:` or omits `specModel` entirely
+- **THEN** resolution applies append-onto-defaults or the schema default subset exactly as before
 
