@@ -24,6 +24,7 @@ import {
   renderGovernedSpecSummary,
 } from '../core/artifact-graph/governed-show.js';
 import type { GovernedPairRecord } from '../core/schemas/governed-spec.schema.js';
+import { planningDir } from '../core/config.js';
 
 type ItemType = 'change' | 'spec';
 
@@ -224,7 +225,7 @@ export class ShowCommand {
     planes?: string[]
   ): Promise<void> {
     const { typeOverride, options, root } = params;
-    const openspecRoot = path.join(root.path, 'openspec');
+    const openspecRoot = planningDir(root.path);
     const repository = await loadGovernedRepository(openspecRoot, planes);
 
     // Change detection is unchanged under the governed model.

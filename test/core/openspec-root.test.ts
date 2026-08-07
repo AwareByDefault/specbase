@@ -106,14 +106,14 @@ describe('OpenSpec root helper', () => {
     const result = await ensureOpenSpecRoot(root);
 
     expect(result.createdArtifacts).toEqual([
-      'openspec/',
-      'openspec/specs/',
-      'openspec/changes/',
-      'openspec/changes/archive/',
-      'openspec/config.yaml',
+      'specbase/',
+      'specbase/specs/',
+      'specbase/changes/',
+      'specbase/changes/archive/',
+      'specbase/config.yaml',
     ]);
     expect(result.inspection.healthy).toBe(true);
-    expect(fs.readFileSync(path.join(root, 'openspec', 'config.yaml'), 'utf-8')).toContain(
+    expect(fs.readFileSync(path.join(root, 'specbase', 'config.yaml'), 'utf-8')).toContain(
       `schema: ${DEFAULT_OPENSPEC_SCHEMA}`
     );
   });
@@ -142,7 +142,7 @@ describe('OpenSpec root helper', () => {
 
     await rollbackCreatedPaths(result.createdPaths);
 
-    expect(fs.existsSync(path.join(root, 'openspec'))).toBe(false);
+    expect(fs.existsSync(path.join(root, 'specbase'))).toBe(false);
     expect(fs.readFileSync(path.join(root, 'user.md'), 'utf-8')).toBe('mine\n');
   });
 });

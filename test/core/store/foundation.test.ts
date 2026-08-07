@@ -63,9 +63,9 @@ describe('store foundation', () => {
       process.env.XDG_DATA_HOME = tempDir;
       const storeRoot = path.join(tempDir, 'acme-context');
 
-      expect(getStoresDir()).toBe(path.join(tempDir, 'openspec', 'stores'));
+      expect(getStoresDir()).toBe(path.join(tempDir, 'specbase', 'stores'));
       expect(getStoreRegistryPath()).toBe(
-        path.join(tempDir, 'openspec', 'stores', 'registry.yaml')
+        path.join(tempDir, 'specbase', 'stores', 'registry.yaml')
       );
       expect(getStoreMetadataDir(storeRoot)).toBe(
         path.join(storeRoot, '.openspec-store')
@@ -83,10 +83,10 @@ describe('store foundation', () => {
       });
 
       expect(getStoresDir({ globalDataDir: dataDir })).toBe(
-        '/home/tabish/.local/share/openspec/stores'
+        '/home/tabish/.local/share/specbase/stores'
       );
       expect(getStoreRegistryPath({ globalDataDir: dataDir })).toBe(
-        '/home/tabish/.local/share/openspec/stores/registry.yaml'
+        '/home/tabish/.local/share/specbase/stores/registry.yaml'
       );
     });
 

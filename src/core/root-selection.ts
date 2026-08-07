@@ -32,6 +32,7 @@ import {
 } from './store/foundation.js';
 import { getStoreRootForBackend } from './store/registry.js';
 import { inspectOpenSpecRoot } from './openspec-root.js';
+import { resolvePlanningDirName } from './planning-dir.js';
 import { findRepoPlanningRootSync, type PlanningHome } from './planning-home.js';
 import { classifyOpenSpecDir, storePointerProblem } from './project-config.js';
 import { FileSystemUtils } from '../utils/file-system.js';
@@ -110,11 +111,12 @@ function makeRoot(
   source: OpenSpecRootSource,
   storeId?: string
 ): ResolvedOpenSpecRoot {
+  const planningDirName = resolvePlanningDirName(rootPath);
   return {
     path: rootPath,
-    changesDir: path.join(rootPath, 'openspec', 'changes'),
-    specsDir: path.join(rootPath, 'openspec', 'specs'),
-    archiveDir: path.join(rootPath, 'openspec', 'changes', 'archive'),
+    changesDir: path.join(rootPath, planningDirName, 'changes'),
+    specsDir: path.join(rootPath, planningDirName, 'specs'),
+    archiveDir: path.join(rootPath, planningDirName, 'changes', 'archive'),
     defaultSchema: 'spec-driven',
     source,
     ...(storeId ? { storeId } : {}),

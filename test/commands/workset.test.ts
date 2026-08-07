@@ -915,7 +915,7 @@ describe('interactive compose cancellation (in-process)', () => {
       expect(errorSpy).toHaveBeenCalledWith('Cancelled.');
       expect(
         fs.existsSync(
-          path.join(process.env.XDG_DATA_HOME!, 'openspec', 'worksets', 'worksets.yaml')
+          path.join(process.env.XDG_DATA_HOME!, 'specbase', 'worksets', 'worksets.yaml')
         )
       ).toBe(false);
     }
@@ -943,7 +943,7 @@ describe('interactive compose cancellation (in-process)', () => {
     expect(errorSpy).toHaveBeenCalledWith('Cancelled.');
     expect(
       fs.existsSync(
-        path.join(process.env.XDG_DATA_HOME!, 'openspec', 'worksets', 'worksets.yaml')
+        path.join(process.env.XDG_DATA_HOME!, 'specbase', 'worksets', 'worksets.yaml')
       )
     ).toBe(false);
   });
@@ -970,7 +970,7 @@ describe('interactive compose cancellation (in-process)', () => {
     );
     const yamlPath = path.join(
       process.env.XDG_DATA_HOME!,
-      'openspec',
+      'specbase',
       'worksets',
       'worksets.yaml'
     );
@@ -1012,7 +1012,7 @@ describe('interactive compose cancellation (in-process)', () => {
       fs.existsSync(
         path.join(
           process.env.XDG_DATA_HOME!,
-          'openspec',
+          'specbase',
           'worksets',
           'worksets.yaml'
         )
@@ -1057,7 +1057,7 @@ describe('interactive compose cancellation (in-process)', () => {
     expect(errorSpy).toHaveBeenCalledWith('Error: Workset remove cancelled.');
     expect(
       fs.existsSync(
-        path.join(process.env.XDG_DATA_HOME!, 'openspec', 'worksets', 'worksets.yaml')
+        path.join(process.env.XDG_DATA_HOME!, 'specbase', 'worksets', 'worksets.yaml')
       )
     ).toBe(true);
   });

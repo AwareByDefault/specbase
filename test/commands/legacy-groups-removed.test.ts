@@ -87,7 +87,7 @@ describe('legacy command groups are removed', () => {
     const result = await runCLI(['update'], { cwd: tempDir, env });
 
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('No OpenSpec directory found');
+    expect(result.stderr).toContain('No Specbase directory found');
     expect(result.stderr).not.toContain('workspace');
   });
 

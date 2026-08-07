@@ -210,9 +210,9 @@ describe('standalone store lifecycle journey', () => {
     });
     expect(payload.created_files).toEqual(
       expect.arrayContaining([
-        'openspec/config.yaml',
-        'openspec/specs/.gitkeep',
-        'openspec/changes/archive/.gitkeep',
+        'specbase/config.yaml',
+        'specbase/specs/.gitkeep',
+        'specbase/changes/archive/.gitkeep',
         '.openspec-store/store.yaml',
       ])
     );
@@ -228,8 +228,8 @@ describe('standalone store lifecycle journey', () => {
       'HEAD',
     ]);
     expect(committedFiles).toContain('.openspec-store/store.yaml');
-    expect(committedFiles).toContain('openspec/specs/.gitkeep');
-    expect(committedFiles).toContain('openspec/changes/archive/.gitkeep');
+    expect(committedFiles).toContain('specbase/specs/.gitkeep');
+    expect(committedFiles).toContain('specbase/changes/archive/.gitkeep');
 
     const status = await git(storeRoot, machineA, ['status', '--porcelain']);
     expect(status.trim()).toBe('');
@@ -293,11 +293,11 @@ describe('standalone store lifecycle journey', () => {
     );
     expect(instructions.exitCode).toBe(0);
     expect(instructions.stdout).toContain(
-      path.join(canonical(storeRoot), 'openspec', 'changes', changeId, 'proposal.md')
+      path.join(canonical(storeRoot), 'specbase', 'changes', changeId, 'proposal.md')
     );
 
     // The test acts as the agent and writes the artifacts.
-    const changeDir = path.join(storeRoot, 'openspec', 'changes', changeId);
+    const changeDir = path.join(storeRoot, 'specbase', 'changes', changeId);
     await writeCompletedChangeArtifacts(changeDir, 'billing');
 
     const validated = await runCLI(
@@ -332,11 +332,11 @@ describe('standalone store lifecycle journey', () => {
     expect(archivePayload.archive.change).toBe(changeId);
     expect(archivePayload.root.store_id).toBe(STORE_ID);
 
-    const specPath = path.join(storeRoot, 'openspec', 'specs', 'billing', 'spec.md');
+    const specPath = path.join(storeRoot, 'specbase', 'specs', 'billing', 'spec.md');
     await expect(fs.readFile(specPath, 'utf-8')).resolves.toContain('billing SHALL work');
 
     const archiveEntries = await fs.readdir(
-      path.join(storeRoot, 'openspec', 'changes', 'archive')
+      path.join(storeRoot, 'specbase', 'changes', 'archive')
     );
     expect(archiveEntries.some((entry) => entry.endsWith(`-${changeId}`))).toBe(true);
   }, JOURNEY_TIMEOUT_MS);
@@ -412,10 +412,10 @@ describe('standalone store lifecycle journey', () => {
     );
     expect(instructions.exitCode).toBe(0);
     expect(instructions.stdout).toContain(
-      path.join(canonical(cloneRoot), 'openspec', 'changes', changeId, 'proposal.md')
+      path.join(canonical(cloneRoot), 'specbase', 'changes', changeId, 'proposal.md')
     );
 
-    const changeDir = path.join(cloneRoot, 'openspec', 'changes', changeId);
+    const changeDir = path.join(cloneRoot, 'specbase', 'changes', changeId);
     await writeCompletedChangeArtifacts(changeDir, 'invoicing');
 
     const status = await runCLI(
@@ -439,7 +439,7 @@ describe('standalone store lifecycle journey', () => {
     expect(archived.exitCode).toBe(0);
     expect(JSON.parse(archived.stdout).archive.change).toBe(changeId);
 
-    const specPath = path.join(cloneRoot, 'openspec', 'specs', 'invoicing', 'spec.md');
+    const specPath = path.join(cloneRoot, 'specbase', 'specs', 'invoicing', 'spec.md');
     await expect(fs.readFile(specPath, 'utf-8')).resolves.toContain('invoicing SHALL work');
 
     // Post-resolution failures keep the banner, and the hint keeps the store:
@@ -459,18 +459,18 @@ describe('standalone store lifecycle journey', () => {
       const entries = await listRelativeEntries(root, new Set(['.git']));
 
       for (const entry of entries) {
-        expect(entry).toMatch(/^(\.openspec-store(\/|\/store\.yaml)?|openspec(\/.*)?)$/);
+        expect(entry).toMatch(/^(\.openspec-store(\/|\/store\.yaml)?|specbase(\/.*)?)$/);
         expect(entry).not.toMatch(/initiative|workspace/i);
       }
 
       expect(entries).toContain('.openspec-store/store.yaml');
-      expect(entries).toContain('openspec/config.yaml');
+      expect(entries).toContain('specbase/config.yaml');
     }
 
     // Global state holds only registry/config metadata, no planning files.
     for (const env of [machineA, machineB]) {
       const dataEntries = await listRelativeEntries(
-        path.join(env.XDG_DATA_HOME as string, 'openspec'),
+        path.join(env.XDG_DATA_HOME as string, 'specbase'),
         new Set()
       );
       expect(dataEntries).toEqual(['stores/', 'stores/registry.yaml']);

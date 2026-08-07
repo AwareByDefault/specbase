@@ -19,6 +19,7 @@ import {
   reportGovernedResolutionError,
 } from '../core/artifact-graph/governed-show.js';
 import { validateGovernedPairs } from '../core/artifact-graph/governed-validate.js';
+import { planningDir } from '../core/config.js';
 
 type ItemType = 'change' | 'spec';
 
@@ -107,7 +108,7 @@ export class ValidateCommand {
   ): Promise<void> {
     const projectRoot = root.path;
     const planes = resolveProjectSpecModel(projectRoot).planes.map((p) => p.id);
-    const repository = await loadGovernedRepository(path.join(projectRoot, 'openspec'), planes);
+    const repository = await loadGovernedRepository(planningDir(projectRoot), planes);
 
     const bulk = !!options.all || !!options.specs || !!options.changes;
 
@@ -190,7 +191,7 @@ export class ValidateCommand {
     // governed "spec not found" diagnostic is preserved.
     if (itemName) {
       const repository = await loadGovernedRepository(
-        path.join(root.path, 'openspec'),
+        planningDir(root.path),
         resolveProjectSpecModel(root.path).planes.map((p) => p.id)
       );
       const resolution = resolveGovernedShowTarget(repository, itemName);

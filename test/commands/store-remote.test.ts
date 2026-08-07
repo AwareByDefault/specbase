@@ -342,7 +342,7 @@ describe('store canonical remote (3.3)', () => {
 
   describe('onboarding end to end', () => {
     it('executes the printed clone fix verbatim and continues to a resolved index', async () => {
-      // A scratch HOME keeps the rendered <home>/openspec/<id> checkout
+      // A scratch HOME keeps the rendered <home>/specbase/<id> checkout
       // path inside the temp dir for both the fix text and the CLI.
       const scratchHome = path.join(tempDir, 'home');
       fs.mkdirSync(scratchHome, { recursive: true });
@@ -393,7 +393,7 @@ describe('store canonical remote (3.3)', () => {
       const entry = parseJson(degraded).references[0];
       expect(entry.status[0].code).toBe('reference_unresolved');
       const fix: string = entry.status[0].fix;
-      const expectedCheckout = path.join(scratchHome, 'openspec', 'team-context');
+      const expectedCheckout = path.join(scratchHome, 'specbase', 'team-context');
       // The quote style is platform-deliberate: POSIX single quotes,
       // win32 double quotes (cmd/PowerShell treat ' as literal).
       const q = process.platform === 'win32' ? '"' : "'";

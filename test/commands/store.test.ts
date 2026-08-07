@@ -97,10 +97,10 @@ describe('store command', () => {
   }
 
   function expectHealthyOpenSpecRoot(root: string): void {
-    expect(fs.existsSync(path.join(root, 'openspec', 'config.yaml')) || fs.existsSync(path.join(root, 'openspec', 'config.yml'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'openspec', 'specs'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'openspec', 'changes'))).toBe(true);
-    expect(fs.existsSync(path.join(root, 'openspec', 'changes', 'archive'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'specbase', 'config.yaml')) || fs.existsSync(path.join(root, 'specbase', 'config.yml'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'specbase', 'specs'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'specbase', 'changes'))).toBe(true);
+    expect(fs.existsSync(path.join(root, 'specbase', 'changes', 'archive'))).toBe(true);
   }
 
   function expectNoGeneratedAgentOrBetaArtifacts(root: string): void {
@@ -153,18 +153,18 @@ describe('store command', () => {
       already_registered: false,
     });
     expect(payload.created_files).toEqual([
-      'openspec/',
-      'openspec/specs/',
-      'openspec/changes/',
-      'openspec/changes/archive/',
-      'openspec/config.yaml',
-      'openspec/specs/.gitkeep',
-      'openspec/changes/archive/.gitkeep',
+      'specbase/',
+      'specbase/specs/',
+      'specbase/changes/',
+      'specbase/changes/archive/',
+      'specbase/config.yaml',
+      'specbase/specs/.gitkeep',
+      'specbase/changes/archive/.gitkeep',
       '.openspec-store/store.yaml',
     ]);
     expect(payload.status).toEqual([]);
     expectHealthyOpenSpecRoot(storeRoot);
-    expect(fs.readFileSync(path.join(storeRoot, 'openspec', 'config.yaml'), 'utf-8')).toContain(
+    expect(fs.readFileSync(path.join(storeRoot, 'specbase', 'config.yaml'), 'utf-8')).toContain(
       `schema: ${DEFAULT_OPENSPEC_SCHEMA}`
     );
     expectNoGeneratedAgentOrBetaArtifacts(storeRoot);
@@ -287,13 +287,13 @@ describe('store command', () => {
       committed: false,
     });
     expect(payload.created_files).toEqual([
-      'openspec/',
-      'openspec/specs/',
-      'openspec/changes/',
-      'openspec/changes/archive/',
-      'openspec/config.yaml',
-      'openspec/specs/.gitkeep',
-      'openspec/changes/archive/.gitkeep',
+      'specbase/',
+      'specbase/specs/',
+      'specbase/changes/',
+      'specbase/changes/archive/',
+      'specbase/config.yaml',
+      'specbase/specs/.gitkeep',
+      'specbase/changes/archive/.gitkeep',
       '.openspec-store/store.yaml',
     ]);
     expect(fs.existsSync(path.join(storeRoot, '.git'))).toBe(true);

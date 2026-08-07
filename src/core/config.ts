@@ -1,5 +1,14 @@
 export const OPENSPEC_DIR_NAME = 'openspec';
 
+// Re-export the planning-dir resolver contract so existing importers of this
+// module can migrate to the specbase/openspec prefer-fallback naming.
+export {
+  PLANNING_DIR_NAME,
+  LEGACY_PLANNING_DIR_NAME,
+  resolvePlanningDirName,
+  planningDir,
+} from './planning-dir.js';
+
 export const OPENSPEC_MARKERS = {
   start: '<!-- OPENSPEC:START -->',
   end: '<!-- OPENSPEC:END -->'

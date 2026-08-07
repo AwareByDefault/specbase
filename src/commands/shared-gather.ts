@@ -15,6 +15,7 @@ import {
 import { assembleReferenceIndex, type ReferenceIndexEntry } from '../core/references.js';
 import { inspectOpenSpecRoot, type OpenSpecRootInspection } from '../core/openspec-root.js';
 import type { ResolvedOpenSpecRoot } from '../core/root-selection.js';
+import { planningDir } from '../core/config.js';
 
 export interface RelationshipData {
   registrySnapshot: RegistrySnapshot;
@@ -31,7 +32,7 @@ export async function gatherRelationshipData(
 
   const projectConfig = readProjectConfig(root.path);
   const storeConfigPath =
-    resolveConfigFilePath(root.path) ?? path.join(root.path, 'openspec', 'config.yaml');
+    resolveConfigFilePath(root.path) ?? path.join(planningDir(root.path), 'config.yaml');
 
   const referenceEntries = await assembleReferenceIndex({
     references: projectConfig?.references ?? [],

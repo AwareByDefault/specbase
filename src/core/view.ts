@@ -3,10 +3,11 @@ import * as path from 'path';
 import chalk from 'chalk';
 import { getTaskProgressForChange, formatTaskStatus } from '../utils/task-progress.js';
 import { MarkdownParser } from './parsers/markdown-parser.js';
+import { planningDir } from './planning-dir.js';
 
 export class ViewCommand {
   async execute(targetPath: string = '.'): Promise<void> {
-    const openspecDir = path.join(targetPath, 'openspec');
+    const openspecDir = planningDir(targetPath);
     
     if (!fs.existsSync(openspecDir)) {
       console.error(chalk.red('No openspec directory found'));

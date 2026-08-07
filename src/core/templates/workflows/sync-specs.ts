@@ -56,7 +56,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    a. **Read the delta spec** to understand the intended changes
 
-   b. **Read the main spec** at \`openspec/specs/<capability>/spec.md\` (may not exist yet)
+   b. **Read the main spec** at \`specbase/specs/<capability>/spec.md\` (may not exist yet)
 
    c. **Apply changes intelligently**:
 
@@ -79,7 +79,7 @@ ${STORE_SELECTION_GUIDANCE}
       - Find the FROM requirement, rename to TO
 
    d. **Create new main spec** if capability doesn't exist yet:
-      - Create \`openspec/specs/<capability>/spec.md\`
+      - Create \`specbase/specs/<capability>/spec.md\`
       - Add Purpose section (can be brief, mark as TBD)
       - Add Requirements section with the ADDED requirements
 
@@ -204,7 +204,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    a. **Read the delta spec** to understand the intended changes
 
-   b. **Read the main spec** at \`openspec/specs/<capability>/spec.md\` (may not exist yet)
+   b. **Read the main spec** at \`specbase/specs/<capability>/spec.md\` (may not exist yet)
 
    c. **Apply changes intelligently**:
 
@@ -227,7 +227,7 @@ ${STORE_SELECTION_GUIDANCE}
       - Find the FROM requirement, rename to TO
 
    d. **Create new main spec** if capability doesn't exist yet:
-      - Create \`openspec/specs/<capability>/spec.md\`
+      - Create \`specbase/specs/<capability>/spec.md\`
       - Add Purpose section (can be brief, mark as TBD)
       - Add Requirements section with the ADDED requirements
 

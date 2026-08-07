@@ -58,7 +58,7 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      const openspecPath = path.join(testDir, 'openspec');
+      const openspecPath = path.join(testDir, 'specbase');
       expect(await directoryExists(openspecPath)).toBe(true);
       expect(await directoryExists(path.join(openspecPath, 'specs'))).toBe(true);
       expect(await directoryExists(path.join(openspecPath, 'changes'))).toBe(true);
@@ -70,7 +70,7 @@ describe('InitCommand', () => {
 
       await initCommand.execute(testDir);
 
-      const configPath = path.join(testDir, 'openspec', 'config.yaml');
+      const configPath = path.join(testDir, 'specbase', 'config.yaml');
       expect(await fileExists(configPath)).toBe(true);
 
       const content = await fs.readFile(configPath, 'utf-8');
@@ -250,7 +250,7 @@ describe('InitCommand', () => {
       await initCommand.execute(testDir);
 
       // Should create OpenSpec structure but no skills
-      const openspecPath = path.join(testDir, 'openspec');
+      const openspecPath = path.join(testDir, 'specbase');
       expect(await directoryExists(openspecPath)).toBe(true);
 
       // No tool-specific directories should be created
@@ -305,7 +305,7 @@ describe('InitCommand', () => {
 
       await initCommand.execute(newDir);
 
-      const openspecPath = path.join(newDir, 'openspec');
+      const openspecPath = path.join(newDir, 'specbase');
       expect(await directoryExists(openspecPath)).toBe(true);
     });
 

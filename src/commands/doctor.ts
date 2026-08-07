@@ -26,6 +26,7 @@ import {
 import { COMMAND_REGISTRY } from '../core/completions/command-registry.js';
 import { COMMON_FLAGS } from '../core/completions/shared-flags.js';
 import { emitFailure, printJson } from './shared-output.js';
+import { planningDir } from '../core/config.js';
 import * as path from 'node:path';
 
 const FAILURE_PAYLOAD = { root: null, store: null, references: [] };
@@ -94,7 +95,7 @@ async function gatherHealth(
       if (fields.length > 0) {
         const filePath =
           resolveConfigFilePath(pointerRoot) ??
-          path.join(pointerRoot, 'openspec', 'config.yaml');
+          path.join(planningDir(pointerRoot), 'config.yaml');
         input.inertPointerDeclarations = { filePath, fields };
       }
     }
