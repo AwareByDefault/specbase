@@ -28,7 +28,7 @@ describe('tool-detection', () => {
 
   describe('SKILL_NAMES', () => {
     it('should contain all skill names matching COMMAND_IDS', () => {
-      expect(SKILL_NAMES).toHaveLength(12);
+      expect(SKILL_NAMES).toHaveLength(13);
       expect(SKILL_NAMES).toContain('specbase-explore');
       expect(SKILL_NAMES).toContain('specbase-new-change');
       expect(SKILL_NAMES).toContain('specbase-continue-change');
@@ -41,6 +41,7 @@ describe('tool-detection', () => {
       expect(SKILL_NAMES).toContain('specbase-verify-change');
       expect(SKILL_NAMES).toContain('specbase-onboard');
       expect(SKILL_NAMES).toContain('specbase-propose');
+      expect(SKILL_NAMES).toContain('specbase-review-panel');
     });
   });
 

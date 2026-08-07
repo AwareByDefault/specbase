@@ -112,7 +112,10 @@ describe('coverage — lens views (JSON)', () => {
       'root',
     ]);
     expect(parsed.summary.review.threshold).toBe(4);
-    expect(parsed.summary.review.lenses).toHaveLength(6);
+    // The projection resolves the schema's default-selected roster (design-system
+    // and agents opt out by default), so five lenses appear: four plane lenses
+    // plus the cross-cutting enforcement.
+    expect(parsed.summary.review.lenses).toHaveLength(5);
     expect(parsed.summary.review.unlensed).toEqual([
       {
         locator: 'architecture/domain',
