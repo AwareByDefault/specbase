@@ -88,9 +88,9 @@ function removeB2Enforcement(id: string): string {
 }
 
 async function writeConfig(): Promise<void> {
-  const openspec = path.join(tempDir, 'openspec');
-  await fs.mkdir(openspec, { recursive: true });
-  await fs.writeFile(path.join(openspec, 'config.yaml'), `schema: ${GOVERNED_SCHEMA}\n`);
+  const specbase = path.join(tempDir, 'specbase');
+  await fs.mkdir(specbase, { recursive: true });
+  await fs.writeFile(path.join(specbase, 'config.yaml'), `schema: ${GOVERNED_SCHEMA}\n`);
 }
 
 /** Write a governed pair under the change delta root or the current root. */
@@ -102,8 +102,8 @@ async function writePair(
 ): Promise<void> {
   const base =
     scope === 'delta'
-      ? path.join(tempDir, 'openspec', 'changes', change)
-      : path.join(tempDir, 'openspec');
+      ? path.join(tempDir, 'specbase', 'changes', change)
+      : path.join(tempDir, 'specbase');
   const dir = path.join(base, 'specs', ...locator.split('/'));
   await fs.mkdir(dir, { recursive: true });
   if (opts.spec !== undefined) await fs.writeFile(path.join(dir, 'spec.md'), opts.spec);
@@ -119,7 +119,7 @@ async function writeTarget(rel: string): Promise<void> {
 }
 
 async function ensureChange(change: string): Promise<void> {
-  await fs.mkdir(path.join(tempDir, 'openspec', 'changes', change), { recursive: true });
+  await fs.mkdir(path.join(tempDir, 'specbase', 'changes', change), { recursive: true });
 }
 
 async function runArchive(
@@ -144,7 +144,7 @@ async function exists(rel: string): Promise<boolean> {
 }
 
 beforeEach(async () => {
-  tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'openspec-archive-gov-'));
+  tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'specbase-archive-gov-'));
   originalCwd = process.cwd();
   process.chdir(tempDir);
   originalLog = console.log;
@@ -181,14 +181,14 @@ describe('governed archive — coherent pair application', () => {
     expect(out.archive).not.toBeNull();
     expect(out.archive.governed.verification).toBe('verified');
     // Current spec updated with the new title (reconciled by stable ID `r`).
-    const merged = await read('openspec/specs/behavior/session-loop/spec.md');
+    const merged = await read('specbase/specs/behavior/session-loop/spec.md');
     expect(merged).toContain('New title');
     expect(merged).not.toContain('Old title');
     // The merged spec is a clean governed spec (no delta operation headers).
     expect(merged).not.toContain('## MODIFIED');
     // Change moved to archive.
-    expect(await exists(`openspec/changes/${change}`)).toBe(false);
-    expect(await exists(`openspec/changes/archive`)).toBe(true);
+    expect(await exists(`specbase/changes/${change}`)).toBe(false);
+    expect(await exists(`specbase/changes/archive`)).toBe(true);
   });
 });
 
@@ -205,8 +205,8 @@ describe('governed archive — reconciliation and reporting', () => {
     const out = await runArchive(change);
 
     expect(out.archive.governed.verification).toBe('verified');
-    expect(await exists('openspec/specs/architecture/domain/spec.md')).toBe(true);
-    expect(await exists('openspec/specs/architecture/domain/enforcement.md')).toBe(true);
+    expect(await exists('specbase/specs/architecture/domain/spec.md')).toBe(true);
+    expect(await exists('specbase/specs/architecture/domain/enforcement.md')).toBe(true);
     const [pair] = out.archive.governed.pairs;
     expect(pair.specId).toBe('architecture.domain');
     expect(pair.normativeOps.added).toBe(1);
@@ -232,8 +232,8 @@ describe('governed archive — reconciliation and reporting', () => {
     const [pair] = out.archive.governed.pairs;
     expect(pair.moved).toBe(true);
     expect(pair.previousLocator).toBe('behavior/old-loop');
-    expect(await exists('openspec/specs/behavior/new-loop/spec.md')).toBe(true);
-    expect(await exists('openspec/specs/behavior/old-loop/spec.md')).toBe(false);
+    expect(await exists('specbase/specs/behavior/new-loop/spec.md')).toBe(true);
+    expect(await exists('specbase/specs/behavior/old-loop/spec.md')).toBe(false);
   });
 
   it('reports retired-target cleanup candidates without deleting project code', async () => {
@@ -262,7 +262,7 @@ describe('governed archive — reconciliation and reporting', () => {
     expect(retired).toBeDefined();
     expect(retired.stillReferenced).toBe(false);
     // r (and its binding b) were untouched — only r2/b2 were removed.
-    const merged = await read('openspec/specs/behavior/multi/spec.md');
+    const merged = await read('specbase/specs/behavior/multi/spec.md');
     expect(merged).toContain('**ID:** `r`');
     expect(merged).not.toContain('**ID:** `r2`');
     // The project code is never deleted by archive.
@@ -297,14 +297,14 @@ describe('governed archive — delta operations merge by stable ID (no silent lo
     expect(pair.bindingOps).toMatchObject({ added: 1, modified: 0, removed: 0 });
 
     // Merged spec: the original 2 requirements are preserved plus the new one.
-    const mergedSpec = await read('openspec/specs/behavior/temp/spec.md');
+    const mergedSpec = await read('specbase/specs/behavior/temp/spec.md');
     expect(mergedSpec).not.toContain('## ADDED'); // clean governed spec, not a delta
     const parsedSpec = parseGovernedSpec(mergedSpec);
     expect(parsedSpec.issues).toEqual([]);
     expect(parsedSpec.requirements.map((r) => r.id).sort()).toEqual(['r', 'r2', 'r3']);
 
     // Merged enforcement: the original 2 bindings are preserved plus the new one.
-    const mergedEnf = parseEnforcement(await read('openspec/specs/behavior/temp/enforcement.md'));
+    const mergedEnf = parseEnforcement(await read('specbase/specs/behavior/temp/enforcement.md'));
     expect(mergedEnf.issues).toEqual([]);
     expect(mergedEnf.bindings.map((b) => b.id).sort()).toEqual(['b', 'b2', 'b3']);
   });
@@ -326,7 +326,7 @@ describe('governed archive — delta operations merge by stable ID (no silent lo
     const out = await runArchive(change);
 
     expect(out.archive.governed.verification).toBe('verified');
-    const merged = await read('openspec/specs/behavior/multi/spec.md');
+    const merged = await read('specbase/specs/behavior/multi/spec.md');
     const parsed = parseGovernedSpec(merged);
     expect(parsed.issues).toEqual([]);
     // r was replaced (new title/body), r2 preserved verbatim.
@@ -355,7 +355,7 @@ describe('governed archive — delta operations merge by stable ID (no silent lo
     const [pair] = out.archive.governed.pairs;
     // The removal is surfaced explicitly in the reported operation counts.
     expect(pair.normativeOps.removed).toBe(1);
-    const parsed = parseGovernedSpec(await read('openspec/specs/behavior/multi/spec.md'));
+    const parsed = parseGovernedSpec(await read('specbase/specs/behavior/multi/spec.md'));
     expect(parsed.requirements.map((r) => r.id)).toEqual(['r']);
   });
 
@@ -375,7 +375,7 @@ describe('governed archive — delta operations merge by stable ID (no silent lo
     const out = await runArchive(change);
 
     expect(out.archive.governed.verification).toBe('verified');
-    const parsed = parseGovernedSpec(await read('openspec/specs/behavior/loop/spec.md'));
+    const parsed = parseGovernedSpec(await read('specbase/specs/behavior/loop/spec.md'));
     expect(parsed.issues).toEqual([]);
     // Same stable id `r`, new title, scenario `s` preserved.
     expect(parsed.requirements).toHaveLength(1);
@@ -402,7 +402,7 @@ describe('governed archive — delta operations merge by stable ID (no silent lo
     expect(out.archive).toBeNull();
     expect(out.status[0].code).toBe('archive_governed_merge_conflict');
     expect(process.exitCode).toBe(1);
-    expect(await exists(`openspec/changes/${change}`)).toBe(true);
+    expect(await exists(`specbase/changes/${change}`)).toBe(true);
     process.exitCode = 0;
   });
 });
@@ -414,7 +414,7 @@ describe('governed archive — blocking conditions (no writes, change not moved)
     expect(out.status[0].code).toBe(code);
     expect(process.exitCode).toBe(1);
     // The change was NOT moved to archive.
-    expect(await exists(`openspec/changes/${change}`)).toBe(true);
+    expect(await exists(`specbase/changes/${change}`)).toBe(true);
     process.exitCode = 0;
   }
 
@@ -433,7 +433,7 @@ describe('governed archive — blocking conditions (no writes, change not moved)
       enforcement: hangingEnforcement('behavior.hang'),
     });
     await expectBlocked(change, 'archive_governed_not_ready');
-    expect(await exists('openspec/specs/behavior/hang/spec.md')).toBe(false);
+    expect(await exists('specbase/specs/behavior/hang/spec.md')).toBe(false);
   });
 
   it('blocks a stale coverage reference', async () => {
@@ -500,16 +500,16 @@ describe('governed archive — explicit bypass', () => {
 
     expect(out.archive).not.toBeNull();
     expect(out.archive.governed.verification).toBe('unverified-bypass');
-    expect(await exists(`openspec/changes/${change}`)).toBe(false);
+    expect(await exists(`specbase/changes/${change}`)).toBe(false);
     // The pair was still written coherently.
-    expect(await exists('openspec/specs/behavior/planned/spec.md')).toBe(true);
+    expect(await exists('specbase/specs/behavior/planned/spec.md')).toBe(true);
   });
 });
 
 describe('governed archive — legacy path unchanged', () => {
   it('does not emit a governed report under the legacy spec model', async () => {
     // Switch the project to the legacy flat schema.
-    await fs.writeFile(path.join(tempDir, 'openspec', 'config.yaml'), 'schema: spec-driven\n');
+    await fs.writeFile(path.join(tempDir, 'specbase', 'config.yaml'), 'schema: spec-driven\n');
     const change = 'legacy';
     await ensureChange(change);
 
@@ -517,7 +517,7 @@ describe('governed archive — legacy path unchanged', () => {
 
     expect(out.archive).not.toBeNull();
     expect(out.archive.governed).toBeUndefined();
-    expect(await exists(`openspec/changes/${change}`)).toBe(false);
+    expect(await exists(`specbase/changes/${change}`)).toBe(false);
   });
 });
 
@@ -542,7 +542,7 @@ describe('governed archive — human (non-JSON) output', () => {
     expect(out).toContain('Updated behavior/multi');
     expect(out).toContain('retired-target candidate: src/r2.test.ts');
     expect(out).toContain(`Change '${change}' archived`);
-    expect(await exists(`openspec/changes/${change}`)).toBe(false);
+    expect(await exists(`specbase/changes/${change}`)).toBe(false);
   });
 
   it('prints blockers and aborts (exit 1) in human mode without moving the change', async () => {
@@ -558,8 +558,8 @@ describe('governed archive — human (non-JSON) output', () => {
 
     expect(out).toContain('not ready to archive');
     expect(process.exitCode).toBe(1);
-    expect(await exists(`openspec/changes/${change}`)).toBe(true);
-    expect(await exists('openspec/specs/behavior/hang/spec.md')).toBe(false);
+    expect(await exists(`specbase/changes/${change}`)).toBe(true);
+    expect(await exists('specbase/specs/behavior/hang/spec.md')).toBe(false);
     process.exitCode = 0;
   });
 });

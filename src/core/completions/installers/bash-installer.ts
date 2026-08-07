@@ -15,8 +15,8 @@ export class BashInstaller {
    * Markers for .bashrc configuration management
    */
   private readonly BASHRC_MARKERS = {
-    start: '# OPENSPEC:START',
-    end: '# OPENSPEC:END',
+    start: '# SPECBASE:START',
+    end: '# SPECBASE:END',
   };
 
   constructor(homeDir: string = os.homedir()) {
@@ -61,7 +61,7 @@ export class BashInstaller {
     const localCompletionDir = path.join(this.homeDir, '.local', 'share', 'bash-completion', 'completions');
 
     // For user installation, use local directory
-    return path.join(localCompletionDir, 'openspec');
+    return path.join(localCompletionDir, 'specbase');
   }
 
   /**
@@ -101,7 +101,7 @@ export class BashInstaller {
    */
   private generateBashrcConfig(completionsDir: string): string {
     return [
-      '# OpenSpec shell completions configuration',
+      '# Specbase shell completions configuration',
       `if [ -d "${completionsDir}" ]; then`,
       `  for f in "${completionsDir}"/*; do`,
       '    [ -f "$f" ] && . "$f"',
@@ -117,8 +117,11 @@ export class BashInstaller {
    * @returns true if configured successfully, false otherwise
    */
   async configureBashrc(completionsDir: string): Promise<boolean> {
-    // Check if auto-configuration is disabled
-    if (process.env.OPENSPEC_NO_AUTO_CONFIG === '1') {
+    // Check if auto-configuration is disabled (legacy OPENSPEC_ name still honored)
+    if (
+      process.env.SPECBASE_NO_AUTO_CONFIG === '1' ||
+      process.env.OPENSPEC_NO_AUTO_CONFIG === '1'
+    ) {
       return false;
     }
 
@@ -318,7 +321,7 @@ export class BashInstaller {
       '',
       'To enable completions, add the following to your ~/.bashrc file:',
       '',
-      `  # Source OpenSpec completions`,
+      `  # Source Specbase completions`,
       `  if [ -d "${completionsDir}" ]; then`,
       `    for f in "${completionsDir}"/*; do`,
       '      [ -f "$f" ] && . "$f"',

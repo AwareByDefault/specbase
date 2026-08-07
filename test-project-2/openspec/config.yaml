@@ -1,0 +1,32 @@
+schema: spec-driven-governed
+
+specModel:
+  planes+:
+    - id: agents
+      purpose: "The repo's own agentic instruments (review panel, repo-specific skills, subagents, hooks). Each spec describes an operational artifact and its enforcement binds a conformance check to it."
+      enforcementFlavor: "instrument conforms to its spec (config / lens / frontmatter / hook checks)"
+    - id: design-system
+      purpose: "The product's expressed identity: design tokens, principles, and the voice/tone of user-facing copy. Governs HOW outcomes are presented, orthogonal to behavior. Token truths DESCRIBE the token artifact and bind lint/contrast checks; principle and voice truths bind the design review lens."
+      enforcementFlavor: "token-lint / contrast + a11y checks + design review"
+      reviewLens: design
+
+context: |
+  Project: habit-tracker — a small command-line habit tracker.
+  Tech stack: TypeScript (strict), runs on Bun. Tests use `bun test`.
+  Architecture: hexagonal (ports & adapters). A pure domain core depends only
+  on injected ports (a Store port for persistence, a Clock port for "today");
+  adapters implement those ports (a JSON-file store, a system clock). The CLI is
+  an adapter over the domain. Dependencies point inward: adapters -> domain,
+  never the reverse.
+  Persistence: habit state is stored as JSON on the local filesystem; no network
+  or database dependencies.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours

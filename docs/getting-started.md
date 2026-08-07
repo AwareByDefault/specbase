@@ -1,10 +1,10 @@
 # Getting Started
 
-This guide explains how OpenSpec works after you've installed and initialized it. For installation instructions, see the [main README](../README.md#quick-start) or the [Installation guide](installation.md). New to the whole docs set? The [documentation home](README.md) maps everything.
+This guide explains how Specbase works after you've installed and initialized it. For installation instructions, see the [main README](../README.md#quick-start) or the [Installation guide](installation.md). New to the whole docs set? The [documentation home](README.md) maps everything.
 
 > **Where do I type these commands?** Two places, and mixing them up is the most common early stumble.
 >
-> - `openspec ...` commands (like `openspec init`) run in your **terminal**.
+> - `specbase ...` commands (like `specbase init`) run in your **terminal**.
 > - `/spcb:...` commands (like `/spcb:propose`) run in your **AI assistant's chat**, the same box where you'd ask it to write code.
 >
 > There's no separate "interactive mode" to start. You just type the slash command in chat and your assistant takes it from there. Full explanation: [How Commands Work](how-commands-work.md).
@@ -14,8 +14,8 @@ This guide explains how OpenSpec works after you've installed and initialized it
 The whole loop, with each step labeled by where it happens:
 
 ```text
-TERMINAL   $ npm install -g @fission-ai/openspec@latest
-TERMINAL   $ cd your-project && openspec init
+TERMINAL   $ npm install -g @awarebydefault/specbase@latest
+TERMINAL   $ cd your-project && specbase init
 AI CHAT      /spcb:explore                    (optional: think it through first)
 AI CHAT      /spcb:propose add-dark-mode      (AI drafts the plan; you review it)
 AI CHAT      /spcb:apply                      (AI builds it)
@@ -28,7 +28,7 @@ Two terminal steps to set up, then you live in chat. The rest of this guide unpa
 
 ## How It Works
 
-OpenSpec helps you and your AI coding assistant agree on what to build before any code is written.
+Specbase helps you and your AI coding assistant agree on what to build before any code is written.
 
 **Default quick path (core profile):**
 
@@ -45,14 +45,14 @@ Start with `/spcb:explore` when you're figuring out what to do, or jump straight
 /spcb:new ──► /spcb:ff or /spcb:continue ──► /spcb:apply ──► /spcb:verify ──► /spcb:archive
 ```
 
-The default global profile is `core`, which includes `propose`, `explore`, `apply`, `sync`, and `archive`. You can enable the expanded workflow commands with `openspec config profile` and then `openspec update`.
+The default global profile is `core`, which includes `propose`, `explore`, `apply`, `sync`, and `archive`. You can enable the expanded workflow commands with `specbase config profile` and then `specbase update`.
 
-## What OpenSpec Creates
+## What Specbase Creates
 
-After running `openspec init`, your project has this structure:
+After running `specbase init`, your project has this structure:
 
 ```
-openspec/
+specbase/
 ├── specs/              # Source of truth (your system's behavior)
 │   └── <domain>/
 │       └── spec.md
@@ -97,7 +97,7 @@ You can always go back and refine earlier artifacts as you learn more during imp
 
 ## How Delta Specs Work
 
-Delta specs are the key concept in OpenSpec. They show what's changing relative to your current specs.
+Delta specs are the key concept in Specbase. They show what's changing relative to your current specs.
 
 ### The Format
 
@@ -141,7 +141,7 @@ When you archive a change:
 2. **MODIFIED** requirements replace the existing version
 3. **REMOVED** requirements are deleted from the main spec
 
-The change folder moves to `openspec/changes/archive/` for audit history.
+The change folder moves to `specbase/changes/archive/` for audit history.
 
 ## Example: Your First Change
 
@@ -152,7 +152,7 @@ Let's walk through adding dark mode to an application.
 ```text
 You: /spcb:propose add-dark-mode
 
-AI:  Created openspec/changes/add-dark-mode/
+AI:  Created specbase/changes/add-dark-mode/
      ✓ proposal.md — why we're doing this, what's changing
      ✓ specs/       — requirements and scenarios
      ✓ design.md    — technical approach
@@ -247,8 +247,8 @@ During implementation, if you discover the design needs adjustment, just update 
 You: /spcb:archive
 
 AI:  Archiving add-dark-mode...
-     ✓ Merged specs into openspec/specs/ui/spec.md
-     ✓ Moved to openspec/changes/archive/2025-01-24-add-dark-mode/
+     ✓ Merged specs into specbase/specs/ui/spec.md
+     ✓ Moved to specbase/changes/archive/2025-01-24-add-dark-mode/
      Done! Ready for the next feature.
 ```
 
@@ -260,16 +260,16 @@ Use the CLI to check on your changes:
 
 ```bash
 # List active changes
-openspec list
+specbase list
 
 # View change details
-openspec show add-dark-mode
+specbase show add-dark-mode
 
 # Validate spec formatting
-openspec validate add-dark-mode
+specbase validate add-dark-mode
 
 # Interactive dashboard
-openspec view
+specbase view
 ```
 
 ## Next Steps
@@ -277,13 +277,13 @@ openspec view
 - [Explore First](explore.md) - Use `/spcb:explore` to think through an idea before you commit
 - [Reviewing a Change](reviewing-changes.md) - What to check in the plan the AI drafts, before any code
 - [Writing Good Specs](writing-specs.md) - What a strong requirement and scenario look like
-- [Using OpenSpec in an Existing Project](existing-projects.md) - Start on a large brownfield codebase
+- [Using Specbase in an Existing Project](existing-projects.md) - Start on a large brownfield codebase
 - [Editing & Iterating on a Change](editing-changes.md) - Update artifacts, go back, reconcile manual edits
 - [Core Concepts at a Glance](overview.md) - The whole mental model on one page
 - [Examples & Recipes](examples.md) - Real changes, start to finish
 - [Workflows](workflows.md) - Common patterns and when to use each command
 - [Commands](commands.md) - Full reference for all slash commands
 - [Concepts](concepts.md) - Deeper understanding of specs, changes, and schemas
-- [Customization](customization.md) - Make OpenSpec work your way
+- [Customization](customization.md) - Make Specbase work your way
 - [Stores](stores-beta/user-guide.md) - Planning that spans repos or teams? Keep it in its own repo (beta)
 - [FAQ](faq.md) and [Troubleshooting](troubleshooting.md) - When you get stuck

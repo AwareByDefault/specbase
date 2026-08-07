@@ -5,26 +5,26 @@
 
 export const BASH_DYNAMIC_HELPERS = `# Dynamic completion helpers
 
-_openspec_complete_changes() {
+_specbase_complete_changes() {
   local changes
-  changes=$(openspec __complete changes 2>/dev/null | cut -f1)
+  changes=$(specbase __complete changes 2>/dev/null | cut -f1)
   COMPREPLY=($(compgen -W "$changes" -- "$cur"))
 }
 
-_openspec_complete_specs() {
+_specbase_complete_specs() {
   local specs
-  specs=$(openspec __complete specs 2>/dev/null | cut -f1)
+  specs=$(specbase __complete specs 2>/dev/null | cut -f1)
   COMPREPLY=($(compgen -W "$specs" -- "$cur"))
 }
 
-_openspec_complete_items() {
+_specbase_complete_items() {
   local items
-  items=$(openspec __complete changes 2>/dev/null | cut -f1; openspec __complete specs 2>/dev/null | cut -f1)
+  items=$(specbase __complete changes 2>/dev/null | cut -f1; specbase __complete specs 2>/dev/null | cut -f1)
   COMPREPLY=($(compgen -W "$items" -- "$cur"))
 }
 
-_openspec_complete_schemas() {
+_specbase_complete_schemas() {
   local schemas
-  schemas=$(openspec __complete schemas 2>/dev/null | cut -f1)
+  schemas=$(specbase __complete schemas 2>/dev/null | cut -f1)
   COMPREPLY=($(compgen -W "$schemas" -- "$cur"))
 }`;

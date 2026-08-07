@@ -146,7 +146,7 @@ export async function runCLI(args: string[] = [], options: RunCLIOptions = {}): 
       env: mergeEnv(
         process.env,
         {
-          OPENSPEC_TELEMETRY: '0',
+          SPECBASE_TELEMETRY: '0',
           OPEN_SPEC_INTERACTIVE: '0',
         },
         options.env

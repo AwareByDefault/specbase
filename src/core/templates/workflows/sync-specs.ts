@@ -11,7 +11,7 @@ import { withGovernedGuidance, GOVERNED_SYNC_GUIDANCE } from './governed-guidanc
 
 export function getSyncSpecsSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
-    name: 'openspec-sync-specs',
+    name: 'specbase-sync-specs',
     description: 'Sync delta specs from a change to main specs. Use when the user wants to update main specs with changes from a delta spec, without archiving the change.',
     instructions: withGovernedGuidance(`Sync delta specs from a change to main specs.
 
@@ -25,7 +25,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`specbase list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have delta specs (under \`specs/\` directory).
 
@@ -35,7 +35,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    Run:
    \`\`\`bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    \`\`\`
 
 3. **Find delta specs**
@@ -150,8 +150,8 @@ Main specs are now updated. The change remains active - archive when implementat
 - Show what you're changing as you go
 - The operation should be idempotent - running twice should give same result`, specModel, GOVERNED_SYNC_GUIDANCE),
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires specbase CLI.',
+    metadata: { author: 'specbase', version: '1.0' },
   };
 }
 
@@ -173,7 +173,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
+   Run \`specbase list --json\` to get available changes. Use the **AskUserQuestion tool** to let the user select.
 
    Show changes that have delta specs (under \`specs/\` directory).
 
@@ -183,7 +183,7 @@ ${STORE_SELECTION_GUIDANCE}
 
    Run:
    \`\`\`bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    \`\`\`
 
 3. **Find delta specs**

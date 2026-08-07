@@ -2,7 +2,7 @@
  * New Change Command
  *
  * Creates a new change directory with optional description and schema in the
- * resolved OpenSpec root. `--store <id>` selects a registered store's
+ * resolved Specbase root. `--store <id>` selects a registered store's
  * root; initiative linking and workspace affected areas are no longer part of
  * this command.
  */
@@ -18,7 +18,7 @@ import {
   toPlanningHome,
   toRootOutput,
   withStoreFlag,
-  type ResolvedOpenSpecRoot,
+  type ResolvedSpecbaseRoot,
   type RootOutput,
   isStoreSelectedRoot,
 } from '../../core/root-selection.js';
@@ -56,7 +56,7 @@ interface NewChangeOutput {
 function assertRemovedOptionsAbsent(options: NewChangeOptions): void {
   if (options.initiative !== undefined) {
     throw new RootSelectionError(
-      '--initiative is no longer supported. Normal changes no longer attach to initiatives; --store <id> selects the OpenSpec root.',
+      '--initiative is no longer supported. Normal changes no longer attach to initiatives; --store <id> selects the Specbase root.',
       'initiative_option_removed',
       { target: 'change.options' }
     );
@@ -64,7 +64,7 @@ function assertRemovedOptionsAbsent(options: NewChangeOptions): void {
 
   if (options.areas !== undefined) {
     throw new RootSelectionError(
-      '--areas is no longer supported. Workspace affected areas are not part of the normal OpenSpec root path.',
+      '--areas is no longer supported. Workspace affected areas are not part of the normal Specbase root path.',
       'areas_option_removed',
       { target: 'change.options' }
     );
@@ -73,7 +73,7 @@ function assertRemovedOptionsAbsent(options: NewChangeOptions): void {
 
 function printCreatedChangeHuman(
   payload: NewChangeOutput,
-  root: ResolvedOpenSpecRoot
+  root: ResolvedSpecbaseRoot
 ): void {
   // A relative path is only honest when the root is where the user
   // stands; a distant ancestor root gets the absolute path.
@@ -83,7 +83,7 @@ function printCreatedChangeHuman(
       : payload.change.path;
   console.log(`Created change '${payload.change.id}' at ${location}/`);
   console.log(`Schema: ${payload.change.schema}`);
-  console.log(`Next: ${withStoreFlag(root, `openspec status --change ${payload.change.id}`)}`);
+  console.log(`Next: ${withStoreFlag(root, `specbase status --change ${payload.change.id}`)}`);
 }
 
 export async function newChangeCommand(name: string | undefined, options: NewChangeOptions): Promise<void> {

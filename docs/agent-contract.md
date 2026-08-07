@@ -1,11 +1,11 @@
-# OpenSpec Agent Contract
+# Specbase Agent Contract
 
-Machine-readable surfaces of the `openspec` CLI, verified against `src/` (capstone audit, 2026-06-11). Every shape below is documented from the emitting code.
+Machine-readable surfaces of the `specbase` CLI, verified against `src/` (capstone audit, 2026-06-11). Every shape below is documented from the emitting code.
 
 ## 1. General conventions
 
 - **One JSON document per invocation.** In `--json` mode, stdout carries exactly one JSON document (2-space pretty-printed). Human prose, spinners, and the store banner go to stderr.
-- **Store banner.** In human mode, a store-selected root prints `Using OpenSpec root: <id> (<path>)` to stderr. Never printed in JSON mode.
+- **Store banner.** In human mode, a store-selected root prints `Using Specbase root: <id> (<path>)` to stderr. Never printed in JSON mode.
 - **Key casing is surface-dependent** (see Known inconsistencies): store/doctor/context payloads use `snake_case`; workflow payloads (`status`, `instructions`, `new change`, `validate`, `list`) use `camelCase`, except the embedded `root` object, which always uses `store_id`.
 - **Optional keys are omitted, not null**, in most payloads (e.g. `root.store_id`, `member.path`). Exceptions that use explicit `null` are called out per shape (store doctor `git.*`, failure payloads).
 
@@ -27,12 +27,12 @@ Diagnostics appear in two positions: **status arrays** (`status: StoreDiagnostic
 
 ## 3. Root selection and `RootOutput`
 
-All root-resolving commands (`list`, `show`, `validate`, `status`, `instructions`, `instructions apply`, `new change`, `archive`, `doctor`, `context`) resolve one OpenSpec root with one precedence:
+All root-resolving commands (`list`, `show`, `validate`, `status`, `instructions`, `instructions apply`, `new change`, `archive`, `doctor`, `context`) resolve one Specbase root with one precedence:
 
 1. `--store <id>` → the registered store's root (`source: "store"`).
-2. Otherwise, nearest ancestor with `openspec/`: planning shape → `source: "nearest"` (a `store:` pointer is ignored with a stderr warning); config-only dir with a valid `store:` pointer → that store, `source: "declared"`.
+2. Otherwise, nearest ancestor with `specbase/`: planning shape → `source: "nearest"` (a `store:` pointer is ignored with a stderr warning); config-only dir with a valid `store:` pointer → that store, `source: "declared"`.
 3. No nearest root + registered stores exist → error `no_root_with_registered_stores`.
-4. No root, no stores: scaffolding commands treat the cwd as `source: "implicit"`; diagnostic commands (`doctor`, `context`) fail with `no_openspec_root` instead — they inspect, never scaffold.
+4. No root, no stores: scaffolding commands treat the cwd as `source: "implicit"`; diagnostic commands (`doctor`, `context`) fail with `no_specbase_root` instead — they inspect, never scaffold.
 
 Successful JSON payloads embed the root:
 
@@ -74,10 +74,10 @@ Success: `{ "archive": { "change", "archivedAs": "YYYY-MM-DD-name", "path", "spe
 `{ "root": { "path", "source", "store_id"?, "healthy", "status": [] }, "store": { "id", "metadata": {present,valid,remote?}, "origin_url"?, "status": [] } | null, "references": [...], "status": [] }`. Health findings of any severity exit 0. Failure payload: `{ "root": null, "store": null, "references": [], "status": [d] }`, exit 1.
 
 ### 4.10 `context --json`
-`{ "root": { "path", "source", "store_id"?, "role": "openspec_root" }, "members": [ { "role": "referenced_store", "id", "path"?, "remote"?, "fetch"?, "status": [] } ], "status": [] }`. AVAILABLE = path present AND status empty. `--code-workspace <path>` writes `{folders:[{name,path}]}` (available referenced stores only, `ref:` prefixes); in JSON mode the write runs before printing so stdout holds exactly one document even on write failure. Failure: `{ "root": null, "members": [], "status": [d] }`, exit 1.
+`{ "root": { "path", "source", "store_id"?, "role": "specbase_root" }, "members": [ { "role": "referenced_store", "id", "path"?, "remote"?, "fetch"?, "status": [] } ], "status": [] }`. AVAILABLE = path present AND status empty. `--code-workspace <path>` writes `{folders:[{name,path}]}` (available referenced stores only, `ref:` prefixes); in JSON mode the write runs before printing so stdout holds exactly one document even on write failure. Failure: `{ "root": null, "members": [], "status": [d] }`, exit 1.
 
 ### 4.11 `store ... --json`
-setup/register: `{ "store": {id, root, metadata_path?}, "registry": {path, registered, already_registered}, "git": {is_repository, initialized, committed}, "created_files": [], "status": [] }`. unregister/remove: `{ "store", "registry": {path, removed}, "files": {deleted, deleted_path, left_on_disk}, "status": [] }`. list: `{ "stores": [{id, root}], "status": [] }`. doctor: `{ "stores": [ { id, root, metadata_path?, openspec_root: {...healthy, status}, metadata: {present, valid, id?, remote}, git: {is_repository, has_commits, has_uncommitted_changes, has_remote, origin_url}, status } ], "status": [] }` (`null` = unknown/not probed). Health findings exit 0; failures exit 1 with the matching null-shape. Prompt cancellation exits 130.
+setup/register: `{ "store": {id, root, metadata_path?}, "registry": {path, registered, already_registered}, "git": {is_repository, initialized, committed}, "created_files": [], "status": [] }`. unregister/remove: `{ "store", "registry": {path, removed}, "files": {deleted, deleted_path, left_on_disk}, "status": [] }`. list: `{ "stores": [{id, root}], "status": [] }`. doctor: `{ "stores": [ { id, root, metadata_path?, specbase_root: {...healthy, status}, metadata: {present, valid, id?, remote}, git: {is_repository, has_commits, has_uncommitted_changes, has_remote, origin_url}, status } ], "status": [] }` (`null` = unknown/not probed). Health findings exit 0; failures exit 1 with the matching null-shape. Prompt cancellation exits 130.
 
 ### 4.12 `schemas --json` / `templates --json`
 `schemas`: bare array `[ {name, description, artifacts, source} ]`. `templates`: keyed object `{ "<artifactId>": {path, source} }`. Both cwd-based, no root/status keys.
@@ -94,10 +94,10 @@ setup/register: `{ "store": {id, root, metadata_path?}, "registry": {path, regis
 ## 6. Diagnostic code catalog
 
 ### Resolution
-`no_openspec_root`, `no_root_with_registered_stores`, `no_registered_stores`, `unknown_store`, `store_identity_mismatch`, `unhealthy_store_root`, `store_path_not_supported`, `invalid_store_pointer`, `initiative_option_removed`, `areas_option_removed`; pass-through: `invalid_store_id`, `invalid_store_registry`, `invalid_store_metadata`.
+`no_specbase_root`, `no_root_with_registered_stores`, `no_registered_stores`, `unknown_store`, `store_identity_mismatch`, `unhealthy_store_root`, `store_path_not_supported`, `invalid_store_pointer`, `initiative_option_removed`, `areas_option_removed`; pass-through: `invalid_store_id`, `invalid_store_registry`, `invalid_store_metadata`.
 
-### OpenSpec-root health (error, no fix)
-`openspec_store_root_missing`, `openspec_store_root_not_directory`, `openspec_root_missing`, `openspec_root_not_directory`, `openspec_config_missing`, `openspec_config_not_file`, `openspec_specs_not_directory`, `openspec_changes_not_directory`, `openspec_archive_not_directory`. During the stores beta, `openspec/specs/`, `openspec/changes/`, and `openspec/changes/archive/` may be absent in a healthy root; they are only health errors when present but not directories.
+### Specbase-root health (error, no fix)
+`specbase_store_root_missing`, `specbase_store_root_not_directory`, `specbase_root_missing`, `specbase_root_not_directory`, `specbase_config_missing`, `specbase_config_not_file`, `specbase_specs_not_directory`, `specbase_changes_not_directory`, `specbase_archive_not_directory`. During the stores beta, `specbase/specs/`, `specbase/changes/`, and `specbase/changes/archive/` may be absent in a healthy root; they are only health errors when present but not directories.
 
 ### Store registry/identity/state
 `invalid_store_id`, `invalid_store_registry`, `invalid_store_metadata`, `store_registry_busy`, `store_not_found`, `no_store_registry`, `store_registry_changed`, `store_metadata_missing`, `store_metadata_id_mismatch`, `store_metadata_invalid`, `store_id_conflict`, `store_path_conflict`, `store_already_registered` (info).

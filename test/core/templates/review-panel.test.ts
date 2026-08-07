@@ -92,7 +92,7 @@ describe('verify guidance — review panel (governed vs legacy)', () => {
     'Review only the residue above the gate',
     'bindings named in that review binding\'s `covered_by`',
     'Flag un-lensed review claims',
-    'NEVER block archive or `openspec coverage --strict`',
+    'NEVER block archive or `specbase coverage --strict`',
   ];
 
   for (const marker of VERIFY_MARKERS) {

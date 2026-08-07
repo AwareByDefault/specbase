@@ -23,7 +23,7 @@ async function writePair(
   locator: string,
   opts: { spec?: string; enforcement?: string }
 ): Promise<void> {
-  const dir = path.join(tempDir, 'openspec', 'specs', ...locator.split('/'));
+  const dir = path.join(tempDir, 'specbase', 'specs', ...locator.split('/'));
   await fs.mkdir(dir, { recursive: true });
   if (opts.spec !== undefined) await fs.writeFile(path.join(dir, 'spec.md'), opts.spec);
   if (opts.enforcement !== undefined)
@@ -31,9 +31,9 @@ async function writePair(
 }
 
 async function writeConfig(): Promise<void> {
-  const openspec = path.join(tempDir, 'openspec');
-  await fs.mkdir(openspec, { recursive: true });
-  await fs.writeFile(path.join(openspec, 'config.yaml'), 'schema: spec-driven-governed\n');
+  const specbase = path.join(tempDir, 'specbase');
+  await fs.mkdir(specbase, { recursive: true });
+  await fs.writeFile(path.join(specbase, 'config.yaml'), 'schema: spec-driven-governed\n');
 }
 
 async function runCoverage(
@@ -46,7 +46,7 @@ async function runCoverage(
 beforeEach(async () => {
   tempDir = path.join(
     os.tmpdir(),
-    `openspec-cov-lens-cmd-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `specbase-cov-lens-cmd-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   await fs.mkdir(tempDir, { recursive: true });
   originalCwd = process.cwd();

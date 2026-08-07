@@ -23,7 +23,7 @@ import {
 import { validateGovernedPairs } from '../core/artifact-graph/governed-validate.js';
 
 // cwd-based planning specs dir for the deprecated noun-form commands; resolved
-// at call time so it prefers specbase/ and falls back to an existing openspec/.
+// at call time so it prefers specbase/ and falls back to an existing specbase/.
 function cwdSpecsDir(): string {
   return join(resolvePlanningDirName(process.cwd()), 'specs');
 }
@@ -65,7 +65,7 @@ function filterSpec(spec: Spec, options: ShowOptions): Spec {
     scenarios: includeScenarios ? req.scenarios : [],
   }));
 
-  const metadata = spec.metadata ?? { version: '1.0.0', format: 'openspec' as const };
+  const metadata = spec.metadata ?? { version: '1.0.0', format: 'specbase' as const };
 
   return {
     name: spec.name,
@@ -138,7 +138,7 @@ export class SpecCommand {
         overview: parsed.overview,
         requirementCount: filtered.requirements.length,
         requirements: filtered.requirements,
-        metadata: parsed.metadata ?? { version: '1.0.0', format: 'openspec' as const },
+        metadata: parsed.metadata ?? { version: '1.0.0', format: 'specbase' as const },
         ...(options.rootOutput ? { root: options.rootOutput } : {}),
       };
       console.log(JSON.stringify(output, null, 2));
@@ -284,7 +284,7 @@ export function registerSpecCommand(rootProgram: typeof program) {
 
   // Deprecation notice for noun-based commands
   specCommand.hook('preAction', () => {
-    console.error('Warning: The "openspec spec ..." commands are deprecated. Prefer verb-first commands (e.g., "openspec show", "openspec validate --specs").');
+    console.error('Warning: The "specbase spec ..." commands are deprecated. Prefer verb-first commands (e.g., "specbase show", "specbase validate --specs").');
   });
 
   specCommand

@@ -84,7 +84,7 @@ export function resolveCurrentPlanningHomeSync(
   }
 
   if (options.allowImplicitRepoRoot === false) {
-    throw new Error('No OpenSpec planning home found from the current directory.');
+    throw new Error('No Specbase planning home found from the current directory.');
   }
 
   return repoPlanningHome(FileSystemUtils.canonicalizeExistingPath(searchStart));

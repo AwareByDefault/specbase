@@ -27,7 +27,7 @@ const GOVERNED: SpecModel = {
 /**
  * add-spec-coverage-tool (spcb-explore-skill spec): the governed explore
  * guidance walks behavior -> architecture -> enforcement, classifies dual-plane
- * ideas, and opens with the `openspec coverage --json` health check; verify and
+ * ideas, and opens with the `specbase coverage --json` health check; verify and
  * apply carry one-line coverage pointers. Legacy output never mentions any of
  * it (byte-identical, hash-locked elsewhere).
  */
@@ -35,7 +35,7 @@ describe('governed explore staged flow and coverage awareness', () => {
   const EXPLORE_MARKERS = [
     // Health check opens exploration and mentions rot in touched areas.
     'Health check first (governed)',
-    'openspec coverage --json',
+    'specbase coverage --json',
     'hanging\nclaims, stale bindings, **degraded** specs',
     'surface that state and suggest addressing it or explicitly\ndeferring it in the proposal',
     // The three named stages.
@@ -102,22 +102,22 @@ describe('governed explore staged flow and coverage awareness', () => {
 });
 
 describe('coverage pointers in governed verify and apply guidance', () => {
-  const POINTER = 'openspec coverage';
+  const POINTER = 'specbase coverage';
 
-  it('verify names openspec coverage and its --json form under governed, absent under legacy', () => {
+  it('verify names specbase coverage and its --json form under governed, absent under legacy', () => {
     for (const surface of [
       getVerifyChangeSkillTemplate(GOVERNED).instructions,
       getSpcbVerifyCommandTemplate(GOVERNED).content,
     ]) {
       expect(surface).toContain(POINTER);
-      expect(surface).toContain('openspec coverage --json');
+      expect(surface).toContain('specbase coverage --json');
       expect(surface).toContain('aggregated enforcement-coverage view backing this assessment');
     }
     expect(getVerifyChangeSkillTemplate().instructions).not.toContain(POINTER);
     expect(getSpcbVerifyCommandTemplate().content).not.toContain(POINTER);
   });
 
-  it('apply names openspec coverage as the shared health signal under governed, absent under legacy', () => {
+  it('apply names specbase coverage as the shared health signal under governed, absent under legacy', () => {
     for (const surface of [
       getApplyChangeSkillTemplate(GOVERNED).instructions,
       getSpcbApplyCommandTemplate(GOVERNED).content,

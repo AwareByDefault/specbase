@@ -136,9 +136,9 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
     });
   });
 
-  // Unit 4: the modified openspec-conventions authoring rules are taught only
+  // Unit 4: the modified specbase-conventions authoring rules are taught only
   // under the governed model, and legacy output never mentions them.
-  describe('governed authoring conventions (openspec-conventions delta)', () => {
+  describe('governed authoring conventions (specbase-conventions delta)', () => {
     // Project Structure: namespace directories and safe nested locators live in
     // the shared primer, so every governed workflow carries them.
     const STRUCTURE_MARKERS = [

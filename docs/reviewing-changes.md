@@ -1,6 +1,6 @@
 # Reviewing a Change
 
-OpenSpec's whole promise is that you and your AI **agree on what to build before any code is written.** That agreement only means something if you actually read what the AI drafted. This page is about the two minutes where you do that — what to open, in what order, and what to look for.
+Specbase's whole promise is that you and your AI **agree on what to build before any code is written.** That agreement only means something if you actually read what the AI drafted. This page is about the two minutes where you do that — what to open, in what order, and what to look for.
 
 The bet is simple: catching a wrong turn in a one-paragraph plan is nearly free. Catching the same wrong turn in 300 lines of code is not. Review is where you collect on that bet.
 
@@ -20,10 +20,10 @@ The first review is the one that saves you the most, and the one people skip. Th
 
 ## Read it in this order
 
-A change is a folder of plain Markdown in `openspec/changes/<name>/`. Read the files in the order that lets you quit earliest if something's wrong:
+A change is a folder of plain Markdown in `specbase/changes/<name>/`. Read the files in the order that lets you quit earliest if something's wrong:
 
 ```
-openspec/changes/add-dark-mode/
+specbase/changes/add-dark-mode/
 ├── proposal.md      1. the intent and scope   ← if this is wrong, stop here
 ├── specs/…/spec.md  2. the requirements       ← the heart of the review
 ├── design.md        (only for bigger changes) — the technical approach
@@ -118,7 +118,7 @@ AI:  Verifying add-dark-mode...
 
 It flags issues as CRITICAL, WARNING, or SUGGESTION, and it does **not** block archiving — it surfaces the gaps and leaves the call to you. This is the difference between "did the AI write code" and "did it build what we agreed."
 
-`/spcb:verify` is in the expanded profile. If you don't have it, turn it on with `openspec config profile` (then `openspec update`), or just re-read the change and the diff yourself.
+`/spcb:verify` is in the expanded profile. If you don't have it, turn it on with `specbase config profile` (then `specbase update`), or just re-read the change and the diff yourself.
 
 ## Right-size the review
 

@@ -1,16 +1,16 @@
-# OpenSpec on a Team
+# Specbase on a Team
 
 Everything in the other guides works the same whether you're solo or on a team of twenty. What changes on a team is the questions around the edges: where do the specs live, how do teammates review a plan, and how does any of this fit the pull-request flow we already have?
 
-The short answer: a change is just files, and OpenSpec never touches git. So it fits your existing workflow instead of replacing it. This page spells out the conventions that work well.
+The short answer: a change is just files, and Specbase never touches git. So it fits your existing workflow instead of replacing it. This page spells out the conventions that work well.
 
-## One rule: OpenSpec doesn't touch git
+## One rule: Specbase doesn't touch git
 
-OpenSpec reads and writes plain Markdown under `openspec/`. It never commits, branches, pushes, or pulls in your project — and it never clones or syncs a [store](stores-beta/user-guide.md) on its own. That means:
+Specbase reads and writes plain Markdown under `specbase/`. It never commits, branches, pushes, or pulls in your project — and it never clones or syncs a [store](stores-beta/user-guide.md) on its own. That means:
 
-- **You commit `openspec/` like any source.** Specs, active changes, and the archive are part of your project's history. (Yes, commit the whole folder — see the [FAQ](faq.md#should-i-commit-the-openspec-folder-to-git).)
-- **A change is a folder you version like code.** `openspec/changes/add-dark-mode/` is just files on a branch.
-- **Everything below is convention, not enforcement.** OpenSpec won't make you do it this way; it just fits cleanly.
+- **You commit `specbase/` like any source.** Specs, active changes, and the archive are part of your project's history. (Yes, commit the whole folder — see the [FAQ](faq.md#should-i-commit-the-specbase-folder-to-git).)
+- **A change is a folder you version like code.** `specbase/changes/add-dark-mode/` is just files on a branch.
+- **Everything below is convention, not enforcement.** Specbase won't make you do it this way; it just fits cleanly.
 
 ## The everyday loop
 
@@ -48,7 +48,7 @@ A reviewer who disagrees with the *approach* can say so against the proposal, ch
 
 ## When to archive
 
-Archiving folds a change's deltas into your main `openspec/specs/` and moves the change folder to `openspec/changes/archive/YYYY-MM-DD-<name>/`. Because `specs/` is the **shared source of truth**, the timing matters on a team. Two workable conventions:
+Archiving folds a change's deltas into your main `specbase/specs/` and moves the change folder to `specbase/changes/archive/YYYY-MM-DD-<name>/`. Because `specs/` is the **shared source of truth**, the timing matters on a team. Two workable conventions:
 
 - **Archive after the PR merges (recommended).** The branch carries the active change; once it's merged to your main branch, archive there (often a tiny follow-up commit or a scheduled cleanup). This keeps the shared `specs/` moving forward only with work that actually shipped.
 - **Archive inside the PR.** Simpler for small teams: the same PR that adds the code also syncs and archives. The tradeoff is that your `specs/` diff and your code diff land together, which can make the PR noisier.
@@ -61,11 +61,11 @@ Because changes are separate folders, they don't collide:
 
 - **Different changes, different people — no problem.** `add-dark-mode` and `rate-limit-login` are different folders on different branches; they never touch each other until they both archive.
 - **One change, one owner.** Two people editing the same change folder conflict exactly like two people editing the same file. Keep a change to a single author, or split it into two changes (another reason to [right-size](writing-specs.md#right-size-the-change)).
-- **The one place conflicts show up is `specs/`.** If two changes both modify the *same* requirement, archiving the second one will conflict in `openspec/specs/…/spec.md` — resolve it like any merge conflict, keeping the requirement that reflects reality. This is rare, and it's a feature: it's git telling you two changes disagreed about how the system should behave.
+- **The one place conflicts show up is `specs/`.** If two changes both modify the *same* requirement, archiving the second one will conflict in `specbase/specs/…/spec.md` — resolve it like any merge conflict, keeping the requirement that reflects reality. This is rare, and it's a feature: it's git telling you two changes disagreed about how the system should behave.
 
 ## When planning outgrows one repo
 
-Everything above assumes the plan lives in the code repo's own `openspec/` folder, which is the right default. When your planning genuinely spans several repos or teams — one feature touching three services, or requirements one team owns and others consume — that's what the beta **stores** feature is for: planning gets its own repo that any code repo can point at. Start with the [Stores User Guide](stores-beta/user-guide.md).
+Everything above assumes the plan lives in the code repo's own `specbase/` folder, which is the right default. When your planning genuinely spans several repos or teams — one feature touching three services, or requirements one team owns and others consume — that's what the beta **stores** feature is for: planning gets its own repo that any code repo can point at. Start with the [Stores User Guide](stores-beta/user-guide.md).
 
 ## Where to go next
 

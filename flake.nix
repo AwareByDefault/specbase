@@ -1,5 +1,5 @@
 {
-  description = "OpenSpec - AI-native system for spec-driven development";
+  description = "Specbase - AI-native system for spec-driven development";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -26,7 +26,7 @@
         in
         {
           default = pkgs.stdenv.mkDerivation (finalAttrs: {
-            pname = "openspec";
+            pname = "specbase";
             version = (builtins.fromJSON (builtins.readFile ./package.json)).version;
 
             src = lib.fileset.toSource {
@@ -73,10 +73,10 @@
 
             meta = with pkgs.lib; {
               description = "AI-native system for spec-driven development";
-              homepage = "https://github.com/Fission-AI/OpenSpec";
+              homepage = "https://github.com/AwareByDefault/specbase";
               license = licenses.mit;
               maintainers = [ ];
-              mainProgram = "openspec";
+              mainProgram = "specbase";
             };
           });
         }
@@ -85,7 +85,7 @@
       apps = forAllSystems (system: {
         default = {
           type = "app";
-          program = "${self.packages.${system}.default}/bin/openspec";
+          program = "${self.packages.${system}.default}/bin/specbase";
         };
       });
 
@@ -102,7 +102,7 @@
             ];
 
             shellHook = ''
-              echo "OpenSpec development environment"
+              echo "Specbase development environment"
               echo "Node version: $(node --version)"
               echo "pnpm version: $(pnpm --version)"
               echo "Run 'pnpm install' to install dependencies"

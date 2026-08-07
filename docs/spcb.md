@@ -4,13 +4,13 @@
 
 ## What Is It?
 
-SPCB is now the standard workflow for OpenSpec.
+SPCB is now the standard workflow for Specbase.
 
-It's a **fluid, iterative workflow** for OpenSpec changes. No more rigid phases — just actions you can take anytime.
+It's a **fluid, iterative workflow** for Specbase changes. No more rigid phases — just actions you can take anytime.
 
 ## Why This Exists
 
-The legacy OpenSpec workflow works, but it's **locked down**:
+The legacy Specbase workflow works, but it's **locked down**:
 
 - **Instructions are hardcoded** — buried in TypeScript, you can't change them
 - **All-or-nothing** — one big command creates everything, can't test individual pieces
@@ -39,7 +39,7 @@ Legacy workflow:                      SPCB:
 **This is for everyone:**
 - **Teams** — create workflows that match how you actually work
 - **Power users** — tweak prompts to get better AI outputs for your codebase
-- **OpenSpec contributors** — experiment with new approaches without releases
+- **Specbase contributors** — experiment with new approaches without releases
 
 We're all still learning what works best. SPCB lets us learn together.
 
@@ -59,15 +59,15 @@ You're "in planning phase", then "in implementation phase", then "done". But rea
 ## Setup
 
 ```bash
-# Make sure you have openspec installed — skills are automatically generated
-openspec init
+# Make sure you have specbase installed — skills are automatically generated
+specbase init
 ```
 
 This creates skills in `.claude/skills/` (or equivalent) that AI coding assistants auto-detect.
 
-By default, OpenSpec uses the `core` workflow profile (`propose`, `explore`, `apply`, `sync`, `archive`). If you want the expanded workflow commands (`new`, `continue`, `ff`, `verify`, `bulk-archive`, `onboard`), configure them with `openspec config profile` and apply with `openspec update`.
+By default, Specbase uses the `core` workflow profile (`propose`, `explore`, `apply`, `sync`, `archive`). If you want the expanded workflow commands (`new`, `continue`, `ff`, `verify`, `bulk-archive`, `onboard`), configure them with `specbase config profile` and apply with `specbase update`.
 
-During setup, you'll be prompted to create a **project config** (`openspec/config.yaml`). This is optional but recommended.
+During setup, you'll be prompted to create a **project config** (`specbase/config.yaml`). This is optional but recommended.
 
 ## Project Configuration
 
@@ -75,10 +75,10 @@ Project config lets you set defaults and inject project-specific context into al
 
 ### Creating Config
 
-Config is created during `openspec init`, or manually:
+Config is created during `specbase init`, or manually:
 
 ```yaml
-# openspec/config.yaml
+# specbase/config.yaml
 schema: spec-driven
 
 context: |
@@ -110,7 +110,7 @@ rules:
 **Schema precedence** (highest to lowest):
 1. CLI flag (`--schema <name>`)
 2. Change metadata (`.openspec.yaml` in change directory)
-3. Project config (`openspec/config.yaml`)
+3. Project config (`specbase/config.yaml`)
 4. Default (`spec-driven`)
 
 **Context injection:**
@@ -142,10 +142,10 @@ rules:
 
 **"Unknown artifact ID in rules: X"**
 - Check artifact IDs match your schema (see list above)
-- Run `openspec schemas --json` to see artifact IDs for each schema
+- Run `specbase schemas --json` to see artifact IDs for each schema
 
 **Config not being applied:**
-- Ensure file is at `openspec/config.yaml` (not `.yml`)
+- Ensure file is at `specbase/config.yaml` (not `.yml`)
 - Check YAML syntax with a validator
 - Config changes take effect immediately (no restart needed)
 
@@ -381,7 +381,7 @@ Examples in this section use the expanded command set (`new`, `continue`, etc.);
 │   Tool-specific configurators/adapters                                      │
 │                    │                                                        │
 │                    ▼                                                        │
-│   Generated Command Files (.claude/commands/openspec/*.md)                  │
+│   Generated Command Files (.claude/commands/specbase/*.md)                  │
 │                                                                             │
 │   • Fixed structure, no artifact awareness                                  │
 │   • Change requires code modification + rebuild                             │
@@ -417,7 +417,7 @@ Examples in this section use the expanded command set (`new`, `continue`, etc.);
 │   └─────────────────────────────────────────────────────────────────────┘   │
 │                    │                                                        │
 │                    ▼                                                        │
-│   Skill Files (.claude/skills/openspec-*/SKILL.md)                          │
+│   Skill Files (.claude/skills/specbase-*/SKILL.md)                          │
 │                                                                             │
 │   • Cross-editor compatible (Claude Code, Cursor, Windsurf)                 │
 │   • Skills query CLI for structured data                                    │
@@ -497,7 +497,7 @@ Artifacts form a directed acyclic graph (DAG). Dependencies are **enablers**, no
   ┌──────────────────────────────────────────────────────────────────────────┐
   │  Step 1: Query current state                                             │
   │  ┌────────────────────────────────────────────────────────────────────┐  │
-  │  │  $ openspec status --change "add-auth" --json                      │  │
+  │  │  $ specbase status --change "add-auth" --json                      │  │
   │  │                                                                    │  │
   │  │  {                                                                 │  │
   │  │    "artifacts": [                                                  │  │
@@ -511,7 +511,7 @@ Artifacts form a directed acyclic graph (DAG). Dependencies are **enablers**, no
   │                                                                          │
   │  Step 2: Get rich instructions for ready artifact                        │
   │  ┌────────────────────────────────────────────────────────────────────┐  │
-  │  │  $ openspec instructions specs --change "add-auth" --json          │  │
+  │  │  $ specbase instructions specs --change "add-auth" --json          │  │
   │  │                                                                    │  │
   │  │  {                                                                 │  │
   │  │    "template": "# Specification\n\n## ADDED Requirements...",      │  │
@@ -571,23 +571,23 @@ Create custom workflows using the schema management commands:
 
 ```bash
 # Create a new schema from scratch (interactive)
-openspec schema init my-workflow
+specbase schema init my-workflow
 
 # Or fork an existing schema as a starting point
-openspec schema fork spec-driven my-workflow
+specbase schema fork spec-driven my-workflow
 
 # Validate your schema structure
-openspec schema validate my-workflow
+specbase schema validate my-workflow
 
 # See where a schema resolves from (useful for debugging)
-openspec schema which my-workflow
+specbase schema which my-workflow
 ```
 
-Schemas are stored in `openspec/schemas/` (project-local, version controlled) or `~/.local/share/openspec/schemas/` (user global).
+Schemas are stored in `specbase/schemas/` (project-local, version controlled) or `~/.local/share/specbase/schemas/` (user global).
 
 **Schema structure:**
 ```
-openspec/schemas/research-first/
+specbase/schemas/research-first/
 ├── schema.yaml
 └── templates/
     ├── research.md
@@ -636,19 +636,19 @@ Schemas define what artifacts exist and their dependencies. Currently available:
 
 ```bash
 # List available schemas
-openspec schemas
+specbase schemas
 
 # See all schemas with their resolution sources
-openspec schema which --all
+specbase schema which --all
 
 # Create a new schema interactively
-openspec schema init my-workflow
+specbase schema init my-workflow
 
 # Fork an existing schema for customization
-openspec schema fork spec-driven my-workflow
+specbase schema fork spec-driven my-workflow
 
 # Validate schema structure before use
-openspec schema validate my-workflow
+specbase schema validate my-workflow
 ```
 
 ## Tips
@@ -657,10 +657,10 @@ openspec schema validate my-workflow
 - `/spcb:ff` when you know what you want, `/spcb:continue` when exploring
 - During `/spcb:apply`, if something's wrong — fix the artifact, then continue
 - Tasks track progress via checkboxes in `tasks.md`
-- Check status anytime: `openspec status --change "name"`
+- Check status anytime: `specbase status --change "name"`
 
 ## Feedback
 
 This is rough. That's intentional — we're learning what works.
 
-Found a bug? Have ideas? Join us on [Discord](https://discord.gg/YctCnvvshC) or open an issue on [GitHub](https://github.com/Fission-AI/openspec/issues).
+Found a bug? Have ideas? Join us on [Discord](https://discord.gg/YctCnvvshC) or open an issue on [GitHub](https://github.com/Fission-AI/specbase/issues).

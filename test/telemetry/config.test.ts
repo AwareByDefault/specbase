@@ -35,7 +35,7 @@ describe('telemetry/config', () => {
 
   beforeEach(() => {
     // Create temp directory for tests
-    tempDir = path.join(os.tmpdir(), `openspec-telemetry-test-${randomUUID()}`);
+    tempDir = path.join(os.tmpdir(), `specbase-telemetry-test-${randomUUID()}`);
     fs.mkdirSync(tempDir, { recursive: true });
 
     // Mock HOME/USERPROFILE to point to temp dir
@@ -103,7 +103,7 @@ describe('telemetry/config', () => {
 
     it('should migrate telemetry from legacy path when XDG_CONFIG_HOME is set', async () => {
       const xdgConfigHome = path.join(tempDir, 'xdg-config');
-      const legacyConfigDir = path.join(tempDir, '.config', 'openspec');
+      const legacyConfigDir = path.join(tempDir, '.config', 'specbase');
       const legacyConfigPath = path.join(legacyConfigDir, 'config.json');
       const newConfigPath = path.join(xdgConfigHome, 'specbase', 'config.json');
       process.env.XDG_CONFIG_HOME = xdgConfigHome;
@@ -124,9 +124,9 @@ describe('telemetry/config', () => {
 
     it('should not overwrite invalid new config during legacy migration', async () => {
       const xdgConfigHome = path.join(tempDir, 'xdg-config');
-      const legacyConfigDir = path.join(tempDir, '.config', 'openspec');
+      const legacyConfigDir = path.join(tempDir, '.config', 'specbase');
       const legacyConfigPath = path.join(legacyConfigDir, 'config.json');
-      const newConfigDir = path.join(xdgConfigHome, 'openspec');
+      const newConfigDir = path.join(xdgConfigHome, 'specbase');
       const newConfigPath = path.join(newConfigDir, 'config.json');
       const invalidJson = '{ invalid json }';
       process.env.XDG_CONFIG_HOME = xdgConfigHome;
@@ -147,9 +147,9 @@ describe('telemetry/config', () => {
 
     it('should fill only missing telemetry fields from legacy config', async () => {
       const xdgConfigHome = path.join(tempDir, 'xdg-config');
-      const legacyConfigDir = path.join(tempDir, '.config', 'openspec');
+      const legacyConfigDir = path.join(tempDir, '.config', 'specbase');
       const legacyConfigPath = path.join(legacyConfigDir, 'config.json');
-      const newConfigDir = path.join(xdgConfigHome, 'openspec');
+      const newConfigDir = path.join(xdgConfigHome, 'specbase');
       const newConfigPath = path.join(newConfigDir, 'config.json');
       process.env.XDG_CONFIG_HOME = xdgConfigHome;
 

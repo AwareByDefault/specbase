@@ -7,13 +7,13 @@
 
 ## The problem this solves
 
-OpenSpec normally lives inside one code repo: an `openspec/` folder next to
+Specbase normally lives inside one code repo: an `specbase/` folder next to
 your code, holding specs and changes for that repo.
 
 That stops fitting the moment your planning is bigger than one repo:
 
 - Your work spans several repos — one feature touches the API server, the
-  web app, and a shared library. Whose `openspec/` folder does the plan
+  web app, and a shared library. Whose `specbase/` folder does the plan
   live in?
 - Your team plans before code exists, or plans things that never become
   code in *this* repo.
@@ -21,16 +21,16 @@ That stops fitting the moment your planning is bigger than one repo:
   version drifts, and your coding agent can't read it anyway.
 
 A **store** is the answer: a standalone repo whose whole job is planning.
-It has the same `openspec/` shape you already know — specs and changes —
+It has the same `specbase/` shape you already know — specs and changes —
 plus a small identity file. You register it on your machine once, by name,
-and then every normal OpenSpec command can work in it from anywhere.
+and then every normal Specbase command can work in it from anywhere.
 
 ## The shape
 
 ```
             team-plans  (a store: planning in its own repo)
-            ├── .openspec-store/store.yaml     identity: "I am team-plans"
-            └── openspec/
+            ├── .specbase-store/store.yaml     identity: "I am team-plans"
+            └── specbase/
                 ├── specs/      what is true
                 └── changes/    what is in motion
                       ▲
@@ -45,9 +45,9 @@ and then every normal OpenSpec command can work in it from anywhere.
 Two rules keep this simple:
 
 1. **A store is just a git repo.** You commit, push, pull, and review it
-   yourself. OpenSpec never clones, syncs, or pushes anything on its own.
+   yourself. Specbase never clones, syncs, or pushes anything on its own.
 2. **Declarations, not machinery.** Repos can *declare* how they relate to
-   stores (shown below). Declarations change what OpenSpec can tell you —
+   stores (shown below). Declarations change what Specbase can tell you —
    never where your commands act.
 
 ## Five minutes to your first store
@@ -55,35 +55,35 @@ Two rules keep this simple:
 Two commands take you from nothing to a working, store-scoped change:
 
 ```bash
-openspec store setup team-plans --path ~/openspec/team-plans
+specbase store setup team-plans --path ~/specbase/team-plans
 ```
 
 ```
 Store ready: team-plans
-Location: /Users/you/openspec/team-plans
-OpenSpec root: ready
+Location: /Users/you/specbase/team-plans
+Specbase root: ready
 Registry: registered
 
-Next: run normal OpenSpec commands against this store, for example:
-  openspec new change <change-id> --store team-plans
+Next: run normal Specbase commands against this store, for example:
+  specbase new change <change-id> --store team-plans
 Share this store by committing and pushing it like any Git repo.
 ```
 
 ```bash
-openspec new change add-login --store team-plans
+specbase new change add-login --store team-plans
 ```
 
 ```
-Using OpenSpec root: team-plans (/Users/you/openspec/team-plans)
-Created change 'add-login' at /Users/you/openspec/team-plans/openspec/changes/add-login/
+Using Specbase root: team-plans (/Users/you/specbase/team-plans)
+Created change 'add-login' at /Users/you/specbase/team-plans/specbase/changes/add-login/
 Schema: spec-driven
-Next: openspec status --change add-login --store team-plans
+Next: specbase status --change add-login --store team-plans
 ```
 
 That's the whole model. From here the lifecycle is exactly what you know —
 `status`, `instructions`, `validate`, `archive` — with `--store team-plans`
 on each command, and every printed hint carries the flag for you. The
-`Using OpenSpec root:` line always tells you where a command is acting.
+`Using Specbase root:` line always tells you where a command is acting.
 
 ## Story: one team, one planning repo
 
@@ -93,13 +93,13 @@ them across code repos.
 **Day one (whoever sets it up):**
 
 ```bash
-openspec store setup team-plans --path ~/openspec/team-plans \
+specbase store setup team-plans --path ~/specbase/team-plans \
   --remote git@github.com:acme/team-plans.git
-git -C ~/openspec/team-plans push -u origin main
+git -C ~/specbase/team-plans push -u origin main
 ```
 
 Passing `--remote` records the clone URL inside the store's own identity
-file (`.openspec-store/store.yaml`), in the initial commit. Every future
+file (`.specbase-store/store.yaml`), in the initial commit. Every future
 clone is born knowing where it came from, so health checks and error
 messages can print a complete, pasteable fix for teammates who don't have
 it yet.
@@ -107,15 +107,15 @@ it yet.
 **Every teammate (once per machine):**
 
 ```bash
-git clone git@github.com:acme/team-plans.git ~/openspec/team-plans
-openspec store register ~/openspec/team-plans
+git clone git@github.com:acme/team-plans.git ~/specbase/team-plans
+specbase store register ~/specbase/team-plans
 ```
 
 From then on, everyone works in the same planning repo by name:
 
 ```bash
-openspec status --store team-plans --change add-login
-openspec show add-login --store team-plans
+specbase status --store team-plans --change add-login
+specbase show add-login --store team-plans
 ```
 
 **Sharing work is git, on purpose.** A change you create exists only in
@@ -124,23 +124,23 @@ branches, pull requests, and review for free, because a store is an
 ordinary repo.
 
 **Connecting the team's code repos.** A code repo whose planning is fully
-externalized needs exactly one line, in `openspec/config.yaml`:
+externalized needs exactly one line, in `specbase/config.yaml`:
 
 ```yaml
-# web-app/openspec/config.yaml
+# web-app/specbase/config.yaml
 store: team-plans
 ```
 
-Now every OpenSpec command run inside `web-app` acts on `team-plans` with
+Now every Specbase command run inside `web-app` acts on `team-plans` with
 no flags at all:
 
 ```bash
 cd ~/src/web-app
-openspec status --change add-login
+specbase status --change add-login
 ```
 
 ```
-Using OpenSpec root: team-plans (/Users/you/openspec/team-plans)
+Using Specbase root: team-plans (/Users/you/specbase/team-plans)
 ...
 ```
 
@@ -158,29 +158,29 @@ relationship without moving anyone's work.
    platform-reqs (store)                 api-server (code repo)
    owned by the platform team            owned by a product team
    ┌──────────────────────────┐          ┌──────────────────────────┐
-   │ openspec/specs/          │ ◀────────│ openspec/config.yaml     │
+   │ specbase/specs/          │ ◀────────│ specbase/config.yaml     │
    │   payments/spec.md       │ reads    │   references:            │
    │   auth/spec.md           │          │     - platform-reqs      │
-   │                          │          │ openspec/specs/          │
-   │ openspec/changes/        │          │   (their own designs)    │
-   │   platform work          │          │ openspec/changes/        │
+   │                          │          │ specbase/specs/          │
+   │ specbase/changes/        │          │   (their own designs)    │
+   │   platform work          │          │ specbase/changes/        │
    │                          │          │   (their own work)       │
    │                          │          └──────────────────────────┘
    └──────────────────────────┘
 ```
 
 **The product team declares what it draws on** in its repo's
-`openspec/config.yaml`:
+`specbase/config.yaml`:
 
 ```yaml
 references:
   - platform-reqs
 ```
 
-References are read-only context. The repo keeps its own `openspec/` root;
-work stays there. What changes: `openspec instructions` in that repo now
+References are read-only context. The repo keeps its own `specbase/` root;
+work stays there. What changes: `specbase instructions` in that repo now
 includes an index of the referenced store's specs — each with a one-line
-summary and the exact fetch command (`openspec show <spec-id> --type spec
+summary and the exact fetch command (`specbase show <spec-id> --type spec
 --store platform-reqs`). An agent working in `api-server` can find the
 upstream payment requirements, cite them, and write its low-level design in
 the repo's own root — without anyone pasting context around.
@@ -199,15 +199,15 @@ with on their machine. Nothing about those local checkout paths is
 committed to the shared planning repo.
 
 ```bash
-openspec workset create platform \
-  --member ~/openspec/platform-reqs \
+specbase workset create platform \
+  --member ~/specbase/platform-reqs \
   --member ~/src/api-server \
   --member ~/src/web-app
 ```
 
 ## Two questions you can always ask
 
-**"Is my setup healthy?"** — `openspec doctor` checks the current root and
+**"Is my setup healthy?"** — `specbase doctor` checks the current root and
 its referenced stores, read-only, with a pasteable fix per finding:
 
 ```
@@ -215,30 +215,30 @@ Doctor
 
 Root
   Location: /Users/you/src/api-server
-  OpenSpec root: ok
+  Specbase root: ok
 
 References
-  - platform-reqs: ok (/Users/you/openspec/platform-reqs)
+  - platform-reqs: ok (/Users/you/specbase/platform-reqs)
   - design-system: Referenced store 'design-system' is not registered on this machine.
-    Fix: git clone -- git@github.com:acme/design-system.git '/Users/you/openspec/design-system' && openspec store register '/Users/you/openspec/design-system' --id design-system
+    Fix: git clone -- git@github.com:acme/design-system.git '/Users/you/specbase/design-system' && specbase store register '/Users/you/specbase/design-system' --id design-system
 
 ```
 
-**"What am I working with?"** — `openspec context` assembles the working
-set from OpenSpec declarations: the root and the stores it references.
+**"What am I working with?"** — `specbase context` assembles the working
+set from Specbase declarations: the root and the stores it references.
 
 ```
 Working context for api-server (/Users/you/src/api-server)
 
-OpenSpec root
+Specbase root
   api-server  /Users/you/src/api-server
 
 Referenced stores
-  platform-reqs  /Users/you/openspec/platform-reqs
-    Fetch: openspec show <spec-id> --type spec --store platform-reqs
+  platform-reqs  /Users/you/specbase/platform-reqs
+    Fetch: specbase show <spec-id> --type spec --store platform-reqs
 ```
 
-Both support `--json` for agents. `openspec context --code-workspace
+Both support `--json` for agents. `specbase context --code-workspace
 <path>` additionally writes a VS Code workspace file containing the whole
 set — the only write this command performs.
 
@@ -250,26 +250,26 @@ A **workset** is a personal, named view of exactly that, reopened with one
 command in your tool of choice.
 
 ```
-  workset "platform"                 openspec workset open platform
-  ├── team-plans   ~/openspec/team-plans         │
+  workset "platform"                 specbase workset open platform
+  ├── team-plans   ~/specbase/team-plans         │
   ├── api-server   ~/src/api-server              ▼
   └── web-app      ~/src/web-app       all three open in your tool
 ```
 
 ```bash
-openspec workset create platform \
-  --member ~/openspec/team-plans --member ~/src/api-server \
+specbase workset create platform \
+  --member ~/specbase/team-plans --member ~/src/api-server \
   --tool code
-openspec workset list
+specbase workset list
 ```
 
 ```
 platform  (opens in VS Code)
-  team-plans  /Users/you/openspec/team-plans
+  team-plans  /Users/you/specbase/team-plans
   api-server  /Users/you/src/api-server
 ```
 
-`openspec workset open platform` then launches the saved tool: editors
+`specbase workset open platform` then launches the saved tool: editors
 (VS Code, Cursor) open one window with every member and return. The first
 member is the primary. Override the tool any time with `--tool <id>`.
 
@@ -278,7 +278,7 @@ are never committed, and make no claims about the work — they only record
 what you like open together. Removing one never touches the member
 folders. New tools are configuration, not code: anything launched via a
 workspace file or per-folder attach flags can be added under the `openers`
-key in the global config (`openspec config edit`).
+key in the global config (`specbase config edit`).
 
 ## How commands decide where to act
 
@@ -286,7 +286,7 @@ Every normal command resolves its root the same way, in this order:
 
 ```
 1. --store <id>          you said so explicitly        → that store
-2. nearest openspec/     a real planning root here     → this repo
+2. nearest specbase/     a real planning root here     → this repo
    (walking up from cwd)
 3. store: pointer        config.yaml declares a store  → that store
 4. none of the above     stores registered on this     → error with a
@@ -296,7 +296,7 @@ Every normal command resolves its root the same way, in this order:
                                                           (classic behavior)
 ```
 
-The `Using OpenSpec root:` line (and the `root` block in `--json` output)
+The `Using Specbase root:` line (and the `root` block in `--json` output)
 tells you which case you're in.
 
 ## Known limitations
@@ -305,19 +305,19 @@ tells you which case you're in.
   names, flags, file formats, JSON keys.
 - **One checkout per store id per machine.** Registering a second checkout
   under the same id fails with a hint to `store unregister` first.
-- **No sync, ever — by design.** OpenSpec never clones, pulls, or pushes.
+- **No sync, ever — by design.** Specbase never clones, pulls, or pushes.
   A stale checkout shows stale specs until *you* pull; references are
   indexed live from whatever is on disk.
 - **Empty planning folders can be absent.** A new store may not have
-  `openspec/changes/`, `openspec/specs/`, or `openspec/changes/archive/` in Git
+  `specbase/changes/`, `specbase/specs/`, or `specbase/changes/archive/` in Git
   yet. That is accepted during the beta; those folders appear once normal
   commands create files for them.
 - **Pointer repos stay pointers.** A config-only repo whose
-  `openspec/config.yaml` declares `store: <id>` is treated as externalized
+  `specbase/config.yaml` declares `store: <id>` is treated as externalized
   planning, not as a store checkout to register. Remove the `store:` line first
   if you intentionally want to convert that repo into a local store root.
 - **Some commands stay where they are.** `view`, `templates`, `schemas`,
-  and the deprecated noun forms (`openspec change show`, ...) act on the
+  and the deprecated noun forms (`specbase change show`, ...) act on the
   current directory only — no `--store`.
 - **Per-machine state is per-machine.** The store registry and worksets
   are local settings. Nothing about your machine's layout is
@@ -333,13 +333,13 @@ tells you which case you're in.
 
 | What | Where | Shared? |
 |---|---|---|
-| A store's planning | `<store>/openspec/` (specs, changes) | Yes — commit and push it |
-| A store's identity | `<store>/.openspec-store/store.yaml` | Yes — committed with the store |
-| The store registry | `<data dir>/openspec/stores/registry.yaml` | No — this machine only |
-| Worksets | `<data dir>/openspec/worksets/` | No — this machine only |
+| A store's planning | `<store>/specbase/` (specs, changes) | Yes — commit and push it |
+| A store's identity | `<store>/.specbase-store/store.yaml` | Yes — committed with the store |
+| The store registry | `<data dir>/specbase/stores/registry.yaml` | No — this machine only |
+| Worksets | `<data dir>/specbase/worksets/` | No — this machine only |
 
-`<data dir>` is `~/.local/share/openspec` on macOS and Linux (or
-`$XDG_DATA_HOME/openspec` when set), and `%LOCALAPPDATA%\openspec` on
+`<data dir>` is `~/.local/share/specbase` on macOS and Linux (or
+`$XDG_DATA_HOME/specbase` when set), and `%LOCALAPPDATA%\specbase` on
 Windows.
 
 ## Reference

@@ -1,6 +1,6 @@
 # Customization
 
-OpenSpec provides three levels of customization:
+Specbase provides three levels of customization:
 
 | Level | What it does | Best for |
 |-------|--------------|----------|
@@ -12,7 +12,7 @@ OpenSpec provides three levels of customization:
 
 ## Project Configuration
 
-The `openspec/config.yaml` file is the easiest way to customize OpenSpec for your team. It lets you:
+The `specbase/config.yaml` file is the easiest way to customize Specbase for your team. It lets you:
 
 - **Set a default schema** - Skip `--schema` on every command
 - **Inject project context** - AI sees your tech stack, conventions, etc.
@@ -21,13 +21,13 @@ The `openspec/config.yaml` file is the easiest way to customize OpenSpec for you
 ### Quick Setup
 
 ```bash
-openspec init
+specbase init
 ```
 
 This walks you through creating a config interactively. Or create one manually:
 
 ```yaml
-# openspec/config.yaml
+# specbase/config.yaml
 schema: spec-driven
 
 context: |
@@ -51,10 +51,10 @@ rules:
 
 ```bash
 # Without config
-openspec new change my-feature --schema spec-driven
+specbase new change my-feature --schema spec-driven
 
 # With config - schema is automatic
-openspec new change my-feature
+specbase new change my-feature
 ```
 
 **Context and rules injection:**
@@ -82,22 +82,22 @@ Tech stack: TypeScript, React, Node.js, PostgreSQL
 
 ### Schema Resolution Order
 
-When OpenSpec needs a schema, it checks in this order:
+When Specbase needs a schema, it checks in this order:
 
 1. CLI flag: `--schema <name>`
 2. Change metadata (`.openspec.yaml` in the change folder)
-3. Project config (`openspec/config.yaml`)
+3. Project config (`specbase/config.yaml`)
 4. Default (`spec-driven`)
 
 ---
 
 ## Custom Schemas
 
-When project config isn't enough, create your own schema with a completely custom workflow. Custom schemas live in your project's `openspec/schemas/` directory and are version-controlled with your code.
+When project config isn't enough, create your own schema with a completely custom workflow. Custom schemas live in your project's `specbase/schemas/` directory and are version-controlled with your code.
 
 ```text
 your-project/
-├── openspec/
+├── specbase/
 │   ├── config.yaml        # Project config
 │   ├── schemas/           # Custom schemas live here
 │   │   └── my-workflow/
@@ -112,15 +112,15 @@ your-project/
 The fastest way to customize is to fork a built-in schema:
 
 ```bash
-openspec schema fork spec-driven my-workflow
+specbase schema fork spec-driven my-workflow
 ```
 
-This copies the entire `spec-driven` schema to `openspec/schemas/my-workflow/` where you can edit it freely.
+This copies the entire `spec-driven` schema to `specbase/schemas/my-workflow/` where you can edit it freely.
 
 **What you get:**
 
 ```text
-openspec/schemas/my-workflow/
+specbase/schemas/my-workflow/
 ├── schema.yaml           # Workflow definition
 └── templates/
     ├── proposal.md       # Template for proposal artifact
@@ -137,10 +137,10 @@ For a completely fresh workflow:
 
 ```bash
 # Interactive
-openspec schema init research-first
+specbase schema init research-first
 
 # Non-interactive
-openspec schema init rapid \
+specbase schema init rapid \
   --description "Rapid iteration workflow" \
   --artifacts "proposal,tasks" \
   --default
@@ -151,7 +151,7 @@ openspec schema init rapid \
 A schema defines the artifacts in your workflow and how they depend on each other:
 
 ```yaml
-# openspec/schemas/my-workflow/schema.yaml
+# specbase/schemas/my-workflow/schema.yaml
 name: my-workflow
 version: 1
 description: My team's custom workflow
@@ -226,7 +226,7 @@ Templates can include:
 Before using a custom schema, validate it:
 
 ```bash
-openspec schema validate my-workflow
+specbase schema validate my-workflow
 ```
 
 This checks:
@@ -241,7 +241,7 @@ Once created, use your schema with:
 
 ```bash
 # Specify on command
-openspec new change feature --schema my-workflow
+specbase new change feature --schema my-workflow
 
 # Or set as default in config.yaml
 schema: my-workflow
@@ -253,10 +253,10 @@ Not sure which schema is being used? Check with:
 
 ```bash
 # See where a specific schema resolves from
-openspec schema which my-workflow
+specbase schema which my-workflow
 
 # List all available schemas
-openspec schema which --all
+specbase schema which --all
 ```
 
 Output shows whether it's from your project, user directory, or the package:
@@ -264,12 +264,12 @@ Output shows whether it's from your project, user directory, or the package:
 ```text
 Schema: my-workflow
 Source: project
-Path: /path/to/project/openspec/schemas/my-workflow
+Path: /path/to/project/specbase/schemas/my-workflow
 ```
 
 ---
 
-> **Note:** OpenSpec also supports user-level schemas at `~/.local/share/openspec/schemas/` for sharing across projects, but project-level schemas in `openspec/schemas/` are recommended since they're version-controlled with your code.
+> **Note:** Specbase also supports user-level schemas at `~/.local/share/specbase/schemas/` for sharing across projects, but project-level schemas in `specbase/schemas/` are recommended since they're version-controlled with your code.
 
 ---
 
@@ -280,7 +280,7 @@ Path: /path/to/project/openspec/schemas/my-workflow
 A minimal workflow for quick iterations:
 
 ```yaml
-# openspec/schemas/rapid/schema.yaml
+# specbase/schemas/rapid/schema.yaml
 name: rapid
 version: 1
 description: Fast iteration with minimal overhead
@@ -311,7 +311,7 @@ apply:
 Fork the default and add a review step:
 
 ```bash
-openspec schema fork spec-driven with-review
+specbase schema fork spec-driven with-review
 ```
 
 Then edit `schema.yaml` to add:
@@ -339,13 +339,13 @@ Then edit `schema.yaml` to add:
 
 ## Community Schemas
 
-OpenSpec also supports community-maintained schemas distributed via standalone repositories. These provide opinionated workflows that integrate OpenSpec with other tools or systems, similar to how [github/spec-kit's community extension catalog](https://github.com/github/spec-kit/tree/main/extensions) works for spec-kit.
+Specbase also supports community-maintained schemas distributed via standalone repositories. These provide opinionated workflows that integrate Specbase with other tools or systems, similar to how [github/spec-kit's community extension catalog](https://github.com/github/spec-kit/tree/main/extensions) works for spec-kit.
 
-Community schemas are not vendored into OpenSpec core — they live in their own repositories with their own release cadence. To use one, copy the schema bundle into your project's `openspec/schemas/<schema-name>/` directory (each repo's README has install instructions).
+Community schemas are not vendored into Specbase core — they live in their own repositories with their own release cadence. To use one, copy the schema bundle into your project's `specbase/schemas/<schema-name>/` directory (each repo's README has install instructions).
 
 | Schema | Maintainer | Repository | Description |
 |--------|-----------|-----------|-------------|
-| `superpowers-bridge` | @JiangWay | [JiangWay/openspec-schemas](https://github.com/JiangWay/openspec-schemas/tree/main/superpowers-bridge) | Integrates OpenSpec's artifact governance with [obra/superpowers](https://github.com/obra/superpowers) execution skills (brainstorming, writing-plans, TDD via subagents, code review, finishing). Adds an evidence-first `retrospective` artifact filling a gap Superpowers does not natively cover. |
+| `superpowers-bridge` | @JiangWay | [JiangWay/specbase-schemas](https://github.com/JiangWay/specbase-schemas/tree/main/superpowers-bridge) | Integrates Specbase's artifact governance with [obra/superpowers](https://github.com/obra/superpowers) execution skills (brainstorming, writing-plans, TDD via subagents, code review, finishing). Adds an evidence-first `retrospective` artifact filling a gap Superpowers does not natively cover. |
 
 > Want to contribute a community schema? Open an issue with a link to your repository, or submit a PR adding a row to this table.
 

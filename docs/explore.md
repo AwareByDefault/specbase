@@ -38,7 +38,7 @@ That's the point. Exploring costs you nothing and commits you to nothing. You ca
 
 ## It's already installed
 
-Good news: `/spcb:explore` ships in the default **core** profile, right alongside `propose`, `apply`, `sync`, and `archive`. You don't need to enable anything. If OpenSpec is set up in your project, explore is ready in your AI chat. (As with all `/spcb:*` commands, you type it in your assistant's chat, not the terminal. See [How Commands Work](how-commands-work.md).)
+Good news: `/spcb:explore` ships in the default **core** profile, right alongside `propose`, `apply`, `sync`, and `archive`. You don't need to enable anything. If Specbase is set up in your project, explore is ready in your AI chat. (As with all `/spcb:*` commands, you type it in your assistant's chat, not the terminal. See [How Commands Work](how-commands-work.md).)
 
 ## A full example
 
@@ -78,7 +78,7 @@ You: Yes, let's do the idempotency key.
 
 You: /spcb:propose add-order-idempotency-key
 
-AI:  Created openspec/changes/add-order-idempotency-key/, with a proposal
+AI:  Created specbase/changes/add-order-idempotency-key/, with a proposal
      and delta spec grounded in what we just found. Ready for implementation.
 ```
 

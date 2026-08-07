@@ -378,7 +378,7 @@ export async function writeUpdatedSpec(
   if (options.silent) return;
 
   const specName = path.basename(path.dirname(update.target));
-  console.log(`Applying changes to ${options.displayPath ?? `openspec/specs/${specName}/spec.md`}:`);
+  console.log(`Applying changes to ${options.displayPath ?? `specbase/specs/${specName}/spec.md`}:`);
   if (counts.added) console.log(`  + ${counts.added} added`);
   if (counts.modified) console.log(`  ~ ${counts.modified} modified`);
   if (counts.removed) console.log(`  - ${counts.removed} removed`);

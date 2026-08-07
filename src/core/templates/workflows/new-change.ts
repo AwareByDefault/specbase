@@ -11,8 +11,8 @@ import { withGovernedGuidance, GOVERNED_AUTHORING_GUIDANCE } from './governed-gu
 
 export function getNewChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
-    name: 'openspec-new-change',
-    description: 'Start a new OpenSpec change using the experimental artifact workflow. Use when the user wants to create a new feature, fix, or modification with a structured step-by-step approach.',
+    name: 'specbase-new-change',
+    description: 'Start a new Specbase change using the experimental artifact workflow. Use when the user wants to create a new feature, fix, or modification with a structured step-by-step approach.',
     instructions: withGovernedGuidance(`Start a new change using the experimental artifact-driven approach.
 
 ${STORE_SELECTION_GUIDANCE}
@@ -36,20 +36,20 @@ ${STORE_SELECTION_GUIDANCE}
 
    **Use a different schema only if the user mentions:**
    - A specific schema name → use \`--schema <name>\`
-   - "show workflows" or "what workflows" → run \`openspec schemas --json\` and let them choose
+   - "show workflows" or "what workflows" → run \`specbase schemas --json\` and let them choose
 
    **Otherwise**: Omit \`--schema\` to use the default.
 
 3. **Create the change directory**
    \`\`\`bash
-   openspec new change "<name>"
+   specbase new change "<name>"
    \`\`\`
    Add \`--schema <name>\` only if the user requested a specific workflow.
    This creates a scaffolded change in the planning home resolved by the CLI.
 
 4. **Show the artifact status**
    \`\`\`bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    \`\`\`
    Use the returned \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`nextSteps\` instead of assuming repo-local paths.
 
@@ -57,7 +57,7 @@ ${STORE_SELECTION_GUIDANCE}
    The first artifact depends on the schema (e.g., \`proposal\` for spec-driven).
    Check the status output to find the first artifact with status "ready".
    \`\`\`bash
-   openspec instructions <first-artifact-id> --change "<name>"
+   specbase instructions <first-artifact-id> --change "<name>"
    \`\`\`
    This outputs the template and context for creating the first artifact.
 
@@ -79,8 +79,8 @@ After completing the steps, summarize:
 - If a change with that name already exists, suggest continuing that change instead
 - Pass --schema if using a non-default workflow`, specModel, GOVERNED_AUTHORING_GUIDANCE),
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires specbase CLI.',
+    metadata: { author: 'specbase', version: '1.0' },
   };
 }
 
@@ -113,27 +113,27 @@ ${STORE_SELECTION_GUIDANCE}
 
    **Use a different schema only if the user mentions:**
    - A specific schema name → use \`--schema <name>\`
-   - "show workflows" or "what workflows" → run \`openspec schemas --json\` and let them choose
+   - "show workflows" or "what workflows" → run \`specbase schemas --json\` and let them choose
 
    **Otherwise**: Omit \`--schema\` to use the default.
 
 3. **Create the change directory**
    \`\`\`bash
-   openspec new change "<name>"
+   specbase new change "<name>"
    \`\`\`
    Add \`--schema <name>\` only if the user requested a specific workflow.
    This creates a scaffolded change in the planning home resolved by the CLI.
 
 4. **Show the artifact status**
    \`\`\`bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    \`\`\`
    Use the returned \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`nextSteps\` instead of assuming repo-local paths.
 
 5. **Get instructions for the first artifact**
    The first artifact depends on the schema. Check the status output to find the first artifact with status "ready".
    \`\`\`bash
-   openspec instructions <first-artifact-id> --change "<name>"
+   specbase instructions <first-artifact-id> --change "<name>"
    \`\`\`
    This outputs the template and context for creating the first artifact.
 

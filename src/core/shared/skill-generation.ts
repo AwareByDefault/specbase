@@ -38,7 +38,7 @@ import type { SpecModel } from '../artifact-graph/types.js';
 import { LEGACY_SPEC_MODEL, resolveSpecModel } from '../artifact-graph/types.js';
 import { resolveSchema } from '../artifact-graph/resolver.js';
 import { readProjectConfig } from '../project-config.js';
-import { OPENSPEC_CLI_ALLOWED_TOOLS } from './allowed-tools.js';
+import { SPECBASE_CLI_ALLOWED_TOOLS } from './allowed-tools.js';
 import { isGovernedModel } from '../templates/workflows/governed-guidance.js';
 
 /** The project default schema when config declares none. */
@@ -188,18 +188,18 @@ export function getSkillTemplates(
   specModel?: SpecModel
 ): SkillTemplateEntry[] {
   const all: SkillTemplateEntry[] = [
-    { template: getExploreSkillTemplate(specModel), dirName: 'openspec-explore', workflowId: 'explore' },
-    { template: getNewChangeSkillTemplate(specModel), dirName: 'openspec-new-change', workflowId: 'new' },
-    { template: getContinueChangeSkillTemplate(specModel), dirName: 'openspec-continue-change', workflowId: 'continue' },
-    { template: getApplyChangeSkillTemplate(specModel), dirName: 'openspec-apply-change', workflowId: 'apply' },
-    { template: getUpdateChangeSkillTemplate(specModel), dirName: 'openspec-update-change', workflowId: 'update' },
-    { template: getFfChangeSkillTemplate(specModel), dirName: 'openspec-ff-change', workflowId: 'ff' },
-    { template: getSyncSpecsSkillTemplate(specModel), dirName: 'openspec-sync-specs', workflowId: 'sync' },
-    { template: getArchiveChangeSkillTemplate(specModel), dirName: 'openspec-archive-change', workflowId: 'archive' },
-    { template: getBulkArchiveChangeSkillTemplate(specModel), dirName: 'openspec-bulk-archive-change', workflowId: 'bulk-archive' },
-    { template: getVerifyChangeSkillTemplate(specModel), dirName: 'openspec-verify-change', workflowId: 'verify' },
-    { template: getOnboardSkillTemplate(specModel), dirName: 'openspec-onboard', workflowId: 'onboard' },
-    { template: getSpcbProposeSkillTemplate(specModel), dirName: 'openspec-propose', workflowId: 'propose' },
+    { template: getExploreSkillTemplate(specModel), dirName: 'specbase-explore', workflowId: 'explore' },
+    { template: getNewChangeSkillTemplate(specModel), dirName: 'specbase-new-change', workflowId: 'new' },
+    { template: getContinueChangeSkillTemplate(specModel), dirName: 'specbase-continue-change', workflowId: 'continue' },
+    { template: getApplyChangeSkillTemplate(specModel), dirName: 'specbase-apply-change', workflowId: 'apply' },
+    { template: getUpdateChangeSkillTemplate(specModel), dirName: 'specbase-update-change', workflowId: 'update' },
+    { template: getFfChangeSkillTemplate(specModel), dirName: 'specbase-ff-change', workflowId: 'ff' },
+    { template: getSyncSpecsSkillTemplate(specModel), dirName: 'specbase-sync-specs', workflowId: 'sync' },
+    { template: getArchiveChangeSkillTemplate(specModel), dirName: 'specbase-archive-change', workflowId: 'archive' },
+    { template: getBulkArchiveChangeSkillTemplate(specModel), dirName: 'specbase-bulk-archive-change', workflowId: 'bulk-archive' },
+    { template: getVerifyChangeSkillTemplate(specModel), dirName: 'specbase-verify-change', workflowId: 'verify' },
+    { template: getOnboardSkillTemplate(specModel), dirName: 'specbase-onboard', workflowId: 'onboard' },
+    { template: getSpcbProposeSkillTemplate(specModel), dirName: 'specbase-propose', workflowId: 'propose' },
   ];
 
   const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
@@ -219,7 +219,7 @@ export function getSkillTemplates(
   if (isGovernedModel(specModel)) {
     selected.push({
       template: getReviewPanelSkillTemplate(),
-      dirName: 'openspec-review-panel',
+      dirName: 'specbase-review-panel',
       workflowId: 'review-panel',
     });
   }
@@ -288,7 +288,7 @@ export function getCommandContents(
  * Generates skill file content with YAML frontmatter.
  *
  * @param template - The skill template
- * @param generatedByVersion - The OpenSpec version to embed in the file
+ * @param generatedByVersion - The Specbase version to embed in the file
  * @param transformInstructions - Optional callback to transform the instructions content
  */
 export function generateSkillContent(
@@ -303,11 +303,11 @@ export function generateSkillContent(
   return `---
 name: ${template.name}
 description: ${template.description}
-allowed-tools: ${OPENSPEC_CLI_ALLOWED_TOOLS}
+allowed-tools: ${SPECBASE_CLI_ALLOWED_TOOLS}
 license: ${template.license || 'MIT'}
-compatibility: ${template.compatibility || 'Requires openspec CLI.'}
+compatibility: ${template.compatibility || 'Requires specbase CLI.'}
 metadata:
-  author: ${template.metadata?.author || 'openspec'}
+  author: ${template.metadata?.author || 'specbase'}
   version: "${template.metadata?.version || '1.0'}"
   generatedBy: "${generatedByVersion}"
 ---

@@ -47,8 +47,8 @@ describe('migration', () => {
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(async () => {
-    projectDir = path.join(os.tmpdir(), `openspec-migration-project-${randomUUID()}`);
-    configHome = path.join(os.tmpdir(), `openspec-migration-config-${randomUUID()}`);
+    projectDir = path.join(os.tmpdir(), `specbase-migration-project-${randomUUID()}`);
+    configHome = path.join(os.tmpdir(), `specbase-migration-config-${randomUUID()}`);
     await fsp.mkdir(projectDir, { recursive: true });
     await fsp.mkdir(configHome, { recursive: true });
     originalEnv = { ...process.env };
@@ -62,6 +62,18 @@ describe('migration', () => {
   });
 
   it('migrates to custom skills delivery when only managed skills are detected', async () => {
+    await writeSkill(projectDir, 'specbase-explore');
+    await writeSkill(projectDir, 'specbase-apply-change');
+
+    migrateIfNeeded(projectDir, [ensureClaudeTool()]);
+
+    const config = readRawConfig();
+    expect(config.profile).toBe('custom');
+    expect(config.delivery).toBe('skills');
+    expect(config.workflows).toEqual(['explore', 'apply']);
+  });
+
+  it('migrates skills installed under the legacy openspec-* directory names', async () => {
     await writeSkill(projectDir, 'openspec-explore');
     await writeSkill(projectDir, 'openspec-apply-change');
 
@@ -86,7 +98,7 @@ describe('migration', () => {
   });
 
   it('migrates to custom both delivery when managed skills and commands are detected', async () => {
-    await writeSkill(projectDir, 'openspec-explore');
+    await writeSkill(projectDir, 'specbase-explore');
     await writeManagedCommand(projectDir, 'apply');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
@@ -103,7 +115,7 @@ describe('migration', () => {
       profile: 'core',
       delivery: 'both',
     });
-    await writeSkill(projectDir, 'openspec-explore');
+    await writeSkill(projectDir, 'specbase-explore');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 
@@ -119,7 +131,7 @@ describe('migration', () => {
       featureFlags: {},
       delivery: 'both',
     });
-    await writeSkill(projectDir, 'openspec-explore');
+    await writeSkill(projectDir, 'specbase-explore');
 
     migrateIfNeeded(projectDir, [ensureClaudeTool()]);
 

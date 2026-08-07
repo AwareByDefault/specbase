@@ -31,7 +31,7 @@ export const sections = [
       { source: 'overview.md', slug: 'overview', icon: 'Map' },
       { source: 'concepts.md', slug: 'core-concepts', icon: 'Boxes' },
       { source: 'workflows.md', slug: 'the-workflow', icon: 'Workflow' },
-      { source: 'opsx.md', slug: 'opsx', icon: 'GitBranch' },
+      { source: 'spcb.md', slug: 'spcb', icon: 'GitBranch' },
       { source: 'explore.md', slug: 'explore', icon: 'Compass' },
     ],
   },

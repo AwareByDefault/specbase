@@ -1,6 +1,6 @@
 # Workflows
 
-This guide covers common workflow patterns for OpenSpec and when to use each one. For basic setup, see [Getting Started](getting-started.md). For command reference, see [Commands](commands.md).
+This guide covers common workflow patterns for Specbase and when to use each one. For basic setup, see [Getting Started](getting-started.md). For command reference, see [Commands](commands.md).
 
 ## Philosophy: Actions, Not Phases
 
@@ -77,8 +77,8 @@ Explore creates no artifacts and writes no code. It's a free, no-stakes conversa
 If you want explicit scaffold-and-build commands (`/spcb:new`, `/spcb:continue`, `/spcb:ff`, `/spcb:verify`, `/spcb:bulk-archive`, `/spcb:onboard`), enable them with:
 
 ```bash
-openspec config profile
-openspec update
+specbase config profile
+specbase update
 ```
 
 ## Workflow Patterns (Expanded Mode)
@@ -96,7 +96,7 @@ When you know what you want to build and just need to execute:
 ```text
 You: /spcb:new add-logout-button
 
-AI:  Created openspec/changes/add-logout-button/
+AI:  Created specbase/changes/add-logout-button/
      Ready to create: proposal
 
 You: /spcb:ff
@@ -193,7 +193,7 @@ You: I'm working on add-dark-mode but got pulled into a bug fix
 
 You: /spcb:new fix-login-redirect
 
-AI:  Created openspec/changes/fix-login-redirect/
+AI:  Created specbase/changes/fix-login-redirect/
 
 You: /spcb:ff
 
@@ -323,8 +323,8 @@ AI:  Archiving add-auth...
 
 You: Yes
 
-AI:  ✓ Synced specs to openspec/specs/auth/spec.md
-     ✓ Moved to openspec/changes/archive/2025-01-24-add-auth/
+AI:  ✓ Synced specs to specbase/specs/auth/spec.md
+     ✓ Moved to specbase/changes/archive/2025-01-24-add-auth/
 
      Change archived successfully.
 ```
@@ -445,7 +445,7 @@ Catches mismatches before you close out the change.
 
 ### Name Changes Clearly
 
-Good names make `openspec list` useful:
+Good names make `specbase list` useful:
 
 ```text
 Good:                          Avoid:
@@ -476,7 +476,7 @@ For full command details and options, see [Commands](commands.md).
 
 - [Writing Good Specs](writing-specs.md) - What a strong requirement and scenario look like, and how to right-size a change
 - [Reviewing a Change](reviewing-changes.md) - The two-minute pass on a drafted plan before any code
-- [OpenSpec on a Team](team-workflow.md) - How changes fit branches and pull requests
+- [Specbase on a Team](team-workflow.md) - How changes fit branches and pull requests
 - [Commands](commands.md) - Full command reference with options
 - [Concepts](concepts.md) - Deep dive into specs, artifacts, and schemas
 - [Customization](customization.md) - Create custom workflows

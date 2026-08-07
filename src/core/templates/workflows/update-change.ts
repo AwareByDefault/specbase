@@ -11,8 +11,8 @@ import { withGovernedGuidance, GOVERNED_UPDATE_GUIDANCE } from './governed-guida
 
 export function getUpdateChangeSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
-    name: 'openspec-update-change',
-    description: "Update an OpenSpec change by revising its existing planning artifacts and keeping them coherent with one another. Use when the user wants to revise a change's plan, fold new decisions into it, or reconcile its artifacts after an edit. Never edits code.",
+    name: 'specbase-update-change',
+    description: "Update a Specbase change by revising its existing planning artifacts and keeping them coherent with one another. Use when the user wants to revise a change's plan, fold new decisions into it, or reconcile its artifacts after an edit. Never edits code.",
     instructions: withGovernedGuidance(`Revise a change's existing planning artifacts and keep them coherent. Never edit code.
 
 ${STORE_SELECTION_GUIDANCE}
@@ -23,7 +23,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes sorted by most recently modified. Then use the **AskUserQuestion tool** to let the user select which change to update.
+   Run \`specbase list --json\` to get available changes sorted by most recently modified. Then use the **AskUserQuestion tool** to let the user select which change to update.
 
    Present the top 3-4 most recently modified changes as options, showing:
    - Change name
@@ -37,7 +37,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 2. **Get the change's artifacts**
    \`\`\`bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    \`\`\`
    Parse the JSON to understand current state. The response includes:
    - \`schemaName\`: The workflow schema being used (e.g., "spec-driven")
@@ -65,7 +65,7 @@ ${STORE_SELECTION_GUIDANCE}
    - If the user rejects a revision, do not write it - leave that artifact unchanged.
    - When a substantial rewrite is needed, get that artifact's rules and template first:
      \`\`\`bash
-     openspec instructions <artifact-id> --change "<name>" --json
+     specbase instructions <artifact-id> --change "<name>" --json
      \`\`\`
 
 6. **Point to the next step (guidance only - NEVER act on it)**
@@ -82,14 +82,14 @@ After each invocation, show:
 
 **Guardrails**
 - Planning artifacts only - NEVER edit implementation code. If the revised plan implies code changes, stop and point to \`/spcb:apply\`.
-- Use the artifact ids and paths reported by \`openspec status\`; never branch on hardcoded artifact names.
+- Use the artifact ids and paths reported by \`specbase status\`; never branch on hardcoded artifact names.
 - Edit only the concrete files in \`existingOutputPaths\`; never write to a glob \`resolvedOutputPath\`.
 - Do not advance the build frontier: no new artifacts, no new files under glob artifacts - that is \`/spcb:continue\`'s job.
 - Confirm every edit with the user before writing.
 - If the request changes the change's *intent* rather than refining it, recommend starting fresh with \`/spcb:new\` (the "Update vs. Start Fresh" heuristic).`, specModel, GOVERNED_UPDATE_GUIDANCE),
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires specbase CLI.',
+    metadata: { author: 'specbase', version: '1.0' },
   };
 }
 
@@ -109,7 +109,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 1. **If no change name provided, prompt for selection**
 
-   Run \`openspec list --json\` to get available changes sorted by most recently modified. Then use the **AskUserQuestion tool** to let the user select which change to update.
+   Run \`specbase list --json\` to get available changes sorted by most recently modified. Then use the **AskUserQuestion tool** to let the user select which change to update.
 
    Present the top 3-4 most recently modified changes as options, showing:
    - Change name
@@ -123,7 +123,7 @@ ${STORE_SELECTION_GUIDANCE}
 
 2. **Get the change's artifacts**
    \`\`\`bash
-   openspec status --change "<name>" --json
+   specbase status --change "<name>" --json
    \`\`\`
    Parse the JSON to understand current state. The response includes:
    - \`schemaName\`: The workflow schema being used (e.g., "spec-driven")
@@ -151,7 +151,7 @@ ${STORE_SELECTION_GUIDANCE}
    - If the user rejects a revision, do not write it - leave that artifact unchanged.
    - When a substantial rewrite is needed, get that artifact's rules and template first:
      \`\`\`bash
-     openspec instructions <artifact-id> --change "<name>" --json
+     specbase instructions <artifact-id> --change "<name>" --json
      \`\`\`
 
 6. **Point to the next step (guidance only - NEVER act on it)**
@@ -168,7 +168,7 @@ After each invocation, show:
 
 **Guardrails**
 - Planning artifacts only - NEVER edit implementation code. If the revised plan implies code changes, stop and point to \`/spcb:apply\`.
-- Use the artifact ids and paths reported by \`openspec status\`; never branch on hardcoded artifact names.
+- Use the artifact ids and paths reported by \`specbase status\`; never branch on hardcoded artifact names.
 - Edit only the concrete files in \`existingOutputPaths\`; never write to a glob \`resolvedOutputPath\`.
 - Do not advance the build frontier: no new artifacts, no new files under glob artifacts - that is \`/spcb:continue\`'s job.
 - Confirm every edit with the user before writing.

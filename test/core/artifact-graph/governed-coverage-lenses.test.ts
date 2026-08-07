@@ -5,7 +5,7 @@ import os from 'os';
 import { computeRepoCoverage } from '../../../src/core/artifact-graph/governed-coverage.js';
 
 let tempDir: string;
-let openspecRoot: string;
+let specbaseRoot: string;
 
 function specDoc(id: string): string {
   return `---\nid: ${id}\n---\n### Requirement: R\n**ID:** \`r\`\nThe system MUST do X.\n#### Scenario: S\n**ID:** \`s\`\n- **WHEN** a\n- **THEN** b\n`;
@@ -21,7 +21,7 @@ async function writePair(
   locator: string,
   opts: { spec?: string; enforcement?: string }
 ): Promise<void> {
-  const dir = path.join(tempDir, 'openspec', 'specs', ...locator.split('/'));
+  const dir = path.join(tempDir, 'specbase', 'specs', ...locator.split('/'));
   await fs.mkdir(dir, { recursive: true });
   if (opts.spec !== undefined) await fs.writeFile(path.join(dir, 'spec.md'), opts.spec);
   if (opts.enforcement !== undefined)
@@ -31,10 +31,10 @@ async function writePair(
 beforeEach(async () => {
   tempDir = path.join(
     os.tmpdir(),
-    `openspec-cov-lens-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `specbase-cov-lens-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
-  openspecRoot = path.join(tempDir, 'openspec');
-  await fs.mkdir(openspecRoot, { recursive: true });
+  specbaseRoot = path.join(tempDir, 'specbase');
+  await fs.mkdir(specbaseRoot, { recursive: true });
 });
 
 afterEach(async () => {
@@ -52,7 +52,7 @@ describe('coverage lens rollup', () => {
       enforcement: reviewEnforcement('architecture.domain', { lens: 'code-quality' }),
     });
 
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir);
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     const byLens = new Map(coverage.lenses.rollup.map((e) => [e.lens, e.reviewClaims]));
     // All default lenses always appear (even at zero).
     expect([...byLens.keys()].sort()).toEqual([
@@ -79,7 +79,7 @@ describe('coverage un-lensed review gap', () => {
       enforcement: reviewEnforcement('architecture.domain', { lens: 'security' }),
     });
 
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir);
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     expect(coverage.lenses.unlensedReviews).toEqual([
       {
         locator: 'architecture/domain',
@@ -106,7 +106,7 @@ describe('coverage split candidate', () => {
       });
     }
 
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir, {
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir, {
       splitThreshold: 1,
     });
     expect(coverage.lenses.splitCandidates).toEqual([
@@ -127,7 +127,7 @@ describe('coverage split candidate', () => {
         enforcement: reviewEnforcement(`architecture.rings-${seg}`),
       });
     }
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir, {
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir, {
       splitThreshold: 2,
     });
     expect(coverage.lenses.splitCandidates).toEqual([]);
@@ -138,7 +138,7 @@ describe('coverage split candidate', () => {
       spec: specDoc('architecture.rings-a'),
       enforcement: reviewEnforcement('architecture.rings-a'),
     });
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir);
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     expect(coverage.lenses.splitCandidates).toEqual([]);
     expect(coverage.lenses.threshold).toBe(4);
   });
@@ -157,7 +157,7 @@ describe('coverage lens views — determinism', () => {
 
     const serialize = async () => {
       const { repository, analyses, ...rest } = await computeRepoCoverage(
-        openspecRoot,
+        specbaseRoot,
         tempDir
       );
       return JSON.stringify(rest.lenses);

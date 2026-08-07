@@ -4,7 +4,7 @@ import { resolveSpecModel } from '../../../src/core/artifact-graph/types.js';
 import { resolveSchema } from '../../../src/core/artifact-graph/resolver.js';
 
 /**
- * Lens-conformance test for the `agents.review-panel` baseline spec: OpenSpec
+ * Lens-conformance test for the `agents.review-panel` baseline spec: Specbase
  * OWNS its review panel (the lens set in `src/core/governed/lenses.ts`), so its
  * agentic-review enforcement is an automated `test` binding rather than the
  * review binding a consuming project gets. This is that binding's target: it

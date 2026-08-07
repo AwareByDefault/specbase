@@ -1,4 +1,4 @@
-# OpenSpec Test Guidance
+# Specbase Test Guidance
 
 Applies to tests under `test/`.
 

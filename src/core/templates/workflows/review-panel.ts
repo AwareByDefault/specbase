@@ -31,10 +31,10 @@ critique coverage, and report. You do **not** review the change yourself.
 **The panel is READ-ONLY and NON-GATING.** Its findings are recorded as
 \`review\`-strength evidence — weaker than automated proof by construction. A
 panel finding NEVER blocks archive, flips verification readiness, or fails
-\`openspec coverage --strict\`; those gate on structural rot only.
+\`specbase coverage --strict\`; those gate on structural rot only.
 
 **Input**: optionally a change name after the command. If omitted, infer it from
-context or prompt for selection with \`openspec list --json\`.
+context or prompt for selection with \`specbase list --json\`.
 
 ---
 
@@ -42,8 +42,8 @@ context or prompt for selection with \`openspec list --json\`.
 
 Confirm the governed model and load the affected pairs:
 \`\`\`bash
-openspec status --change "<name>" --json   # confirm specModel.kind == "governed"
-openspec coverage --json                    # lens rollup, un-lensed gaps, split candidates
+specbase status --change "<name>" --json   # confirm specModel.kind == "governed"
+specbase coverage --json                    # lens rollup, un-lensed gaps, split candidates
 \`\`\`
 Read every affected \`spec.md\`/\`enforcement.md\` PAIR the status reports. The set
 of **touched governed pairs** (their plane-qualified locators) is the router's
@@ -53,7 +53,7 @@ input. If the change touches no governed pair, say so and stop.
 
 Map each touched pair to the **most-specific lens** whose spec-tree subtree
 covers it, falling back up the tree to the plane-wide default — the same
-resolution rule as \`openspec show\`/locator lookup. Scale the lens set to the
+resolution rule as \`specbase show\`/locator lookup. Scale the lens set to the
 changed surface: a scoped lens fires only when its subtree is touched, and a
 trivial diff spawns nobody.
 
@@ -172,7 +172,7 @@ duplication. Not correctness (that is \`behavioural\`), not structure (that is
 When a non-deterministic claim has no home, POINT it at an existing lens or
 PROPOSE a new/scoped lens through the normal change workflow — a lens is added
 (or a broad lens split into a scoped one) as a change, never created or split
-automatically. \`openspec coverage\` surfaces the pressure (un-lensed gaps, split
+automatically. \`specbase coverage\` surfaces the pressure (un-lensed gaps, split
 candidates); the human makes the call. This mirrors hardening (review →
 automated): the tool shows the case, the person decides.`;
 
@@ -186,12 +186,12 @@ const REVIEW_PANEL_DESCRIPTION =
  */
 export function getReviewPanelSkillTemplate(): SkillTemplate {
   return {
-    name: 'openspec-review-panel',
+    name: 'specbase-review-panel',
     description: REVIEW_PANEL_DESCRIPTION,
     instructions: REVIEW_PANEL_BODY,
     license: 'MIT',
-    compatibility: 'Requires openspec CLI.',
-    metadata: { author: 'openspec', version: '1.0' },
+    compatibility: 'Requires specbase CLI.',
+    metadata: { author: 'specbase', version: '1.0' },
   };
 }
 

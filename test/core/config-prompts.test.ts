@@ -56,7 +56,7 @@ describe('config-prompts — serializeConfig plane seeding', () => {
     let warnSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
-      tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'openspec-seed-'));
+      tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'specbase-seed-'));
       warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     });
     afterEach(() => {
@@ -65,7 +65,7 @@ describe('config-prompts — serializeConfig plane seeding', () => {
     });
 
     function writeConfig(planes: unknown[]): void {
-      const dir = path.join(tempDir, 'openspec');
+      const dir = path.join(tempDir, 'specbase');
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(
         path.join(dir, 'config.yaml'),

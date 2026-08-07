@@ -2,7 +2,7 @@
 
 Real changes, start to finish. Each recipe shows the commands you'd type and what you'd see back, so you can match your situation to a pattern and copy it. These use the default **core** commands (`propose`, `explore`, `apply`, `sync`, `archive`); where the expanded set helps, it's noted.
 
-A reminder before you start: slash commands like `/spcb:propose` go in your **AI assistant's chat**, and `openspec` commands go in your **terminal**. If that's new, read [How Commands Work](how-commands-work.md) first. In the transcripts below, `You:` and `AI:` are the chat, and lines starting with `$` are the terminal.
+A reminder before you start: slash commands like `/spcb:propose` go in your **AI assistant's chat**, and `specbase` commands go in your **terminal**. If that's new, read [How Commands Work](how-commands-work.md) first. In the transcripts below, `You:` and `AI:` are the chat, and lines starting with `$` are the terminal.
 
 > **Not sure what you're building yet?** Most of these recipes are sharper if you start with `/spcb:explore` to think it through first. [Recipe 3](#recipe-3-exploring-before-you-commit) shows it in action, and the [Explore First](explore.md) guide makes the full case.
 
@@ -15,7 +15,7 @@ The whole thing is three commands. Propose, build, archive.
 ```text
 You: /spcb:propose add-logout-button
 
-AI:  Created openspec/changes/add-logout-button/
+AI:  Created specbase/changes/add-logout-button/
      ✓ proposal.md — why and what
      ✓ specs/      — the new requirement and its scenarios
      ✓ design.md   — technical approach
@@ -23,7 +23,7 @@ AI:  Created openspec/changes/add-logout-button/
      Ready for implementation. Run /spcb:apply.
 ```
 
-Now read the plan. Open the proposal and the delta spec. This is the moment OpenSpec is built for: catching a wrong assumption while it's still one paragraph, not 400 lines of code. Edit any artifact directly if something's off, then continue.
+Now read the plan. Open the proposal and the delta spec. This is the moment Specbase is built for: catching a wrong assumption while it's still one paragraph, not 400 lines of code. Edit any artifact directly if something's off, then continue.
 
 ```text
 You: /spcb:apply
@@ -37,8 +37,8 @@ AI:  Working through tasks...
 You: /spcb:archive
 
 AI:  Archiving add-logout-button...
-     ✓ Merged specs into openspec/specs/auth/spec.md
-     ✓ Moved to openspec/changes/archive/2026-06-22-add-logout-button/
+     ✓ Merged specs into specbase/specs/auth/spec.md
+     ✓ Moved to specbase/changes/archive/2026-06-22-add-logout-button/
      Done. Ready for the next change.
 ```
 
@@ -53,7 +53,7 @@ Bug fixes work exactly like features. The difference is in how you frame the pro
 ```text
 You: /spcb:propose fix-login-redirect-loop
 
-AI:  Created openspec/changes/fix-login-redirect-loop/
+AI:  Created specbase/changes/fix-login-redirect-loop/
      The proposal captures the current broken behavior and the
      intended behavior. The delta spec MODIFIES the redirect
      requirement so it's now precise and testable.
@@ -104,7 +104,7 @@ You: I'm partway through add-dark-mode, but I need to fix a login bug now.
 
 You: /spcb:propose fix-login-redirect
 
-AI:  Created openspec/changes/fix-login-redirect/. Ready for implementation.
+AI:  Created specbase/changes/fix-login-redirect/. Ready for implementation.
 
 You: /spcb:apply
 
@@ -143,7 +143,7 @@ AI:  Created the change. The proposal states the goal (split the
 When you archive a change that doesn't touch specs, you can tell the terminal command to skip the spec step:
 
 ```bash
-$ openspec archive refactor-payment-module --skip-specs
+$ specbase archive refactor-payment-module --skip-specs
 ```
 
 The same flag is handy for tooling, CI, and docs-only changes. The principle: specs describe behavior, so if behavior didn't change, the spec shouldn't either. See [Concepts](concepts.md#what-a-spec-is-and-is-not).
@@ -155,8 +155,8 @@ The same flag is handy for tooling, CI, and docs-only changes. The principle: sp
 The core `/spcb:propose` drafts everything at once. When you'd rather go one step at a time, turn on the expanded commands:
 
 ```bash
-$ openspec config profile      # select the expanded workflows
-$ openspec update              # apply them to this project
+$ specbase config profile      # select the expanded workflows
+$ specbase update              # apply them to this project
 ```
 
 Now you can scaffold and build incrementally:
@@ -164,7 +164,7 @@ Now you can scaffold and build incrementally:
 ```text
 You: /spcb:new add-2fa
 
-AI:  Created openspec/changes/add-2fa/. Ready to create: proposal.
+AI:  Created specbase/changes/add-2fa/. Ready to create: proposal.
 
 You: /spcb:continue
 
@@ -179,14 +179,14 @@ Review each artifact as it lands, edit freely, and continue when you're happy. W
 
 ## Recipe 7: Learning the whole loop hands-on
 
-**When to use it:** you've installed OpenSpec and want to *feel* the workflow on your own code, not a toy example.
+**When to use it:** you've installed Specbase and want to *feel* the workflow on your own code, not a toy example.
 
 Turn on the expanded commands (see Recipe 6), then:
 
 ```text
 You: /spcb:onboard
 
-AI:  Welcome to OpenSpec! I'll walk you through a complete change
+AI:  Welcome to Specbase! I'll walk you through a complete change
      using your actual codebase. Let me scan for a small, safe
      improvement we can make together...
 ```
@@ -198,10 +198,10 @@ AI:  Welcome to OpenSpec! I'll walk you through a complete change
 Any time, from your terminal, you can inspect the state of things:
 
 ```bash
-$ openspec list                      # active changes
-$ openspec show add-dark-mode        # one change in detail
-$ openspec validate add-dark-mode    # check structure
-$ openspec view                      # interactive dashboard
+$ specbase list                      # active changes
+$ specbase show add-dark-mode        # one change in detail
+$ specbase validate add-dark-mode    # check structure
+$ specbase view                      # interactive dashboard
 ```
 
 These are read-and-inspect tools. The proposing and building still happen through slash commands in chat. Full details in the [CLI reference](cli.md).

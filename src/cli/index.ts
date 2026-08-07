@@ -361,7 +361,7 @@ program
   .option('--type <type>', 'Specify item type when ambiguous: change|spec')
   .option('--strict', 'Enable strict validation mode')
   .option('--json', 'Output validation results as JSON')
-  .option('--concurrency <n>', 'Max concurrent validations (defaults to env OPENSPEC_CONCURRENCY or 6)')
+  .option('--concurrency <n>', 'Max concurrent validations (defaults to env SPECBASE_CONCURRENCY or 6)')
   .option('--no-interactive', 'Disable interactive prompts')
   .option('--store <id>', STORE_OPTION_DESCRIPTION)
   .addOption(hiddenStorePathOption())
@@ -446,7 +446,7 @@ program
 // Completion command with subcommands
 const completionCmd = program
   .command('completion')
-  .description('Manage shell completions for OpenSpec CLI');
+  .description('Manage shell completions for Specbase CLI');
 
 completionCmd
   .command('generate [shell]')

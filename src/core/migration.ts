@@ -8,7 +8,10 @@
 import type { AIToolOption } from './config.js';
 import { getGlobalConfig, getGlobalConfigPath, saveGlobalConfig, type Delivery } from './global-config.js';
 import { CommandAdapterRegistry } from './command-generation/index.js';
-import { WORKFLOW_TO_SKILL_DIR } from './profile-sync-drift.js';
+import {
+  WORKFLOW_TO_SKILL_DIR,
+  LEGACY_WORKFLOW_TO_SKILL_DIR,
+} from './profile-sync-drift.js';
 import { ALL_WORKFLOWS } from './profiles.js';
 import path from 'path';
 import * as fs from 'fs';
@@ -32,11 +35,18 @@ function scanInstalledWorkflowArtifacts(
     const skillsDir = path.join(projectPath, tool.skillsDir, 'skills');
 
     for (const workflowId of ALL_WORKFLOWS) {
-      const skillDirName = WORKFLOW_TO_SKILL_DIR[workflowId];
-      const skillFile = path.join(skillsDir, skillDirName, 'SKILL.md');
-      if (fs.existsSync(skillFile)) {
-        installed.add(workflowId);
-        hasSkills = true;
+      // Migration exists to pick up pre-existing installs, so both the current
+      // skill directory names and the legacy `openspec-*` ones count.
+      const skillDirNames = [
+        WORKFLOW_TO_SKILL_DIR[workflowId],
+        LEGACY_WORKFLOW_TO_SKILL_DIR[workflowId],
+      ];
+      for (const skillDirName of skillDirNames) {
+        const skillFile = path.join(skillsDir, skillDirName, 'SKILL.md');
+        if (fs.existsSync(skillFile)) {
+          installed.add(workflowId);
+          hasSkills = true;
+        }
       }
     }
 

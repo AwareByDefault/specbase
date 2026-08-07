@@ -38,7 +38,7 @@ Our philosophy:
 ```
 
 > [!TIP]
-> **New workflow now available!** We've rebuilt OpenSpec with a new artifact-guided workflow.
+> **New workflow now available!** We've rebuilt Specbase with a new artifact-guided workflow.
 >
 > Run `/spcb:propose "your idea"` to get started. → [Learn more here](docs/spcb.md)
 
@@ -60,7 +60,7 @@ AI:  Let me look at your styling setup...
 You: Yes, let's do it.
 
 You: /spcb:propose add-dark-mode
-AI:  Created openspec/changes/add-dark-mode/
+AI:  Created specbase/changes/add-dark-mode/
      ✓ proposal.md — why we're doing this, what's changing
      ✓ specs/       — requirements and scenarios
      ✓ design.md    — technical approach
@@ -76,7 +76,7 @@ AI:  Implementing tasks...
      All tasks complete!
 
 You: /spcb:archive
-AI:  Archived to openspec/changes/archive/2025-01-23-add-dark-mode/
+AI:  Archived to specbase/changes/archive/2025-01-23-add-dark-mode/
      Specs updated. Ready for the next feature.
 ```
 
@@ -99,7 +99,7 @@ defaulting to the system preference.
 
 Your AI writes these; you review the plan before any code is written.
 
-OpenSpec is built with OpenSpec — browse this repo's live [specs](openspec/specs) and in-flight [changes](openspec/changes) for real examples at scale.
+Specbase is built with Specbase — browse this repo's live [specs](specbase/specs) and in-flight [changes](specbase/changes) for real examples at scale.
 
 </details>
 
@@ -112,11 +112,11 @@ OpenSpec is built with OpenSpec — browse this repo's live [specs](openspec/spe
 
 </details>
 
-## Why teams adopt OpenSpec
+## Why teams adopt Specbase
 
-Solo, OpenSpec keeps you and your AI honest on a single repo. On a team, the hard part moves: a feature spans the API server, the web app, and a shared library; requirements are owned by one team and consumed by others; planning starts before any code exists.
+Solo, Specbase keeps you and your AI honest on a single repo. On a team, the hard part moves: a feature spans the API server, the web app, and a shared library; requirements are owned by one team and consumed by others; planning starts before any code exists.
 
-**[Stores](docs/stores-beta/user-guide.md)** are the answer — planning in a repo of its own. The same `openspec/` shape you already know (specs and changes), shared by `git push` like anything else. One source of truth your whole team and every coding agent can read, across every repo.
+**[Stores](docs/stores-beta/user-guide.md)** are the answer — planning in a repo of its own. The same `specbase/` shape you already know (specs and changes), shared by `git push` like anything else. One source of truth your whole team and every coding agent can read, across every repo.
 
 - **Cross-repo features** — one change, one plan, even when the code lands in three repos.
 - **Shared requirements** — a platform team owns the specs; product teams reference them read-only, right where their coding agent can read them. No drifting wiki.
@@ -157,7 +157,7 @@ Both are in the default profile. If you want the expanded workflow (`/spcb:new`,
 
 ## Docs
 
-**Start here:** the **[Documentation Home](docs/README.md)** maps everything. New to OpenSpec? Read [Getting Started](docs/getting-started.md), then [How Commands Work](docs/how-commands-work.md) (where you actually type `/spcb:propose`).
+**Start here:** the **[Documentation Home](docs/README.md)** maps everything. New to Specbase? Read [Getting Started](docs/getting-started.md), then [How Commands Work](docs/how-commands-work.md) (where you actually type `/spcb:propose`).
 
 → **[Getting Started](docs/getting-started.md)**: first steps<br>
 → **[Explore First](docs/explore.md)**: think it through with `/spcb:explore` before you commit<br>
@@ -165,7 +165,7 @@ Both are in the default profile. If you want the expanded workflow (`/spcb:new`,
 → **[Core Concepts at a Glance](docs/overview.md)**: the whole mental model, one page<br>
 → **[Examples & Recipes](docs/examples.md)**: real changes, start to finish<br>
 → **[Workflows](docs/workflows.md)**: combos and patterns<br>
-→ **[Existing Projects](docs/existing-projects.md)**: adopt OpenSpec on a brownfield codebase<br>
+→ **[Existing Projects](docs/existing-projects.md)**: adopt Specbase on a brownfield codebase<br>
 → **[Editing a Change](docs/editing-changes.md)**: update artifacts, go back, reconcile manual edits<br>
 → **[Commands](docs/commands.md)**: slash commands & skills<br>
 → **[CLI](docs/cli.md)**: terminal reference<br>
@@ -179,14 +179,14 @@ Both are in the default profile. If you want the expanded workflow (`/spcb:new`,
 
 ## Community schemas
 
-Third-party schema bundles distributed via standalone repositories — these provide opinionated workflows that integrate OpenSpec with other tools, similar to how [github/spec-kit's community extension catalog](https://github.com/github/spec-kit/tree/main/extensions) handles tool integrations.
+Third-party schema bundles distributed via standalone repositories — these provide opinionated workflows that integrate Specbase with other tools, similar to how [github/spec-kit's community extension catalog](https://github.com/github/spec-kit/tree/main/extensions) handles tool integrations.
 
 → **[Browse the catalog](docs/customization.md#community-schemas)** in the customization docs.
 
 
-## Why OpenSpec?
+## Why Specbase?
 
-AI coding assistants are powerful but unpredictable when requirements live only in chat history. OpenSpec adds a lightweight spec layer so you agree on what to build before any code is written.
+AI coding assistants are powerful but unpredictable when requirements live only in chat history. Specbase adds a lightweight spec layer so you agree on what to build before any code is written.
 
 - **Agree before you build** — human and AI align on specs before code gets written
 - **Stay organized** — each change gets its own folder with proposal, specs, design, and tasks
@@ -195,11 +195,11 @@ AI coding assistants are powerful but unpredictable when requirements live only 
 
 ### How we compare
 
-**vs. [Spec Kit](https://github.com/github/spec-kit)** (GitHub) — Thorough but heavyweight. Rigid phase gates, lots of Markdown, Python setup. OpenSpec is lighter and lets you iterate freely.
+**vs. [Spec Kit](https://github.com/github/spec-kit)** (GitHub) — Thorough but heavyweight. Rigid phase gates, lots of Markdown, Python setup. Specbase is lighter and lets you iterate freely.
 
-**vs. [Kiro](https://kiro.dev)** (AWS) — Powerful but you're locked into their IDE and limited to Claude models. OpenSpec works with the tools you already use.
+**vs. [Kiro](https://kiro.dev)** (AWS) — Powerful but you're locked into their IDE and limited to Claude models. Specbase works with the tools you already use.
 
-**vs. nothing** — AI coding without specs means vague prompts and unpredictable results. OpenSpec brings predictability without the ceremony.
+**vs. nothing** — AI coding without specs means vague prompts and unpredictable results. Specbase brings predictability without the ceremony.
 
 ## Updating Specbase
 
@@ -219,17 +219,17 @@ specbase update
 
 ## Usage Notes
 
-**Model selection**: OpenSpec works best with high-reasoning models. We recommend Codex 5.5 and Opus 4.7 for both planning and implementation.
+**Model selection**: Specbase works best with high-reasoning models. We recommend Codex 5.5 and Opus 4.7 for both planning and implementation.
 
-**Context hygiene**: OpenSpec benefits from a clean context window. Clear your context before starting implementation and maintain good context hygiene throughout your session.
+**Context hygiene**: Specbase benefits from a clean context window. Clear your context before starting implementation and maintain good context hygiene throughout your session.
 
 ## Contributing
 
 **Small fixes** — Bug fixes, typo corrections, and minor improvements can be submitted directly as PRs.
 
-**Larger changes** — For new features, significant refactors, or architectural changes, please submit an OpenSpec change proposal first so we can align on intent and goals before implementation begins.
+**Larger changes** — For new features, significant refactors, or architectural changes, please submit a Specbase change proposal first so we can align on intent and goals before implementation begins.
 
-When writing proposals, keep the OpenSpec philosophy in mind: we serve a wide variety of users across different coding agents, models, and use cases. Changes should work well for everyone.
+When writing proposals, keep the Specbase philosophy in mind: we serve a wide variety of users across different coding agents, models, and use cases. Changes should work well for everyone.
 
 **AI-generated code is welcome** — as long as it's been tested and verified. PRs containing AI-generated code should mention the coding agent and model used (e.g., "Generated with Claude Code using claude-opus-4-5-20251101").
 

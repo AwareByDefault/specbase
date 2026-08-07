@@ -112,7 +112,7 @@ describe('createChange', () => {
   let testDir: string;
 
   beforeEach(async () => {
-    testDir = path.join(os.tmpdir(), `openspec-test-${randomUUID()}`);
+    testDir = path.join(os.tmpdir(), `specbase-test-${randomUUID()}`);
     await fs.mkdir(testDir, { recursive: true });
   });
 
@@ -186,11 +186,11 @@ describe('createChange', () => {
   });
 
   describe('creates parent directories if needed', () => {
-    it('should create openspec/changes/ directories if they do not exist', async () => {
+    it('should create specbase/changes/ directories if they do not exist', async () => {
       const newProjectDir = path.join(testDir, 'new-project');
       await fs.mkdir(newProjectDir);
 
-      // openspec/changes/ does not exist yet
+      // specbase/changes/ does not exist yet
       await createChange(newProjectDir, 'add-auth');
 
       const changeDir = path.join(newProjectDir, 'specbase', 'changes', 'add-auth');

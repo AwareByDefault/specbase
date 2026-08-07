@@ -1,6 +1,6 @@
 # Migrating to SPCB
 
-This guide helps you transition from the legacy OpenSpec workflow to SPCB. The migration is designed to be smooth—your existing work is preserved, and the new system offers more flexibility.
+This guide helps you transition from the legacy Specbase workflow to SPCB. The migration is designed to be smooth—your existing work is preserved, and the new system offers more flexibility.
 
 ## What's Changing?
 
@@ -12,7 +12,7 @@ SPCB replaces the old phase-locked workflow with a fluid, action-based approach.
 | **Workflow** | Create all artifacts at once | Create incrementally or all at once—your choice |
 | **Going back** | Awkward phase gates | Natural—update any artifact anytime |
 | **Customization** | Fixed structure | Schema-driven, fully hackable |
-| **Configuration** | `CLAUDE.md` with markers + `project.md` | Clean config in `openspec/config.yaml` |
+| **Configuration** | `CLAUDE.md` with markers + `project.md` | Clean config in `specbase/config.yaml` |
 
 **The philosophy change:** Work isn't linear. SPCB stops pretending it is.
 
@@ -24,50 +24,50 @@ SPCB replaces the old phase-locked workflow with a fluid, action-based approach.
 
 The migration process is designed with preservation in mind:
 
-- **Active changes in `openspec/changes/`** — Completely preserved. You can continue them with SPCB commands.
+- **Active changes in `specbase/changes/`** — Completely preserved. You can continue them with SPCB commands.
 - **Archived changes** — Untouched. Your history remains intact.
-- **Main specs in `openspec/specs/`** — Untouched. These are your source of truth.
-- **Your content in CLAUDE.md, AGENTS.md, etc.** — Preserved. Only the OpenSpec marker blocks are removed; everything you wrote stays.
+- **Main specs in `specbase/specs/`** — Untouched. These are your source of truth.
+- **Your content in CLAUDE.md, AGENTS.md, etc.** — Preserved. Only the Specbase marker blocks are removed; everything you wrote stays.
 
 ### What Gets Removed
 
-Only OpenSpec-managed files that are being replaced:
+Only Specbase-managed files that are being replaced:
 
 | What | Why |
 |------|-----|
 | Legacy slash command directories/files | Replaced by the new skills system |
-| `openspec/AGENTS.md` | Obsolete workflow trigger |
-| OpenSpec markers in `CLAUDE.md`, `AGENTS.md`, etc. | No longer needed |
+| `specbase/AGENTS.md` | Obsolete workflow trigger |
+| Specbase markers in `CLAUDE.md`, `AGENTS.md`, etc. | No longer needed |
 
 **Legacy command locations by tool** (examples—your tool may vary):
 
-- Claude Code: `.claude/commands/openspec/`
-- Cursor: `.cursor/commands/openspec-*.md`
-- Windsurf: `.windsurf/workflows/openspec-*.md`
-- Cline: `.clinerules/workflows/openspec-*.md`
-- Roo: `.roo/commands/openspec-*.md`
-- GitHub Copilot: `.github/prompts/openspec-*.prompt.md` (IDE extensions only; not supported in Copilot CLI)
+- Claude Code: `.claude/commands/specbase/`
+- Cursor: `.cursor/commands/specbase-*.md`
+- Windsurf: `.windsurf/workflows/specbase-*.md`
+- Cline: `.clinerules/workflows/specbase-*.md`
+- Roo: `.roo/commands/specbase-*.md`
+- GitHub Copilot: `.github/prompts/specbase-*.prompt.md` (IDE extensions only; not supported in Copilot CLI)
 - And others (Augment, Continue, Amazon Q, etc.)
 
 The migration detects whichever tools you have configured and cleans up their legacy files.
 
-The removal list may seem long, but these are all files that OpenSpec originally created. Your own content is never deleted.
+The removal list may seem long, but these are all files that Specbase originally created. Your own content is never deleted.
 
 ### What Needs Your Attention
 
 One file requires manual migration:
 
-**`openspec/project.md`** — This file isn't deleted automatically because it may contain project context you've written. You'll need to:
+**`specbase/project.md`** — This file isn't deleted automatically because it may contain project context you've written. You'll need to:
 
 1. Review its contents
-2. Move useful context to `openspec/config.yaml` (see guidance below)
+2. Move useful context to `specbase/config.yaml` (see guidance below)
 3. Delete the file when ready
 
 **Why we made this change:**
 
 The old `project.md` was passive—agents might read it, might not, might forget what they read. We found reliability was inconsistent.
 
-The new `config.yaml` context is **actively injected into every OpenSpec planning request**. This means your project conventions, tech stack, and rules are always present when the AI is creating artifacts. Higher reliability.
+The new `config.yaml` context is **actively injected into every Specbase planning request**. This means your project conventions, tech stack, and rules are always present when the AI is creating artifacts. Higher reliability.
 
 **The tradeoff:**
 
@@ -82,44 +82,44 @@ Don't worry about getting it perfect. We're still learning what works best here,
 
 ## Running the Migration
 
-Both `openspec init` and `openspec update` detect legacy files and guide you through the same cleanup process. Use whichever fits your situation:
+Both `specbase init` and `specbase update` detect legacy files and guide you through the same cleanup process. Use whichever fits your situation:
 
 - New installs default to profile `core` (`propose`, `explore`, `apply`, `sync`, `archive`).
 - Migrated installs preserve your previously installed workflows by writing a `custom` profile when needed.
 
-### Using `openspec init`
+### Using `specbase init`
 
 Run this if you want to add new tools or reconfigure which tools are set up:
 
 ```bash
-openspec init
+specbase init
 ```
 
 The init command detects legacy files and guides you through cleanup:
 
 ```
-Upgrading to the new OpenSpec
+Upgrading to the new Specbase
 
-OpenSpec now uses agent skills, the emerging standard across coding
+Specbase now uses agent skills, the emerging standard across coding
 agents. This simplifies your setup while keeping everything working
 as before.
 
 Files to remove
 No user content to preserve:
-  • .claude/commands/openspec/
-  • openspec/AGENTS.md
+  • .claude/commands/specbase/
+  • specbase/AGENTS.md
 
 Files to update
-OpenSpec markers will be removed, your content preserved:
+Specbase markers will be removed, your content preserved:
   • CLAUDE.md
   • AGENTS.md
 
 Needs your attention
-  • openspec/project.md
+  • specbase/project.md
     We won't delete this file. It may contain useful project context.
 
-    The new openspec/config.yaml has a "context:" section for planning
-    context. This is included in every OpenSpec request and works more
+    The new specbase/config.yaml has a "context:" section for planning
+    context. This is included in every Specbase request and works more
     reliably than the old project.md approach.
 
     Review project.md, move any useful content to config.yaml's context
@@ -131,17 +131,17 @@ Needs your attention
 **What happens when you say yes:**
 
 1. Legacy slash command directories are removed
-2. OpenSpec markers are stripped from `CLAUDE.md`, `AGENTS.md`, etc. (your content stays)
-3. `openspec/AGENTS.md` is deleted
+2. Specbase markers are stripped from `CLAUDE.md`, `AGENTS.md`, etc. (your content stays)
+3. `specbase/AGENTS.md` is deleted
 4. New skills are installed in `.claude/skills/`
-5. `openspec/config.yaml` is created with a default schema
+5. `specbase/config.yaml` is created with a default schema
 
-### Using `openspec update`
+### Using `specbase update`
 
 Run this if you just want to migrate and refresh your existing tools to the latest version:
 
 ```bash
-openspec update
+specbase update
 ```
 
 The update command also detects and cleans up legacy artifacts, then refreshes generated skills/commands to match your current profile and delivery settings.
@@ -151,7 +151,7 @@ The update command also detects and cleans up legacy artifacts, then refreshes g
 For scripted migrations:
 
 ```bash
-openspec init --force --tools claude
+specbase init --force --tools claude
 ```
 
 The `--force` flag skips prompts and auto-accepts cleanup.
@@ -160,7 +160,7 @@ The `--force` flag skips prompts and auto-accepts cleanup.
 
 ## Migrating project.md to config.yaml
 
-The old `openspec/project.md` was a freeform markdown file for project context. The new `openspec/config.yaml` is structured and—critically—**injected into every planning request** so your conventions are always present when the AI works.
+The old `specbase/project.md` was a freeform markdown file for project context. The new `specbase/config.yaml` is structured and—critically—**injected into every planning request** so your conventions are always present when the AI works.
 
 ### Before (project.md)
 
@@ -260,7 +260,7 @@ When migrating, be selective. Ask yourself: "Does the AI need this for *every* p
 If you're unsure how to distill your project.md, ask your AI assistant:
 
 ```
-I'm migrating from OpenSpec's old project.md to the new config.yaml format.
+I'm migrating from Specbase's old project.md to the new config.yaml format.
 
 Here's my current project.md:
 [paste your project.md content]
@@ -301,7 +301,7 @@ Command availability is profile-dependent:
 | `/spcb:bulk-archive` | Archive multiple changes at once |
 | `/spcb:onboard` | Guided end-to-end onboarding workflow |
 
-Enable expanded commands with `openspec config profile`, then run `openspec update`.
+Enable expanded commands with `specbase config profile`, then run `specbase update`.
 
 ### Command Mapping from Legacy
 
@@ -388,7 +388,7 @@ When you run `/spcb:continue`, it checks what's ready and offers the next artifa
 The legacy system used tool-specific command files:
 
 ```
-.claude/commands/openspec/
+.claude/commands/specbase/
 ├── proposal.md
 ├── apply.md
 └── archive.md
@@ -398,10 +398,10 @@ SPCB uses the emerging **skills** standard:
 
 ```
 .claude/skills/
-├── openspec-explore/SKILL.md
-├── openspec-new-change/SKILL.md
-├── openspec-continue-change/SKILL.md
-├── openspec-apply-change/SKILL.md
+├── specbase-explore/SKILL.md
+├── specbase-new-change/SKILL.md
+├── specbase-continue-change/SKILL.md
+├── specbase-apply-change/SKILL.md
 └── ...
 ```
 
@@ -432,7 +432,7 @@ Shows what's ready to create based on what already exists.
 **Need to see status?**
 
 ```bash
-openspec status --change add-my-feature
+specbase status --change add-my-feature
 ```
 
 ---
@@ -470,7 +470,7 @@ When determining which schema to use, SPCB checks in order:
 
 1. **CLI flag**: `--schema <name>` (highest priority)
 2. **Change metadata**: `.openspec.yaml` in the change directory
-3. **Project config**: `openspec/config.yaml`
+3. **Project config**: `specbase/config.yaml`
 4. **Default**: `spec-driven`
 
 ### Available Schemas
@@ -482,7 +482,7 @@ When determining which schema to use, SPCB checks in order:
 List all available schemas:
 
 ```bash
-openspec schemas
+specbase schemas
 ```
 
 ### Custom Schemas
@@ -490,13 +490,13 @@ openspec schemas
 Create your own workflow:
 
 ```bash
-openspec schema init my-workflow
+specbase schema init my-workflow
 ```
 
 Or fork an existing one:
 
 ```bash
-openspec schema fork spec-driven my-workflow
+specbase schema fork spec-driven my-workflow
 ```
 
 See [Customization](customization.md) for details.
@@ -510,7 +510,7 @@ See [Customization](customization.md) for details.
 You're running in a CI or non-interactive environment. Use:
 
 ```bash
-openspec init --force
+specbase init --force
 ```
 
 ### Commands not appearing after migration
@@ -526,12 +526,12 @@ Check that your `rules:` keys match your schema's artifact IDs:
 Run this to see valid artifact IDs:
 
 ```bash
-openspec schemas --json
+specbase schemas --json
 ```
 
 ### Config not being applied
 
-1. Ensure the file is at `openspec/config.yaml` (not `.yml`)
+1. Ensure the file is at `specbase/config.yaml` (not `.yml`)
 2. Validate YAML syntax
 3. Config changes take effect immediately—no restart needed
 
@@ -551,28 +551,28 @@ Run init and decline the cleanup prompt—you'll see the full detection summary 
 
 ```
 project/
-├── openspec/
+├── specbase/
 │   ├── specs/                    # Unchanged
 │   ├── changes/                  # Unchanged
 │   │   └── archive/              # Unchanged
 │   └── config.yaml               # NEW: Project configuration
 ├── .claude/
 │   └── skills/                   # NEW: SPCB skills
-│       ├── openspec-propose/     # default core profile
-│       ├── openspec-explore/
-│       ├── openspec-apply-change/
-│       ├── openspec-sync-specs/
+│       ├── specbase-propose/     # default core profile
+│       ├── specbase-explore/
+│       ├── specbase-apply-change/
+│       ├── specbase-sync-specs/
 │       └── ...                   # expanded profile adds new/continue/ff/etc.
-├── CLAUDE.md                     # OpenSpec markers removed, your content preserved
-└── AGENTS.md                     # OpenSpec markers removed, your content preserved
+├── CLAUDE.md                     # Specbase markers removed, your content preserved
+└── AGENTS.md                     # Specbase markers removed, your content preserved
 ```
 
 ### What's Gone
 
-- `.claude/commands/openspec/` — replaced by `.claude/skills/`
-- `openspec/AGENTS.md` — obsolete
-- `openspec/project.md` — migrate to `config.yaml`, then delete
-- OpenSpec marker blocks in `CLAUDE.md`, `AGENTS.md`, etc.
+- `.claude/commands/specbase/` — replaced by `.claude/skills/`
+- `specbase/AGENTS.md` — obsolete
+- `specbase/project.md` — migrate to `config.yaml`, then delete
+- Specbase marker blocks in `CLAUDE.md`, `AGENTS.md`, etc.
 
 ### Command Cheatsheet
 
@@ -592,5 +592,5 @@ project/
 ## Getting Help
 
 - **Discord**: [discord.gg/YctCnvvshC](https://discord.gg/YctCnvvshC)
-- **GitHub Issues**: [github.com/Fission-AI/OpenSpec/issues](https://github.com/Fission-AI/OpenSpec/issues)
+- **GitHub Issues**: [github.com/AwareByDefault/specbase/issues](https://github.com/AwareByDefault/specbase/issues)
 - **Documentation**: [docs/spcb.md](spcb.md) for the full SPCB reference

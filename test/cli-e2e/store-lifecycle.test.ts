@@ -38,7 +38,7 @@ function machineEnv(home: string, gitConfigGlobal: string): NodeJS.ProcessEnv {
     XDG_DATA_HOME: path.join(home, 'data'),
     XDG_STATE_HOME: path.join(home, 'state'),
     XDG_CACHE_HOME: path.join(home, 'cache'),
-    OPENSPEC_TELEMETRY: '0',
+    SPECBASE_TELEMETRY: '0',
     GIT_CONFIG_GLOBAL: gitConfigGlobal,
     GIT_CONFIG_SYSTEM: emptyGitConfig,
     GIT_AUTHOR_NAME: 'Journey Tester',
@@ -174,7 +174,7 @@ async function writeCompletedChangeArtifacts(
 }
 
 beforeAll(async () => {
-  base = await fs.mkdtemp(path.join(tmpdir(), 'openspec-store-lifecycle-'));
+  base = await fs.mkdtemp(path.join(tmpdir(), 'specbase-store-lifecycle-'));
   storeRoot = path.join(base, 'machine-a', 'team-context');
   cloneRoot = path.join(base, 'machine-b', 'team-context');
   projectDir = path.join(base, 'machine-a', 'app-repo');
@@ -213,13 +213,13 @@ describe('standalone store lifecycle journey', () => {
         'specbase/config.yaml',
         'specbase/specs/.gitkeep',
         'specbase/changes/archive/.gitkeep',
-        '.openspec-store/store.yaml',
+        '.specbase-store/store.yaml',
       ])
     );
 
     const log = await git(storeRoot, machineA, ['log', '--format=%s']);
     expect(log.trim().split('\n')).toHaveLength(1);
-    expect(log).toContain(`Initialize OpenSpec store ${STORE_ID}`);
+    expect(log).toContain(`Initialize Specbase store ${STORE_ID}`);
 
     const committedFiles = await git(storeRoot, machineA, [
       'show',
@@ -227,7 +227,7 @@ describe('standalone store lifecycle journey', () => {
       '--format=',
       'HEAD',
     ]);
-    expect(committedFiles).toContain('.openspec-store/store.yaml');
+    expect(committedFiles).toContain('.specbase-store/store.yaml');
     expect(committedFiles).toContain('specbase/specs/.gitkeep');
     expect(committedFiles).toContain('specbase/changes/archive/.gitkeep');
 
@@ -245,7 +245,7 @@ describe('standalone store lifecycle journey', () => {
     });
     expect(doctor.exitCode).toBe(0);
     const store = JSON.parse(doctor.stdout).stores[0];
-    expect(store.openspec_root.healthy).toBe(true);
+    expect(store.specbase_root.healthy).toBe(true);
     expect(store.git).toEqual({
       is_repository: true,
       has_commits: true,
@@ -284,7 +284,7 @@ describe('standalone store lifecycle journey', () => {
       { env: machineA, cwd: projectDir }
     );
     expect(status.exitCode).toBe(0);
-    expect(status.stderr).toContain(`Using OpenSpec root: ${STORE_ID}`);
+    expect(status.stderr).toContain(`Using Specbase root: ${STORE_ID}`);
     expect(status.stdout).not.toContain('Planning home');
 
     const instructions = await runCLI(
@@ -376,7 +376,7 @@ describe('standalone store lifecycle journey', () => {
       env: machineB,
     });
     expect(doctor.exitCode).toBe(0);
-    expect(JSON.parse(doctor.stdout).stores[0].openspec_root.healthy).toBe(true);
+    expect(JSON.parse(doctor.stdout).stores[0].specbase_root.healthy).toBe(true);
 
     const specs = await runCLI(
       ['list', '--specs', '--store', STORE_ID, '--json'],
@@ -403,7 +403,7 @@ describe('standalone store lifecycle journey', () => {
       { env: machineB, cwd: base }
     );
     expect(created.exitCode).toBe(0);
-    expect(created.stderr).toContain(`Using OpenSpec root: ${STORE_ID}`);
+    expect(created.stderr).toContain(`Using Specbase root: ${STORE_ID}`);
     expect(created.stdout).toContain(`--store ${STORE_ID}`);
 
     const instructions = await runCLI(
@@ -450,20 +450,20 @@ describe('standalone store lifecycle journey', () => {
       { env: machineB, cwd: base }
     );
     expect(failedApply.exitCode).not.toBe(0);
-    expect(failedApply.stderr).toContain(`Using OpenSpec root: ${STORE_ID}`);
-    expect(failedApply.stderr).toContain(`openspec new change <name> --store ${STORE_ID}`);
+    expect(failedApply.stderr).toContain(`Using Specbase root: ${STORE_ID}`);
+    expect(failedApply.stderr).toContain(`specbase new change <name> --store ${STORE_ID}`);
   }, JOURNEY_TIMEOUT_MS);
 
-  it('end state is just normal OpenSpec files in both checkouts', async () => {
+  it('end state is just normal Specbase files in both checkouts', async () => {
     for (const root of [storeRoot, cloneRoot]) {
       const entries = await listRelativeEntries(root, new Set(['.git']));
 
       for (const entry of entries) {
-        expect(entry).toMatch(/^(\.openspec-store(\/|\/store\.yaml)?|specbase(\/.*)?)$/);
+        expect(entry).toMatch(/^(\.specbase-store(\/|\/store\.yaml)?|specbase(\/.*)?)$/);
         expect(entry).not.toMatch(/initiative|workspace/i);
       }
 
-      expect(entries).toContain('.openspec-store/store.yaml');
+      expect(entries).toContain('.specbase-store/store.yaml');
       expect(entries).toContain('specbase/config.yaml');
     }
 

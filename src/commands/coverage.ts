@@ -1,5 +1,5 @@
 /**
- * `openspec coverage` — aggregated enforcement-coverage views over the governed
+ * `specbase coverage` — aggregated enforcement-coverage views over the governed
  * pair engine (add-spec-coverage-tool, design decisions 3-4). Three views:
  * repository summary (no target), per-spec drill-down (locator or stable spec
  * ID), and orphan detection (`--orphans`, plus the opt-in `--evidence` scan).
@@ -16,7 +16,7 @@ import path from 'node:path';
 import {
   resolveRootForCommand,
   toRootOutput,
-  type ResolvedOpenSpecRoot,
+  type ResolvedSpecbaseRoot,
 } from '../core/root-selection.js';
 import { resolveProjectSpecModel } from '../core/shared/skill-generation.js';
 import {
@@ -213,7 +213,7 @@ export class CoverageCommand {
       strict: boolean;
       valid: boolean;
       targetAnalysis: GovernedPairAnalysis | undefined;
-      root: ResolvedOpenSpecRoot;
+      root: ResolvedSpecbaseRoot;
     }
   ): void {
     const { strict, valid, targetAnalysis, root } = context;

@@ -5,7 +5,7 @@ import os from 'os';
 import { computeRepoCoverage } from '../../../src/core/artifact-graph/governed-coverage.js';
 
 let tempDir: string;
-let openspecRoot: string;
+let specbaseRoot: string;
 
 /** A valid governed spec.md declaring `id` plus one requirement/scenario. */
 function specDoc(id: string): string {
@@ -36,7 +36,7 @@ async function writePair(
   locator: string,
   opts: { spec?: string; enforcement?: string; target?: string }
 ): Promise<void> {
-  const dir = path.join(tempDir, 'openspec', 'specs', ...locator.split('/'));
+  const dir = path.join(tempDir, 'specbase', 'specs', ...locator.split('/'));
   await fs.mkdir(dir, { recursive: true });
   if (opts.spec !== undefined) await fs.writeFile(path.join(dir, 'spec.md'), opts.spec);
   if (opts.enforcement !== undefined)
@@ -51,10 +51,10 @@ async function writePair(
 beforeEach(async () => {
   tempDir = path.join(
     os.tmpdir(),
-    `openspec-coverage-agg-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `specbase-coverage-agg-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
-  openspecRoot = path.join(tempDir, 'openspec');
-  await fs.mkdir(openspecRoot, { recursive: true });
+  specbaseRoot = path.join(tempDir, 'specbase');
+  await fs.mkdir(specbaseRoot, { recursive: true });
 });
 
 afterEach(async () => {
@@ -69,7 +69,7 @@ describe('computeRepoCoverage — state derivation', () => {
       target: 'src/loop.test.ts',
     });
 
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir);
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     expect(coverage.specs).toHaveLength(1);
     const [spec] = coverage.specs;
     expect(spec.state).toBe('complete');
@@ -94,7 +94,7 @@ describe('computeRepoCoverage — state derivation', () => {
       enforcement: reviewEnforcement('architecture.domain'),
     });
 
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir);
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     const [spec] = coverage.specs;
     expect(spec.state).toBe('degraded');
     expect(spec.weaklyCoveredRequirementIds).toEqual(['r']);
@@ -118,7 +118,7 @@ describe('computeRepoCoverage — state derivation', () => {
     });
     await writePair('behavior/spec-only', { spec: specDoc('behavior.spec-only') });
 
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir);
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     const stateByLocator = new Map(coverage.specs.map((s) => [s.locator, s.state]));
     expect(stateByLocator.get('behavior/hanging')).toBe('hanging');
     // stale outranks hanging (the binding covering `gone` still covers `r`)
@@ -141,7 +141,7 @@ describe('computeRepoCoverage — rollups and histogram', () => {
       enforcement: reviewEnforcement('architecture.domain'),
     });
 
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir);
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     expect(coverage.totals.specs).toBe(2);
     expect(coverage.totals.counts.requirements).toBe(2);
     expect(coverage.totals.counts.coveredRequirements).toBe(2);
@@ -171,7 +171,7 @@ describe('computeRepoCoverage — orphans and reverse index', () => {
       enforcement: automatedEnforcement('behavior.broken', 'src/missing.test.ts'),
     });
 
-    const coverage = await computeRepoCoverage(openspecRoot, tempDir);
+    const coverage = await computeRepoCoverage(specbaseRoot, tempDir);
     expect(coverage.orphans.staleBindings).toEqual([
       {
         locator: 'behavior/stale',
@@ -206,10 +206,10 @@ describe('computeRepoCoverage — orphans and reverse index', () => {
     const unbound = path.join(tempDir, 'src', 'orphaned.test.ts');
     await fs.writeFile(unbound, '// unreferenced evidence\n');
 
-    const without = await computeRepoCoverage(openspecRoot, tempDir);
+    const without = await computeRepoCoverage(specbaseRoot, tempDir);
     expect(without.orphans.unboundEvidence).toEqual([]);
 
-    const withGlobs = await computeRepoCoverage(openspecRoot, tempDir, {
+    const withGlobs = await computeRepoCoverage(specbaseRoot, tempDir, {
       evidenceGlobs: ['src/**/*.test.ts'],
     });
     // The bound target is excluded; the unreferenced file is reported.
@@ -234,7 +234,7 @@ describe('computeRepoCoverage — determinism', () => {
     });
 
     const serialize = async () => {
-      const coverage = await computeRepoCoverage(openspecRoot, tempDir, {
+      const coverage = await computeRepoCoverage(specbaseRoot, tempDir, {
         evidenceGlobs: ['src/**/*.ts'],
       });
       const { repository, analyses, ...serializable } = coverage;

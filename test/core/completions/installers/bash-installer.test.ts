@@ -11,7 +11,7 @@ describe('BashInstaller', () => {
 
   beforeEach(async () => {
     // Create a temporary home directory for testing
-    testHomeDir = path.join(os.tmpdir(), `openspec-bash-test-${randomUUID()}`);
+    testHomeDir = path.join(os.tmpdir(), `specbase-bash-test-${randomUUID()}`);
     await fs.mkdir(testHomeDir, { recursive: true });
     installer = new BashInstaller(testHomeDir);
   });
@@ -25,7 +25,7 @@ describe('BashInstaller', () => {
     it('should return standard bash-completion path', async () => {
       const result = await installer.getInstallationPath();
 
-      expect(result).toBe(path.join(testHomeDir, '.local', 'share', 'bash-completion', 'completions', 'openspec'));
+      expect(result).toBe(path.join(testHomeDir, '.local', 'share', 'bash-completion', 'completions', 'specbase'));
     });
   });
 
@@ -62,13 +62,13 @@ describe('BashInstaller', () => {
   });
 
   describe('install', () => {
-    const testScript = '# Bash completion script for OpenSpec CLI\n_openspec_completion() {\n  echo "test"\n}\n';
+    const testScript = '# Bash completion script for Specbase CLI\n_specbase_completion() {\n  echo "test"\n}\n';
 
     it('should install to bash-completion path', async () => {
       const result = await installer.install(testScript);
 
       expect(result.success).toBe(true);
-      expect(result.installedPath).toBe(path.join(testHomeDir, '.local', 'share', 'bash-completion', 'completions', 'openspec'));
+      expect(result.installedPath).toBe(path.join(testHomeDir, '.local', 'share', 'bash-completion', 'completions', 'specbase'));
 
       // Verify file was created with correct content
       const content = await fs.readFile(result.installedPath!, 'utf-8');
@@ -87,7 +87,7 @@ describe('BashInstaller', () => {
     });
 
     it('should backup existing file before overwriting', async () => {
-      const targetPath = path.join(testHomeDir, '.local', 'share', 'bash-completion', 'completions', 'openspec');
+      const targetPath = path.join(testHomeDir, '.local', 'share', 'bash-completion', 'completions', 'specbase');
       await fs.mkdir(path.dirname(targetPath), { recursive: true });
       await fs.writeFile(targetPath, 'old script');
 
@@ -115,14 +115,14 @@ describe('BashInstaller', () => {
       const bashrcPath = path.join(testHomeDir, '.bashrc');
       const content = await fs.readFile(bashrcPath, 'utf-8');
 
-      expect(content).toContain('# OPENSPEC:START');
-      expect(content).toContain('# OPENSPEC:END');
-      expect(content).toContain('OpenSpec shell completions configuration');
+      expect(content).toContain('# SPECBASE:START');
+      expect(content).toContain('# SPECBASE:END');
+      expect(content).toContain('Specbase shell completions configuration');
     });
 
     it('should include instructions when auto-config is disabled', async () => {
-      const originalEnv = process.env.OPENSPEC_NO_AUTO_CONFIG;
-      process.env.OPENSPEC_NO_AUTO_CONFIG = '1';
+      const originalEnv = process.env.SPECBASE_NO_AUTO_CONFIG;
+      process.env.SPECBASE_NO_AUTO_CONFIG = '1';
 
       const result = await installer.install(testScript);
 
@@ -132,9 +132,9 @@ describe('BashInstaller', () => {
 
       // Restore env
       if (originalEnv === undefined) {
-        delete process.env.OPENSPEC_NO_AUTO_CONFIG;
+        delete process.env.SPECBASE_NO_AUTO_CONFIG;
       } else {
-        process.env.OPENSPEC_NO_AUTO_CONFIG = originalEnv;
+        process.env.SPECBASE_NO_AUTO_CONFIG = originalEnv;
       }
     });
 
@@ -185,12 +185,12 @@ describe('BashInstaller', () => {
 
     it('should update completion when content differs', async () => {
       // First installation
-      const firstScript = '# Bash completion v1\n_openspec_completion() {\n  echo "version 1"\n}\n';
+      const firstScript = '# Bash completion v1\n_specbase_completion() {\n  echo "version 1"\n}\n';
       const firstResult = await installer.install(firstScript);
       expect(firstResult.success).toBe(true);
 
       // Second installation with different script
-      const secondScript = '# Bash completion v2\n_openspec_completion() {\n  echo "version 2"\n}\n';
+      const secondScript = '# Bash completion v2\n_specbase_completion() {\n  echo "version 2"\n}\n';
       const secondResult = await installer.install(secondScript);
 
       expect(secondResult.success).toBe(true);
@@ -208,7 +208,7 @@ describe('BashInstaller', () => {
 
     it('should handle paths with spaces in .bashrc config', async () => {
       // Create a test home directory with spaces
-      const testHomeDirWithSpaces = path.join(os.tmpdir(), `openspec bash test ${randomUUID()}`);
+      const testHomeDirWithSpaces = path.join(os.tmpdir(), `specbase bash test ${randomUUID()}`);
       await fs.mkdir(testHomeDirWithSpaces, { recursive: true });
       const installerWithSpaces = new BashInstaller(testHomeDirWithSpaces);
 
@@ -234,7 +234,7 @@ describe('BashInstaller', () => {
   });
 
   describe('uninstall', () => {
-    const testScript = '# Bash completion script\n_openspec_completion() {}\n';
+    const testScript = '# Bash completion script\n_specbase_completion() {}\n';
 
     it('should remove installed completion script', async () => {
       // Install first
@@ -272,8 +272,8 @@ describe('BashInstaller', () => {
 
       if (exists) {
         const content = await fs.readFile(bashrcPath, 'utf-8');
-        expect(content).not.toContain('# OPENSPEC:START');
-        expect(content).not.toContain('# OPENSPEC:END');
+        expect(content).not.toContain('# SPECBASE:START');
+        expect(content).not.toContain('# SPECBASE:END');
       }
     });
   });
@@ -289,9 +289,9 @@ describe('BashInstaller', () => {
       const bashrcPath = path.join(testHomeDir, '.bashrc');
       const content = await fs.readFile(bashrcPath, 'utf-8');
 
-      expect(content).toContain('# OPENSPEC:START');
-      expect(content).toContain('# OPENSPEC:END');
-      expect(content).toContain('# OpenSpec shell completions configuration');
+      expect(content).toContain('# SPECBASE:START');
+      expect(content).toContain('# SPECBASE:END');
+      expect(content).toContain('# Specbase shell completions configuration');
       expect(content).toContain(completionsDir);
     });
 
@@ -305,13 +305,13 @@ describe('BashInstaller', () => {
 
       const content = await fs.readFile(bashrcPath, 'utf-8');
 
-      expect(content).toContain('# OPENSPEC:START');
-      expect(content).toContain('# OPENSPEC:END');
+      expect(content).toContain('# SPECBASE:START');
+      expect(content).toContain('# SPECBASE:END');
       expect(content).toContain('# My custom bash config');
       expect(content).toContain('alias ll="ls -la"');
 
       // Config should be before existing content
-      const configIndex = content.indexOf('# OPENSPEC:START');
+      const configIndex = content.indexOf('# SPECBASE:START');
       const aliasIndex = content.indexOf('alias ll');
       expect(configIndex).toBeLessThan(aliasIndex);
     });
@@ -319,12 +319,12 @@ describe('BashInstaller', () => {
     it('should update config between markers when .bashrc has existing markers', async () => {
       const bashrcPath = path.join(testHomeDir, '.bashrc');
       const initialContent = [
-        '# OPENSPEC:START',
+        '# SPECBASE:START',
         '# Old config',
         'if [ -d "/old/path" ]; then',
         '  . "/old/path"',
         'fi',
-        '# OPENSPEC:END',
+        '# SPECBASE:END',
         '',
         '# My custom config',
       ].join('\n');
@@ -337,8 +337,8 @@ describe('BashInstaller', () => {
 
       const content = await fs.readFile(bashrcPath, 'utf-8');
 
-      expect(content).toContain('# OPENSPEC:START');
-      expect(content).toContain('# OPENSPEC:END');
+      expect(content).toContain('# SPECBASE:START');
+      expect(content).toContain('# SPECBASE:END');
       expect(content).toContain(completionsDir);
       expect(content).not.toContain('# Old config');
       expect(content).not.toContain('/old/path');
@@ -351,9 +351,9 @@ describe('BashInstaller', () => {
         '# My bash config',
         'export PATH="/custom/path:$PATH"',
         '',
-        '# OPENSPEC:START',
-        '# Old OpenSpec config',
-        '# OPENSPEC:END',
+        '# SPECBASE:START',
+        '# Old Specbase config',
+        '# SPECBASE:END',
         '',
         'alias ls="ls -G"',
       ].join('\n');
@@ -370,12 +370,12 @@ describe('BashInstaller', () => {
       expect(content).toContain('export PATH="/custom/path:$PATH"');
       expect(content).toContain('alias ls="ls -G"');
       expect(content).toContain(completionsDir);
-      expect(content).not.toContain('# Old OpenSpec config');
+      expect(content).not.toContain('# Old Specbase config');
     });
 
-    it('should return false when OPENSPEC_NO_AUTO_CONFIG is set', async () => {
-      const originalEnv = process.env.OPENSPEC_NO_AUTO_CONFIG;
-      process.env.OPENSPEC_NO_AUTO_CONFIG = '1';
+    it('should return false when SPECBASE_NO_AUTO_CONFIG is set', async () => {
+      const originalEnv = process.env.SPECBASE_NO_AUTO_CONFIG;
+      process.env.SPECBASE_NO_AUTO_CONFIG = '1';
 
       const result = await installer.configureBashrc(completionsDir);
 
@@ -387,9 +387,9 @@ describe('BashInstaller', () => {
 
       // Restore env
       if (originalEnv === undefined) {
-        delete process.env.OPENSPEC_NO_AUTO_CONFIG;
+        delete process.env.SPECBASE_NO_AUTO_CONFIG;
       } else {
-        process.env.OPENSPEC_NO_AUTO_CONFIG = originalEnv;
+        process.env.SPECBASE_NO_AUTO_CONFIG = originalEnv;
       }
     });
 
@@ -430,12 +430,12 @@ describe('BashInstaller', () => {
       const content = [
         '# My config',
         '',
-        '# OPENSPEC:START',
-        '# OpenSpec shell completions configuration',
+        '# SPECBASE:START',
+        '# Specbase shell completions configuration',
         'if [ -d ~/.local/share/bash-completion/completions ]; then',
-        '  . ~/.local/share/bash-completion/completions/openspec',
+        '  . ~/.local/share/bash-completion/completions/specbase',
         'fi',
-        '# OPENSPEC:END',
+        '# SPECBASE:END',
         '',
         'alias ll="ls -la"',
       ].join('\n');
@@ -448,9 +448,9 @@ describe('BashInstaller', () => {
 
       const newContent = await fs.readFile(bashrcPath, 'utf-8');
 
-      expect(newContent).not.toContain('# OPENSPEC:START');
-      expect(newContent).not.toContain('# OPENSPEC:END');
-      expect(newContent).not.toContain('OpenSpec shell completions configuration');
+      expect(newContent).not.toContain('# SPECBASE:START');
+      expect(newContent).not.toContain('# SPECBASE:END');
+      expect(newContent).not.toContain('Specbase shell completions configuration');
       expect(newContent).toContain('# My config');
       expect(newContent).toContain('alias ll="ls -la"');
     });
@@ -460,9 +460,9 @@ describe('BashInstaller', () => {
       const content = [
         'export PATH="/custom:$PATH"',
         '',
-        '# OPENSPEC:START',
+        '# SPECBASE:START',
         '# Config',
-        '# OPENSPEC:END',
+        '# SPECBASE:END',
         '',
         'alias g="git"',
       ].join('\n');
@@ -477,7 +477,7 @@ describe('BashInstaller', () => {
 
       expect(newContent).toContain('export PATH="/custom:$PATH"');
       expect(newContent).toContain('alias g="git"');
-      expect(newContent).not.toContain('# OPENSPEC:START');
+      expect(newContent).not.toContain('# SPECBASE:START');
     });
 
     it('should handle permission errors gracefully', async () => {

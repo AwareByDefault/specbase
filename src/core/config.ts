@@ -1,5 +1,3 @@
-export const OPENSPEC_DIR_NAME = 'openspec';
-
 // Re-export the planning-dir resolver contract so existing importers of this
 // module can migrate to the specbase/openspec prefer-fallback naming.
 export {
@@ -9,12 +7,18 @@ export {
   planningDir,
 } from './planning-dir.js';
 
-export const OPENSPEC_MARKERS = {
+/**
+ * Markers of the managed block that pre-Specbase releases wrote into agent
+ * instruction files (AGENTS.md, CLAUDE.md, ...). Nothing writes these any
+ * more; `legacy-cleanup` reads them so it can still find and remove blocks
+ * left behind by an older install, so the literals must not be rebranded.
+ */
+export const LEGACY_OPENSPEC_MARKERS = {
   start: '<!-- OPENSPEC:START -->',
   end: '<!-- OPENSPEC:END -->'
 };
 
-export interface OpenSpecConfig {
+export interface SpecbaseConfig {
   aiTools: string[];
 }
 

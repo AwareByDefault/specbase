@@ -292,8 +292,8 @@ export class ListCommand {
     planes?: string[]
   ): Promise<void> {
     const { json, root } = output;
-    const openspecRoot = planningDir(projectRoot);
-    const repository = await loadGovernedRepository(openspecRoot, planes);
+    const specbaseRoot = planningDir(projectRoot);
+    const repository = await loadGovernedRepository(specbaseRoot, planes);
 
     if (repository.indexedPairs.length === 0) {
       if (json) {

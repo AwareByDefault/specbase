@@ -18,11 +18,11 @@ const bodies: Array<[string, string]> = [
 
 describe('update-change templates', () => {
   it('generates the expected skill and command shape (3.1)', () => {
-    expect(skill.name).toBe('openspec-update-change');
+    expect(skill.name).toBe('specbase-update-change');
     expect(skill.description).toContain('Never edits code');
     expect(skill.license).toBe('MIT');
-    expect(skill.compatibility).toBe('Requires openspec CLI.');
-    expect(skill.metadata).toEqual({ author: 'openspec', version: '1.0' });
+    expect(skill.compatibility).toBe('Requires specbase CLI.');
+    expect(skill.metadata).toEqual({ author: 'specbase', version: '1.0' });
 
     expect(command.name).toBe('SPCB: Update');
     expect(command.category).toBe('Workflow');
@@ -31,9 +31,9 @@ describe('update-change templates', () => {
 
     for (const [label, body] of bodies) {
       expect(body, label).toContain(STORE_SELECTION_GUIDANCE);
-      expect(body, label).toContain('openspec list --json');
-      expect(body, label).toContain('openspec status --change "<name>" --json');
-      expect(body, label).toContain('openspec instructions <artifact-id> --change "<name>" --json');
+      expect(body, label).toContain('specbase list --json');
+      expect(body, label).toContain('specbase status --change "<name>" --json');
+      expect(body, label).toContain('specbase instructions <artifact-id> --change "<name>" --json');
     }
   });
 

@@ -100,7 +100,7 @@ export function validateChangeName(name: string): ValidationResult {
 /**
  * Creates a new change directory with metadata file.
  *
- * @param projectRoot - The root directory of the project (where `openspec/` lives)
+ * @param projectRoot - The root directory of the project (where `specbase/` lives)
  * @param name - The change name (must be valid kebab-case)
  * @param options - Optional settings for the change
  * @throws Error if the change name is invalid
@@ -110,12 +110,12 @@ export function validateChangeName(name: string): ValidationResult {
  * @returns Result containing the resolved schema name
  *
  * @example
- * // Creates openspec/changes/add-auth/ with default schema
+ * // Creates specbase/changes/add-auth/ with default schema
  * const result = await createChange('/path/to/project', 'add-auth')
  * console.log(result.schema) // 'spec-driven' or value from config
  *
  * @example
- * // Creates openspec/changes/add-auth/ with custom schema
+ * // Creates specbase/changes/add-auth/ with custom schema
  * const result = await createChange('/path/to/project', 'add-auth', { schema: 'my-workflow' })
  * console.log(result.schema) // 'my-workflow'
  */
@@ -164,14 +164,14 @@ export async function createChange(
   // specs/ and changes/archive/ exist, and write a config only when
   // none exists. The config records the PROJECT default schema, never
   // a one-change --schema override.
-  const openspecDir = planningDir(projectRoot);
+  const specbaseDir = planningDir(projectRoot);
 
   // Create the directory (including parent directories if needed)
   await FileSystemUtils.createDirectory(changeDir);
-  await FileSystemUtils.createDirectory(path.join(openspecDir, 'specs'));
-  await FileSystemUtils.createDirectory(path.join(openspecDir, 'changes', 'archive'));
-  const configPath = path.join(openspecDir, 'config.yaml');
-  const configYmlPath = path.join(openspecDir, 'config.yml');
+  await FileSystemUtils.createDirectory(path.join(specbaseDir, 'specs'));
+  await FileSystemUtils.createDirectory(path.join(specbaseDir, 'changes', 'archive'));
+  const configPath = path.join(specbaseDir, 'config.yaml');
+  const configYmlPath = path.join(specbaseDir, 'config.yml');
   if (
     !(await FileSystemUtils.fileExists(configPath)) &&
     !(await FileSystemUtils.fileExists(configYmlPath))

@@ -26,7 +26,7 @@ describe('telemetry/index', () => {
 
   beforeEach(() => {
     // Create unique temp directory for each test using UUID
-    tempDir = path.join(os.tmpdir(), `openspec-telemetry-test-${randomUUID()}`);
+    tempDir = path.join(os.tmpdir(), `specbase-telemetry-test-${randomUUID()}`);
     fs.mkdirSync(tempDir, { recursive: true });
 
     // Save original env
@@ -61,8 +61,8 @@ describe('telemetry/index', () => {
   });
 
   describe('isTelemetryEnabled', () => {
-    it('should return false when OPENSPEC_TELEMETRY=0', () => {
-      process.env.OPENSPEC_TELEMETRY = '0';
+    it('should return false when SPECBASE_TELEMETRY=0', () => {
+      process.env.SPECBASE_TELEMETRY = '0';
       expect(isTelemetryEnabled()).toBe(false);
     });
 
@@ -110,7 +110,7 @@ describe('telemetry/index', () => {
 
   describe('maybeShowTelemetryNotice', () => {
     it('should not show notice when telemetry is disabled', async () => {
-      process.env.OPENSPEC_TELEMETRY = '0';
+      process.env.SPECBASE_TELEMETRY = '0';
 
       await maybeShowTelemetryNotice();
 
@@ -120,7 +120,7 @@ describe('telemetry/index', () => {
 
   describe('trackCommand', () => {
     it('should not track when telemetry is disabled', async () => {
-      process.env.OPENSPEC_TELEMETRY = '0';
+      process.env.SPECBASE_TELEMETRY = '0';
 
       await trackCommand('test', '1.0.0');
 

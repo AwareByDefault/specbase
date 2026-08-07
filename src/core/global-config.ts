@@ -5,9 +5,9 @@ import * as os from 'node:os';
 import { PLANNING_DIR_NAME, LEGACY_PLANNING_DIR_NAME } from './planning-dir.js';
 
 // Constants
-export const GLOBAL_CONFIG_DIR_NAME = 'openspec';
+export const GLOBAL_CONFIG_DIR_NAME = 'specbase';
 export const GLOBAL_CONFIG_FILE_NAME = 'config.json';
-export const GLOBAL_DATA_DIR_NAME = 'openspec';
+export const GLOBAL_DATA_DIR_NAME = 'specbase';
 
 function directoryExists(candidate: string): boolean {
   try {
@@ -101,9 +101,9 @@ export function getGlobalConfigDir(): string {
  * Gets the global data directory path following XDG Base Directory Specification.
  * Used for user data like schema overrides.
  *
- * - All platforms: $XDG_DATA_HOME/openspec/ if XDG_DATA_HOME is set
- * - Unix/macOS fallback: ~/.local/share/openspec/
- * - Windows fallback: %LOCALAPPDATA%/openspec/
+ * - All platforms: $XDG_DATA_HOME/specbase/ if XDG_DATA_HOME is set
+ * - Unix/macOS fallback: ~/.local/share/specbase/
+ * - Windows fallback: %LOCALAPPDATA%/specbase/
  */
 export interface GlobalDataDirOptions {
   env?: NodeJS.ProcessEnv;
