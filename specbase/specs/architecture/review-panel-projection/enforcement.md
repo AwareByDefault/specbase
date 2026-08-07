@@ -15,7 +15,7 @@ bindings:
       - skill-is-projection
       - no-hardcoded-lens
       - generator-takes-model
-    mechanism: conformance
+    mechanism: test
     strength: automated
     status: active
     targets:

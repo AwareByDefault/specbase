@@ -26,6 +26,8 @@ this projection and holds no lens the projection does not name.
   of the resolved review model
 - **THEN** enforcement reports any lens present in one and absent in the other
 
+## ADDED Requirements
+
 ### Requirement: The panel's job is spec-conformance review, refined per plane
 **ID:** panel-reviews-implemented-specs
 The review panel SHALL judge whether the implementation produces the specs that
