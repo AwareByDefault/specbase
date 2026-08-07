@@ -12,13 +12,13 @@ import {
 import {
   ANCHORED_OPENSPEC_DIRS,
   DIRECTORY_ANCHOR_FILE_NAME,
-  OPENSPEC_ROOT_DIR,
   ensureOpenSpecRoot,
   inspectOpenSpecRoot,
   rollbackCreatedPaths,
   type CreatedPathLedgerEntry,
   type OpenSpecRootInspection,
 } from '../openspec-root.js';
+import { resolvePlanningDirName } from '../planning-dir.js';
 import {
   STORE_METADATA_DIR_NAME,
   getStoreMetadataDir,
@@ -667,7 +667,7 @@ export async function setupPreparedStore(
     // be unhealthy. In a pre-existing repo the user owns the history, so
     // setup commits only what it created.
     const commitPathspecs = gitInitialized
-      ? [OPENSPEC_ROOT_DIR, STORE_METADATA_DIR_NAME]
+      ? [resolvePlanningDirName(storeRoot), STORE_METADATA_DIR_NAME]
       : createdPaths
           .filter((entry) => entry.kind === 'file')
           .map((entry) => entry.relativePath);

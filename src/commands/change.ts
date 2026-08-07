@@ -8,6 +8,7 @@ import type { RootOutput } from '../core/root-selection.js';
 import { isInteractive } from '../utils/interactive.js';
 import { getActiveChangeIds } from '../utils/item-discovery.js';
 import { getTaskProgressForChange } from '../utils/task-progress.js';
+import { planningDir } from '../core/config.js';
 
 // Constants for better maintainability
 const ARCHIVE_DIR = 'archive';
@@ -24,7 +25,7 @@ export class ChangeCommand {
   }
 
   private getChangesPath(): string {
-    return path.join(this.rootPath ?? process.cwd(), 'openspec', 'changes');
+    return path.join(planningDir(this.rootPath ?? process.cwd()), 'changes');
   }
 
   /**
@@ -99,7 +100,7 @@ export class ChangeCommand {
    * - JSON: array of { id, title, deltaCount, taskStatus }, sorted by id
    */
   async list(options?: { json?: boolean; long?: boolean }): Promise<void> {
-    const changesPath = path.join(process.cwd(), 'openspec', 'changes');
+    const changesPath = path.join(planningDir(process.cwd()), 'changes');
     
     const changes = await this.getActiveChanges(changesPath);
     
@@ -170,7 +171,7 @@ export class ChangeCommand {
   }
 
   async validate(changeName?: string, options?: { strict?: boolean; json?: boolean; noInteractive?: boolean }): Promise<void> {
-    const changesPath = path.join(process.cwd(), 'openspec', 'changes');
+    const changesPath = path.join(planningDir(process.cwd()), 'changes');
     
     if (!changeName) {
       const canPrompt = isInteractive(options);

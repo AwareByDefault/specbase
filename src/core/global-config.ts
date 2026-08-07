@@ -2,10 +2,39 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
+import { PLANNING_DIR_NAME, LEGACY_PLANNING_DIR_NAME } from './planning-dir.js';
+
 // Constants
 export const GLOBAL_CONFIG_DIR_NAME = 'openspec';
 export const GLOBAL_CONFIG_FILE_NAME = 'config.json';
 export const GLOBAL_DATA_DIR_NAME = 'openspec';
+
+function directoryExists(candidate: string): boolean {
+  try {
+    return fs.statSync(candidate).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolve the global base directory NAME under `parent`, preferring a
+ * `specbase` directory, falling back to an existing legacy `openspec`
+ * directory, else defaulting to `specbase`. `join` builds the candidate
+ * path so callers can supply platform-correct joining.
+ */
+function resolveGlobalDirName(
+  parent: string,
+  join: (parent: string, name: string) => string
+): string {
+  if (directoryExists(join(parent, PLANNING_DIR_NAME))) {
+    return PLANNING_DIR_NAME;
+  }
+  if (directoryExists(join(parent, LEGACY_PLANNING_DIR_NAME))) {
+    return LEGACY_PLANNING_DIR_NAME;
+  }
+  return PLANNING_DIR_NAME;
+}
 
 // TypeScript types
 export type Profile = 'core' | 'custom';
@@ -28,17 +57,14 @@ const DEFAULT_CONFIG: GlobalConfig = {
 };
 
 /**
- * Gets the global configuration directory path following XDG Base Directory Specification.
- *
- * - All platforms: $XDG_CONFIG_HOME/openspec/ if XDG_CONFIG_HOME is set
- * - Unix/macOS fallback: ~/.config/openspec/
- * - Windows fallback: %APPDATA%/openspec/
+ * Resolves the parent directory that holds the global config directory,
+ * following the XDG Base Directory Specification.
  */
-export function getGlobalConfigDir(): string {
+function getGlobalConfigParentDir(): string {
   // XDG_CONFIG_HOME takes precedence on all platforms when explicitly set
   const xdgConfigHome = process.env.XDG_CONFIG_HOME;
   if (xdgConfigHome) {
-    return path.join(xdgConfigHome, GLOBAL_CONFIG_DIR_NAME);
+    return xdgConfigHome;
   }
 
   const platform = os.platform();
@@ -47,14 +73,28 @@ export function getGlobalConfigDir(): string {
     // Windows: use %APPDATA%
     const appData = process.env.APPDATA;
     if (appData) {
-      return path.join(appData, GLOBAL_CONFIG_DIR_NAME);
+      return appData;
     }
     // Fallback for Windows if APPDATA is not set
-    return path.join(os.homedir(), 'AppData', 'Roaming', GLOBAL_CONFIG_DIR_NAME);
+    return path.join(os.homedir(), 'AppData', 'Roaming');
   }
 
   // Unix/macOS fallback: ~/.config
-  return path.join(os.homedir(), '.config', GLOBAL_CONFIG_DIR_NAME);
+  return path.join(os.homedir(), '.config');
+}
+
+/**
+ * Gets the global configuration directory path following XDG Base Directory Specification.
+ * Prefers a `specbase` directory, falls back to an existing legacy `openspec`
+ * directory, else defaults to `specbase`.
+ *
+ * - All platforms: $XDG_CONFIG_HOME/specbase/ if XDG_CONFIG_HOME is set
+ * - Unix/macOS fallback: ~/.config/specbase/
+ * - Windows fallback: %APPDATA%/specbase/
+ */
+export function getGlobalConfigDir(): string {
+  const parent = getGlobalConfigParentDir();
+  return path.join(parent, resolveGlobalDirName(parent, path.join));
 }
 
 /**
@@ -81,10 +121,19 @@ export function getGlobalDataDir(options: GlobalDataDirOptions = {}): string {
   const env = options.env ?? process.env;
   const platform = options.platform ?? os.platform();
 
+  // Resolve the base-dir name under `parent`, preferring specbase and falling
+  // back to an existing legacy openspec directory.
+  const resolveDataDir = (parent: string): string =>
+    joinGlobalDataPath(
+      platform,
+      parent,
+      resolveGlobalDirName(parent, (p, name) => joinGlobalDataPath(platform, p, name))
+    );
+
   // XDG_DATA_HOME takes precedence on all platforms when explicitly set
   const xdgDataHome = env.XDG_DATA_HOME;
   if (xdgDataHome) {
-    return joinGlobalDataPath(platform, xdgDataHome, GLOBAL_DATA_DIR_NAME);
+    return resolveDataDir(xdgDataHome);
   }
 
   const homedir = options.homedir ?? os.homedir();
@@ -93,14 +142,14 @@ export function getGlobalDataDir(options: GlobalDataDirOptions = {}): string {
     // Windows: use %LOCALAPPDATA%
     const localAppData = env.LOCALAPPDATA;
     if (localAppData) {
-      return joinGlobalDataPath(platform, localAppData, GLOBAL_DATA_DIR_NAME);
+      return resolveDataDir(localAppData);
     }
     // Fallback for Windows if LOCALAPPDATA is not set
-    return joinGlobalDataPath(platform, homedir, 'AppData', 'Local', GLOBAL_DATA_DIR_NAME);
+    return resolveDataDir(joinGlobalDataPath(platform, homedir, 'AppData', 'Local'));
   }
 
   // Unix/macOS fallback: ~/.local/share
-  return joinGlobalDataPath(platform, homedir, '.local', 'share', GLOBAL_DATA_DIR_NAME);
+  return resolveDataDir(joinGlobalDataPath(platform, homedir, '.local', 'share'));
 }
 
 /**

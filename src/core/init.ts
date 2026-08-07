@@ -16,7 +16,7 @@ import { findRepoPlanningRootSync } from './planning-home.js';
 import { transformToHyphenCommands } from '../utils/command-references.js';
 import {
   AI_TOOLS,
-  OPENSPEC_DIR_NAME,
+  resolvePlanningDirName,
   AIToolOption,
 } from './config.js';
 import { PALETTE } from './styles/palette.js';
@@ -146,7 +146,9 @@ export class InitCommand {
 
   async execute(targetPath: string): Promise<void> {
     const projectPath = path.resolve(targetPath);
-    const openspecDir = OPENSPEC_DIR_NAME;
+    // Resolve the planning dir name for this project: an existing openspec/
+    // root keeps its name (extend), a fresh project initializes specbase/.
+    const openspecDir = resolvePlanningDirName(projectPath);
     const openspecPath = path.join(projectPath, openspecDir);
 
     // Validation happens silently in the background
@@ -755,10 +757,11 @@ export class InitCommand {
     const schemaDir = getSchemaDir(GOVERNED_SCHEMA, projectPath);
     if (!schemaDir) return;
     const baselineRoot = path.join(schemaDir, 'templates', 'baseline', 'agents');
+    const planningDirName = resolvePlanningDirName(projectPath);
     for (const locator of locators) {
       for (const file of ['spec.md', 'enforcement.md']) {
         const src = path.join(baselineRoot, locator, file);
-        const dest = path.join(projectPath, 'openspec', 'specs', 'agents', locator, file);
+        const dest = path.join(projectPath, planningDirName, 'specs', 'agents', locator, file);
         if (fs.existsSync(dest) || !fs.existsSync(src)) continue;
         await FileSystemUtils.writeFile(dest, fs.readFileSync(src, 'utf-8'));
       }
@@ -840,16 +843,17 @@ export class InitCommand {
     }
 
     // Config status
+    const planningDirName = resolvePlanningDirName(projectPath);
     if (configStatus === 'created') {
       const createdSchema =
         resolveProjectSpecModel(projectPath).kind === 'governed' ? GOVERNED_SCHEMA : DEFAULT_SCHEMA;
-      console.log(`Config: openspec/config.yaml (schema: ${createdSchema})`);
+      console.log(`Config: ${planningDirName}/config.yaml (schema: ${createdSchema})`);
     } else if (configStatus === 'exists') {
       // Show actual filename (config.yaml or config.yml)
-      const configYaml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yaml');
-      const configYml = path.join(projectPath, OPENSPEC_DIR_NAME, 'config.yml');
+      const configYaml = path.join(projectPath, planningDirName, 'config.yaml');
+      const configYml = path.join(projectPath, planningDirName, 'config.yml');
       const configName = fs.existsSync(configYaml) ? 'config.yaml' : fs.existsSync(configYml) ? 'config.yml' : 'config.yaml';
-      console.log(`Config: openspec/${configName} (exists)`);
+      console.log(`Config: ${planningDirName}/${configName} (exists)`);
     } else {
       console.log(chalk.dim(`Config: skipped (non-interactive mode)`));
     }

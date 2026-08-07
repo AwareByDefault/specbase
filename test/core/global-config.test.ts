@@ -58,7 +58,7 @@ describe('global-config', () => {
 
       const result = getGlobalConfigDir();
 
-      expect(result).toBe(path.join(tempDir, 'openspec'));
+      expect(result).toBe(path.join(tempDir, 'specbase'));
     });
 
     it('should fall back to ~/.config on Unix/macOS without XDG_CONFIG_HOME', () => {
@@ -92,7 +92,7 @@ describe('global-config', () => {
 
       const result = getGlobalConfigPath();
 
-      expect(result).toBe(path.join(tempDir, 'openspec', 'config.json'));
+      expect(result).toBe(path.join(tempDir, 'specbase', 'config.json'));
     });
   });
 
@@ -104,7 +104,7 @@ describe('global-config', () => {
           platform: 'linux',
           homedir: '/home/tabish',
         })
-      ).toBe('/home/tabish/.local/share/openspec');
+      ).toBe('/home/tabish/.local/share/specbase');
 
       expect(
         getGlobalDataDir({
@@ -112,7 +112,7 @@ describe('global-config', () => {
           platform: 'darwin',
           homedir: '/Users/tabish',
         })
-      ).toBe('/var/data/openspec');
+      ).toBe('/var/data/specbase');
     });
 
     it('should use Windows separators for native Windows platform overrides', () => {
@@ -122,7 +122,7 @@ describe('global-config', () => {
           platform: 'win32',
           homedir: 'C:\\Users\\Tabish',
         })
-      ).toBe('C:\\Users\\Tabish\\AppData\\Local\\openspec');
+      ).toBe('C:\\Users\\Tabish\\AppData\\Local\\specbase');
 
       expect(
         getGlobalDataDir({
@@ -130,7 +130,7 @@ describe('global-config', () => {
           platform: 'win32',
           homedir: 'C:\\Users\\Tabish',
         })
-      ).toBe('D:\\Users\\Tabish\\AppData\\Local\\openspec');
+      ).toBe('D:\\Users\\Tabish\\AppData\\Local\\specbase');
     });
   });
 
@@ -309,7 +309,7 @@ describe('global-config', () => {
   describe('saveGlobalConfig', () => {
     it('should create directory if it does not exist', () => {
       process.env.XDG_CONFIG_HOME = tempDir;
-      const configDir = path.join(tempDir, 'openspec');
+      const configDir = path.join(tempDir, 'specbase');
 
       saveGlobalConfig({ featureFlags: { test: true } });
 
@@ -318,7 +318,7 @@ describe('global-config', () => {
 
     it('should write config to file', () => {
       process.env.XDG_CONFIG_HOME = tempDir;
-      const configPath = path.join(tempDir, 'openspec', 'config.json');
+      const configPath = path.join(tempDir, 'specbase', 'config.json');
 
       saveGlobalConfig({ featureFlags: { myFlag: true } });
 
@@ -347,7 +347,7 @@ describe('global-config', () => {
 
     it('should write formatted JSON with trailing newline', () => {
       process.env.XDG_CONFIG_HOME = tempDir;
-      const configPath = path.join(tempDir, 'openspec', 'config.json');
+      const configPath = path.join(tempDir, 'specbase', 'config.json');
 
       saveGlobalConfig({ featureFlags: {} });
 

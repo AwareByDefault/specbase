@@ -12,6 +12,7 @@ import {
 } from '../core/artifact-graph/resolver.js';
 import { parseSchema, SchemaValidationError } from '../core/artifact-graph/schema.js';
 import type { SchemaYaml, Artifact } from '../core/artifact-graph/types.js';
+import { planningDir } from '../core/config.js';
 
 /**
  * Schema source location type
@@ -868,7 +869,7 @@ export function registerSchemaCommand(program: Command): void {
 
         // Update config if --default
         if (options?.default) {
-          const configPath = path.join(projectRoot, 'openspec', 'config.yaml');
+          const configPath = path.join(planningDir(projectRoot), 'config.yaml');
 
           if (fs.existsSync(configPath)) {
             const { parse: parseYaml, stringify: stringifyYaml2 } = await import('yaml');

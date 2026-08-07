@@ -20,6 +20,7 @@ import {
 } from './store/foundation.js';
 import { getStoreRootForBackend } from './store/registry.js';
 import { inspectRegisteredStore, type ResolvedOpenSpecRoot } from './root-selection.js';
+import { planningDir } from './planning-dir.js';
 import { getSpecIds } from '../utils/item-discovery.js';
 import { FileSystemUtils } from '../utils/file-system.js';
 import { MAX_CONTEXT_SIZE, type DeclarationEntry } from './project-config.js';
@@ -66,7 +67,7 @@ function registerFix(id: string, remote?: string): string {
     // expands outside a shell and agent JSON consumers execute argv.
     // The checkout is quoted (homedirs may contain spaces); the remote
     // is unquoted but gated by isShellSafeRemote above.
-    const checkout = path.join(os.homedir(), 'openspec', id);
+    const checkout = path.join(planningDir(os.homedir()), id);
     // The fix renders on the machine that will paste it: POSIX shells
     // get single quotes; cmd/PowerShell treat single quotes as literal
     // characters, so win32 gets double quotes (valid everywhere).
@@ -128,7 +129,7 @@ async function collectSpecEntries(referencedRoot: string): Promise<ReferenceSpec
       let summary = '';
       try {
         const content = await fs.readFile(
-          path.join(referencedRoot, 'openspec', 'specs', specId, 'spec.md'),
+          path.join(planningDir(referencedRoot), 'specs', specId, 'spec.md'),
           'utf-8'
         );
         summary = sanitizeInline(extractFirstPurposeLine(content));

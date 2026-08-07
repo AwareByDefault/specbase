@@ -31,6 +31,7 @@ import {
   type GovernedBindingView,
   type GovernedPairAnalysis,
 } from '../core/artifact-graph/governed-show.js';
+import { planningDir } from '../core/config.js';
 
 export interface CoverageCommandOptions {
   orphans?: boolean;
@@ -97,7 +98,7 @@ export class CoverageCommand {
     }
 
     const coverage = await computeRepoCoverage(
-      path.join(root.path, 'openspec'),
+      planningDir(root.path),
       root.path,
       { evidenceGlobs: options.evidence ?? [] }
     );

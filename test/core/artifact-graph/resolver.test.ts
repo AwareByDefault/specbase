@@ -40,7 +40,7 @@ describe('artifact-graph/resolver', () => {
     it('should use XDG_DATA_HOME when set', () => {
       process.env.XDG_DATA_HOME = tempDir;
       const userDir = getUserSchemasDir();
-      expect(userDir).toBe(path.join(tempDir, 'openspec', 'schemas'));
+      expect(userDir).toBe(path.join(tempDir, 'specbase', 'schemas'));
     });
   });
 
@@ -325,12 +325,12 @@ version: [[[invalid yaml
     it('should return correct path', () => {
       const projectRoot = '/path/to/project';
       const schemasDir = getProjectSchemasDir(projectRoot);
-      expect(schemasDir).toBe(path.join('/path/to/project', 'openspec', 'schemas'));
+      expect(schemasDir).toBe(path.join('/path/to/project', 'specbase', 'schemas'));
     });
 
     it('should work with relative-looking paths', () => {
       const schemasDir = getProjectSchemasDir('./my-project');
-      expect(schemasDir).toBe(path.join('my-project', 'openspec', 'schemas'));
+      expect(schemasDir).toBe(path.join('my-project', 'specbase', 'schemas'));
     });
   });
 

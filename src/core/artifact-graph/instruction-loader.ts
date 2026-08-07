@@ -6,6 +6,7 @@ import { detectCompleted } from './state.js';
 import { resolveArtifactOutputs } from './outputs.js';
 import { readChangeMetadata, resolveSchemaForChange } from '../../utils/change-metadata.js';
 import { FileSystemUtils } from '../../utils/file-system.js';
+import { resolvePlanningDirName } from '../planning-dir.js';
 import {
   buildActionContext,
   buildNextSteps,
@@ -248,7 +249,7 @@ export function loadChangeContext(
   options: LoadChangeContextOptions = {}
 ): ChangeContext {
   const changeDir = FileSystemUtils.canonicalizeExistingPath(
-    options.changeDir ?? path.join(projectRoot, 'openspec', 'changes', changeName)
+    options.changeDir ?? path.join(projectRoot, resolvePlanningDirName(projectRoot), 'changes', changeName)
   );
 
   const metadata = readChangeMetadata(changeDir, projectRoot) ?? undefined;

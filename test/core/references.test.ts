@@ -145,7 +145,7 @@ describe('reference index assembly', () => {
   });
 
   it('renders a verbatim clone fix when the declaration carries a remote (3.3)', async () => {
-    const checkout = path.join(os.homedir(), 'openspec', 'missing-context');
+    const checkout = path.join(os.homedir(), 'specbase', 'missing-context');
     const entries = await assembleReferenceIndex({
       references: [{ id: 'missing-context', remote: 'https://192.0.2.1/team.git' }],
       resolvedRoot: appRoot(),
