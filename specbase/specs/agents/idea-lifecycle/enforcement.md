@@ -26,9 +26,9 @@ bindings:
       command: node
       args:
         - -e
-        - "const fs=require('node:fs');const p='.pi/skills/save-idea/SKILL.md';if(!fs.existsSync(p))process.exit(1);const t=fs.readFileSync(p,'utf8');const need=['save-idea','notes.md','## Session','append','summary','ideas/'];for(const s of need){if(!t.includes(s)){console.error('save-idea SKILL.md missing: '+s);process.exit(1)}}if(/spec\.md|enforcement\.md/.test(t)&&/write|create\s+spec\.md/.test(t)){}"
+        - "const fs=require('node:fs');const p='.pi/skills/save-idea/SKILL.md';if(!fs.existsSync(p))process.exit(1);const t=fs.readFileSync(p,'utf8');const need=['save-idea','notes.md','## Session','append','summary','ideas/'];for(const s of need){if(!t.includes(s)){console.error('save-idea SKILL.md missing: '+s);process.exit(1)}}"
       cwd: .
-    limitations: Asserts the save-idea SKILL.md exists and carries the trigger name, the notes.md append target, the session-heading convention, and the summary-refinement affordance. Does not judge whether the prose genuinely produces good session captures; that is a design-review judgment.
+    limitations: Asserts the save-idea SKILL.md exists and carries the trigger name, the notes.md append target, the session-heading convention, and the summary-refinement affordance. Does not judge whether the prose genuinely produces good session captures, that is a design-review judgment.
 
   - id: explore-idea-input-conformance
     covers:
