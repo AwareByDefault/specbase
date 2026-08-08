@@ -117,6 +117,10 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
         description: 'Output the stable coverage JSON shape (for agents)',
       },
       {
+        name: 'verbose',
+        description: 'After the summary, print every governed pair and the full per-lens rollup',
+      },
+      {
         name: 'strict',
         description: 'Exit non-zero when any spec state is not complete/degraded or non-evidence orphans exist',
       },
@@ -268,7 +272,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
         name: 'change',
         description: 'Create a new change directory',
         acceptsPositional: true,
-        positionals: [{ name: 'name' }],
+        positionals: [{ name: 'name', optional: true }],
         flags: [
           {
             name: 'description',
@@ -283,6 +287,11 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
           {
             name: 'schema',
             description: 'Workflow schema to use',
+            takesValue: true,
+          },
+          {
+            name: 'from-idea',
+            description: 'Move an open idea into a change (graduation by move)',
             takesValue: true,
           },
           COMMON_FLAGS.json,
@@ -472,6 +481,72 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
           {
             name: 'yes',
             description: 'Confirm removal non-interactively',
+          },
+          COMMON_FLAGS.json,
+        ],
+      },
+    ],
+  },
+  {
+    name: 'ideas',
+    description: 'Capture and manage ideas - ungoverned scratchpad catalogue entries',
+    flags: [],
+    subcommands: [
+      {
+        name: 'add',
+        description: 'Add an idea to the catalogue',
+        flags: [
+          {
+            name: 'title',
+            description: 'Idea title (one line)',
+            takesValue: true,
+          },
+          {
+            name: 'note',
+            description: 'Seed note.md body',
+            takesValue: true,
+          },
+          COMMON_FLAGS.json,
+        ],
+      },
+      {
+        name: 'list',
+        description: 'List open ideas oldest-first',
+        flags: [
+          {
+            name: 'all',
+            description: 'Include all ideas (reserved; currently the same set)',
+          },
+          COMMON_FLAGS.json,
+        ],
+      },
+      {
+        name: 'ls',
+        description: 'List open ideas oldest-first',
+        flags: [
+          {
+            name: 'all',
+            description: 'Include all ideas (reserved; currently the same set)',
+          },
+          COMMON_FLAGS.json,
+        ],
+      },
+      {
+        name: 'show',
+        description: 'Show an idea: metadata, member files, and notes',
+        acceptsPositional: true,
+        positionals: [{ name: 'id' }],
+        flags: [COMMON_FLAGS.json],
+      },
+      {
+        name: 'delete',
+        description: 'Delete an open idea (an idea already proposed into a change is not deletable)',
+        acceptsPositional: true,
+        positionals: [{ name: 'id' }],
+        flags: [
+          {
+            name: 'yes',
+            description: 'Confirm deletion non-interactively',
           },
           COMMON_FLAGS.json,
         ],

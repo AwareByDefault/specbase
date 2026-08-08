@@ -30,6 +30,13 @@ export const ChangeMetadataSchema = z.object({
       message: 'created must be YYYY-MM-DD format',
     })
     .optional(),
+  // Stable immutable id surviving the archive date-prefix move. Absent on
+  // legacy changes predating the id field; present on every new change and
+  // every moved idea. Immutable across moves.
+  id: z
+    .string()
+    .min(1)
+    .optional(),
   goal: z.string().min(1).optional(),
   affected_areas: z.array(z.string().min(1)).optional(),
   initiative: InitiativeLinkSchema.optional(),

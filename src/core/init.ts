@@ -561,6 +561,7 @@ export class InitCommand {
         path.join(specbasePath, 'specs'),
         path.join(specbasePath, 'changes'),
         path.join(specbasePath, 'changes', 'archive'),
+        path.join(specbasePath, 'ideas'),
       ];
 
       for (const dir of directories) {
@@ -576,6 +577,9 @@ export class InitCommand {
       path.join(specbasePath, 'specs'),
       path.join(specbasePath, 'changes'),
       path.join(specbasePath, 'changes', 'archive'),
+      // The idea catalogue: an ungoverned scratchpad surface that feeds
+      // the pipeline. Planted empty here so ideas/ has a first-class home.
+      path.join(specbasePath, 'ideas'),
     ];
 
     for (const dir of directories) {

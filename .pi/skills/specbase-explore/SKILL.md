@@ -218,6 +218,28 @@ You: [reads change artifacts]
      Or add a spike task to investigate?
 ```
 
+**User brings an idea from the catalogue:**
+```
+User asks to explore idea dark-mode-x7k2p9f3a
+
+You: [reads specbase/ideas/dark-mode-x7k2p9f3a/notes.md first]
+
+     You saved prior ## Session sections on dark mode. Building on
+     those: the palette direction was settled, contrast stayed open...
+     where do you want to focus next?
+```
+
+**Idea as an input unit.** An idea id is a first-class input alongside a
+change id. When the user hands you an idea id:
+
+- Read `specbase/ideas/<id>/notes.md` (every prior `## Session` section
+  included) as resumption context BEFORE exploring — an idea explored and
+  saved in a Session is continued, not restarted.
+- When the session produces durable thinking the user wants kept, propose
+  saving it with the save-idea skill (append, never overwrite).
+- When the idea is proposal-ready, hand off to the propose workflow, which
+  moves the idea into `specbase/changes/<id>/` (the idea → change move).
+
 **User wants to compare options:**
 ```
 User: Should we use Postgres or SQLite?

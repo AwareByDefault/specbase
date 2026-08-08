@@ -206,6 +206,7 @@ describe('command completion registry', () => {
       'description',
       'goal',
       'schema',
+      'from-idea',
       'json',
       'store',
     ]);

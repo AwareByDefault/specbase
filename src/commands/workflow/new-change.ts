@@ -36,6 +36,7 @@ export interface NewChangeOptions {
   storePath?: string;
   initiative?: string;
   areas?: string;
+  fromIdea?: string;
   json?: boolean;
 }
 
@@ -90,11 +91,15 @@ export async function newChangeCommand(name: string | undefined, options: NewCha
   const spinner = options.json ? undefined : ora();
 
   try {
-    if (!name) {
-      throw new Error('Missing required argument <name>');
+    // Graduation by move: the idea's id IS the change identity (and the
+    // directory name), so `--from-idea <id>` alone is a complete invocation.
+    const resolvedName = name ?? (options.fromIdea ?? undefined);
+    if (!resolvedName) {
+      throw new Error('Missing required argument <name> (or pass --from-idea <id>)');
     }
+    const changeName = resolvedName;
 
-    const validation = validateChangeName(name);
+    const validation = validateChangeName(changeName);
     if (!validation.valid) {
       throw new Error(validation.error);
     }
@@ -129,14 +134,18 @@ export async function newChangeCommand(name: string | undefined, options: NewCha
       }
     }
     if (spinner) {
-      spinner.start(`Creating change '${name}' with schema '${resolvedSchema}'...`);
+      spinner.start(`Creating change '${changeName}' with schema '${resolvedSchema}'...`);
     }
 
-    const result = await createChange(projectRoot, name, {
+    const result = await createChange(projectRoot, changeName, {
       schema: options.schema,
       defaultSchema: root.defaultSchema,
       changesDir: root.changesDir,
+      ...(options.fromIdea ? { fromIdea: { id: options.fromIdea } } : {}),
+      // The idea's stable id is carried forward unchanged; the directory
+      // keeps that id as its change name.
       metadata: {
+        ...(options.fromIdea ? { id: options.fromIdea } : {}),
         ...(options.goal ? { goal: options.goal } : {}),
       },
     });
@@ -145,12 +154,12 @@ export async function newChangeCommand(name: string | undefined, options: NewCha
     if (options.description) {
       const { promises: fs } = await import('fs');
       const readmePath = path.join(result.changeDir, 'README.md');
-      await fs.writeFile(readmePath, `# ${name}\n\n${options.description}\n`, 'utf-8');
+      await fs.writeFile(readmePath, `# ${changeName}\n\n${options.description}\n`, 'utf-8');
     }
 
     const payload: NewChangeOutput = {
       change: {
-        id: name,
+        id: changeName,
         path: result.changeDir,
         metadataPath: path.join(result.changeDir, '.openspec.yaml'),
         schema: result.schema,

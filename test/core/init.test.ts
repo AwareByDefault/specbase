@@ -63,6 +63,8 @@ describe('InitCommand', () => {
       expect(await directoryExists(path.join(specbasePath, 'specs'))).toBe(true);
       expect(await directoryExists(path.join(specbasePath, 'changes'))).toBe(true);
       expect(await directoryExists(path.join(specbasePath, 'changes', 'archive'))).toBe(true);
+      // The idea catalogue is part of the planning layout.
+      expect(await directoryExists(path.join(specbasePath, 'ideas'))).toBe(true);
     });
 
     it('should create config.yaml with default schema', async () => {
