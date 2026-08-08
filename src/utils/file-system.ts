@@ -148,6 +148,16 @@ export class FileSystemUtils {
   }
 
   /**
+   * Moves (renames) a directory, creating the destination parent as needed.
+   * Cross-platform: always via path.join/path.dirname.
+   */
+  static async moveDirectory(fromDir: string, toDir: string): Promise<void> {
+    const parent = path.dirname(toDir);
+    await fs.mkdir(parent, { recursive: true });
+    await fs.rename(fromDir, toDir);
+  }
+
+  /**
    * Finds the first existing parent directory by walking up the directory tree.
    * @param dirPath Starting directory path
    * @returns The first existing directory path, or null if root is reached without finding one

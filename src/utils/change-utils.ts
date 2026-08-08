@@ -3,6 +3,7 @@ import { FileSystemUtils } from './file-system.js';
 import { writeChangeMetadata, validateSchemaName } from './change-metadata.js';
 import { readProjectConfig } from '../core/project-config.js';
 import { planningDir } from '../core/planning-dir.js';
+import { generateIdeaId } from '../core/ideas/id.js';
 import type { ChangeMetadata } from '../core/change-metadata/index.js';
 
 const DEFAULT_SCHEMA = 'spec-driven';
@@ -18,7 +19,18 @@ export interface CreateChangeOptions {
   /** Directory that should contain the change directories */
   changesDir?: string;
   /** Additional metadata to persist in the change's .openspec.yaml */
-  metadata?: Partial<Pick<ChangeMetadata, 'goal' | 'affected_areas' | 'initiative'>>;
+  metadata?: Partial<Pick<ChangeMetadata, 'goal' | 'affected_areas' | 'initiative' | 'id'>>;
+  /**
+   * When set, the change is created by MOVING this existing idea directory
+   * from ideas/<id>/ to changes/<id>/ — graduation by move. The idea's id is
+   * carried forward unchanged, its scratchpad files preserved. The change
+   * artifacts (proposal.md, tasks.md, design.md, specs/) are scaffolded
+   * inside the moved directory.
+   */
+  fromIdea?: {
+    /** Id of the open idea under <specbase>/ideas/. */
+    id: string;
+  };
 }
 
 /**
@@ -166,8 +178,23 @@ export async function createChange(
   // a one-change --schema override.
   const specbaseDir = planningDir(projectRoot);
 
-  // Create the directory (including parent directories if needed)
-  await FileSystemUtils.createDirectory(changeDir);
+  let fromIdeaScaffolded = false;
+  if (options.fromIdea) {
+    // Graduation by move: the idea directory becomes the change directory.
+    // Preserve every scratchpad file; the stable id is carried in metadata.
+    const ideasHome = path.join(specbaseDir, 'ideas');
+    const ideaDir = path.join(ideasHome, options.fromIdea.id);
+    if (!(await FileSystemUtils.directoryExists(ideaDir))) {
+      throw new Error(
+        `Idea '${options.fromIdea.id}' is not open under ideas/. It may already have been proposed into a change (check specbase/changes/).`
+      );
+    }
+    await FileSystemUtils.moveDirectory(ideaDir, changeDir);
+    fromIdeaScaffolded = true;
+  } else {
+    // Create the directory (including parent directories if needed)
+    await FileSystemUtils.createDirectory(changeDir);
+  }
   await FileSystemUtils.createDirectory(path.join(specbaseDir, 'specs'));
   await FileSystemUtils.createDirectory(path.join(specbaseDir, 'changes', 'archive'));
   const configPath = path.join(specbaseDir, 'config.yaml');
@@ -179,13 +206,49 @@ export async function createChange(
     await FileSystemUtils.writeFile(configPath, `schema: ${defaultSchema}\n`);
   }
 
-  // Write metadata file with schema and creation date
+  // Write metadata file with schema and creation date. Every new change
+  // gains a stable `<slug>-<short-uuid>` id so identity survives the archive
+  // date-prefix move. A change created from an idea carries the idea's id
+  // instead (supplied via metadata.id by the move seam).
   const today = new Date().toISOString().split('T')[0];
+  const id = options.metadata?.id ?? generateIdeaId(name);
   writeChangeMetadata(changeDir, {
     schema: schemaName,
     created: today,
+    id,
     ...options.metadata,
   }, projectRoot);
 
+  // The move IS the graduation: scaffold the change artifacts inside the
+  // moved directory so the idea arrives as a proper proposed change. Sits
+  // beside the preserved scratchpad files (notes.md, sketches, ...).
+  if (fromIdeaScaffolded) {
+    await scaffoldChangeArtifacts(changeDir, {
+      name,
+      ...(options.metadata?.id ? { id: options.metadata.id } : {}),
+    });
+  }
+
   return { schema: schemaName, changeDir };
+}
+
+/**
+ * Writes the four standard change artifacts inside an existing change
+ * directory. Used by the idea→change move seam so a graduated idea arrives
+ * as a proper proposed change, ready for the propose draft.
+ */
+async function scaffoldChangeArtifacts(
+  changeDir: string,
+  meta: { name: string; id?: string }
+): Promise<void> {
+  const proposal = `## Why
+<!-- why this idea deserves to become a change -->
+\n## What Changes\n- <!-- user-visible change; add **BREAKING:** for breaking changes -->\n`;
+  const tasks = `## 1.\n- [ ] 1.1 \n`;
+  const design = `# Design: ${meta.name}\n<!-- how and why; known trade-offs -->\n`;
+
+  await FileSystemUtils.writeFile(path.join(changeDir, 'proposal.md'), proposal);
+  await FileSystemUtils.writeFile(path.join(changeDir, 'tasks.md'), tasks);
+  await FileSystemUtils.writeFile(path.join(changeDir, 'design.md'), design);
+  await FileSystemUtils.createDirectory(path.join(changeDir, 'specs'));
 }

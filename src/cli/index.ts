@@ -25,6 +25,7 @@ import { registerStoreCommand } from '../commands/store.js';
 import { registerDoctorCommand } from '../commands/doctor.js';
 import { registerContextCommand } from '../commands/context.js';
 import { registerWorksetCommand } from '../commands/workset.js';
+import { registerIdeasCommand } from '../commands/ideas.js';
 import {
   statusCommand,
   instructionsCommand,
@@ -351,6 +352,7 @@ registerStoreCommand(program);
 registerDoctorCommand(program);
 registerContextCommand(program);
 registerWorksetCommand(program);
+registerIdeasCommand(program);
 
 // Top-level validate command
 program
@@ -389,6 +391,7 @@ program
   )
   .option('--json', 'Output the stable coverage JSON shape (for agents)')
   .option('--strict', 'Exit non-zero when any spec state is not complete/degraded or non-evidence orphans exist')
+  .option('--verbose', 'After the summary, print every governed pair and the full per-lens rollup')
   .action(async (target?: string, options?: CoverageCommandOptions) => {
     try {
       const coverageCommand = new CoverageCommand();
@@ -607,11 +610,12 @@ program
 const newCmd = program.command('new').description('Create new items');
 
 newCmd
-  .command('change <name>')
+  .command('change [name]')
   .description('Create a new change directory')
   .option('--description <text>', 'Description to add to README.md')
   .option('--goal <text>', 'Optional goal metadata to store with the change')
   .option('--schema <name>', `Workflow schema to use (default: ${DEFAULT_SCHEMA})`)
+  .option('--from-idea <id>', 'Move an open idea into a change (graduation by move)')
   .option('--json', 'Output as JSON')
   .option('--store <id>', STORE_OPTION_DESCRIPTION)
   .addOption(hiddenStorePathOption())
