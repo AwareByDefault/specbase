@@ -1,0 +1,20 @@
+bindings:
+  view-classification-tests:
+    type: test
+    covers:
+      - change-classification
+      - change-ordering
+      - task-progress-resolution
+    source: test/core/view.test.ts
+  tracked-tasks-resolution-tests:
+    type: test
+    covers: task-progress-resolution
+    source: test/utils/task-progress.test.ts
+  dashboard-rendering-review:
+    type: review
+    covers:
+      - dashboard-sections
+      - summary-metrics
+      - specs-display
+      - change-ordering
+    source: behavioural

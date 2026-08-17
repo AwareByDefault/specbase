@@ -1,0 +1,23 @@
+bindings:
+  templates-command-tests:
+    type: test
+    covers: templates-command
+    source: test/commands/artifact-workflow.test.ts
+  template-loading-tests:
+    type: test
+    covers: template-loading
+    source: test/core/artifact-graph/instruction-loader.test.ts
+  governed-template-shipping-tests:
+    type: test
+    covers: per-plane-authoring-templates
+    source: test/core/artifact-graph/governed-schema.test.ts
+  design-system-template-content-review:
+    type: review
+    covers: per-plane-authoring-templates
+    source: behavioural
+  enforcement-planning-template-tests:
+    type: test
+    covers:
+      - planning-artifacts-define-enforcement
+      - manifest-remains-an-index
+    source: test/core/templates/enforcement-planning.test.ts

@@ -36,7 +36,7 @@ Confirm the review model and load the affected pairs:
 specbase status --change "<name>" --json   # resolve the model and touched pairs
 specbase coverage --json                    # lens rollup, un-lensed gaps, split candidates
 ```
-Read every affected `spec.md` / `enforcement.md` pair the status reports; the set
+Read every affected `spec.md` / `enforcement.yaml` pair the status reports; the set
 of touched pairs (their locators) is the router's input. If the change touches
 no spec pair, say so and stop.
 
@@ -69,17 +69,20 @@ completeness critic (step 5) audits it. **Every finding is tagged with its lens.
 
 ## Step 2 — Deterministic gate FIRST (when bindings exist), then compute the residue
 
-Run the project's declared automated bindings (their `run: {command, args,
-cwd}` vectors) BEFORE any reviewer, so each lens reviews only the residue above
-the gate. For each lens, prepare two inputs:
-1. **already-covered findings** — the concrete gate output, so no reviewer
-   re-reports a line a deterministic check already flagged.
-2. **blind list** — the deterministic binding IDs named in each review binding's
-   `covered_by`. As deterministic bindings are added to `covered_by`, the
-   residue shrinks with NO edit to any lens method.
+For each structurally valid automated binding, follow its `source` into the
+repository and run it through the project's native harness BEFORE any reviewer.
+A resolved source is linkage, not proof that the source ran or passed. Record
+execution outcomes honestly, including sources whose harness cannot be found or
+run.
 
-If the gate is red, note it prominently at the top of the report — the panel
-reviews the residue above a passing gate, it does not excuse a failing one.
+For each lens-backed binding, derive its **blind list** from structurally valid
+automated sibling bindings covering the same requirement. The lens reviews the
+residue above that deterministic evidence; no manual `covered_by` list or inline
+command vector exists in the compact manifest.
+
+If the gate is red or could not run, note it prominently at the top of the
+report — the panel reviews the residue above the gate, it does not excuse a
+failing or unexecuted source.
 
 ## Step 3 — Fan-out: parallel, blind, one slice each
 

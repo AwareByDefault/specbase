@@ -1,0 +1,115 @@
+bindings:
+  command-registry-conformance:
+    type: test
+    covers:
+      - completion-registration
+      - verb-noun-structure
+    source: test/core/completions/command-registry.test.ts
+  completion-provider-tests:
+    type: test
+    covers: completion-registration
+    source: test/core/completions/completion-provider.test.ts
+  completion-provider-tests-completion-test:
+    type: test
+    covers: completion-registration
+    source: test/commands/completion.test.ts
+  json-output-tests:
+    type: test
+    covers: json-output
+    source: test/cli-e2e/basic.test.ts
+  json-output-tests-change-command-show-validate-test:
+    type: test
+    covers: json-output
+    source: test/core/commands/change-command.show-validate.test.ts
+  json-output-tests-validate-test:
+    type: test
+    covers: json-output
+    source: test/commands/validate.test.ts
+  interactivity-resolution-tests:
+    type: test
+    covers: non-interactive-fallback
+    source: test/utils/interactive.test.ts
+  non-interactive-hint-tests:
+    type: test
+    covers: non-interactive-fallback
+    source: test/commands/change.interactive-show.test.ts
+  non-interactive-hint-tests-change-interactive-validate-test:
+    type: test
+    covers: non-interactive-fallback
+    source: test/commands/change.interactive-validate.test.ts
+  non-interactive-hint-tests-spec-interactive-show-test:
+    type: test
+    covers: non-interactive-fallback
+    source: test/commands/spec.interactive-show.test.ts
+  non-interactive-hint-tests-spec-interactive-validate-test:
+    type: test
+    covers: non-interactive-fallback
+    source: test/commands/spec.interactive-validate.test.ts
+  non-interactive-hint-tests-show-test:
+    type: test
+    covers: non-interactive-fallback
+    source: test/commands/show.test.ts
+  non-interactive-hint-tests-validate-test:
+    type: test
+    covers: non-interactive-fallback
+    source: test/commands/validate.test.ts
+  error-message-tests:
+    type: test
+    covers: &a1
+      - actionable-errors
+      - verb-noun-structure
+    source: test/commands/show.test.ts
+  error-message-tests-validate-test:
+    type: test
+    covers: *a1
+    source: test/commands/validate.test.ts
+  error-message-tests-basic-test:
+    type: test
+    covers: *a1
+    source: test/cli-e2e/basic.test.ts
+  exit-code-tests:
+    type: test
+    covers: exit-codes
+    source: test/cli-e2e/basic.test.ts
+  exit-code-tests-legacy-groups-removed-test:
+    type: test
+    covers: exit-codes
+    source: test/commands/legacy-groups-removed.test.ts
+  deprecation-notice-tests:
+    type: test
+    covers: noun-form-back-compat
+    source: test/commands/artifact-workflow.test.ts
+  deprecation-notice-tests-change-command-show-validate-test:
+    type: test
+    covers: noun-form-back-compat
+    source: test/core/commands/change-command.show-validate.test.ts
+  delta-symbol-tests:
+    type: test
+    covers: delta-symbols
+    source: test/core/archive.test.ts
+  output-framing-tests:
+    type: test
+    covers: output-framing
+    source: test/commands/spec.test.ts
+  output-framing-tests-basic-test:
+    type: test
+    covers: output-framing
+    source: test/cli-e2e/basic.test.ts
+  universal-quantification-review:
+    type: review
+    covers:
+      - verb-noun-structure
+      - json-output
+      - interactive-selection
+      - non-interactive-fallback
+      - exit-codes
+      - actionable-errors
+      - delta-symbols
+      - completion-registration
+      - output-framing
+      - noun-form-back-compat
+    source: behavioural
+  interactive-picker-review:
+    type: review
+    covers: interactive-selection
+    source: behavioural

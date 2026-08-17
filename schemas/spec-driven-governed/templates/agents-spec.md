@@ -2,11 +2,12 @@
 id: agents.review-panel
 ---
 
+
 <!--
   Agents truth: durable truth about one of the repo's OWN agentic instruments -
   the review panel, a repo-specific skill, a subagent, or a hook the repo
   builds. Lives at specs/agents/<locator>/spec.md and is paired with an
-  enforcement.md in the same directory. This is NOT for behavioral guardrails
+  enforcement.yaml in the same directory. This is NOT for behavioral guardrails
   ON agents (those ride on the plane whose subject they constrain); it is for
   the machinery the repo owns, and the plane is opt-in per project.
 

@@ -1,6 +1,6 @@
 # Clean Spec
 
-How to write one governed spec pair (`spec.md` + `enforcement.md`).
+How to write one governed spec pair (`spec.md` + `enforcement.yaml`).
 For where a pair belongs in the tree, read [Clean Specbase](clean-specbase.md).
 
 Style: one rule per sentence, imperative mood, active voice (ASD-STE100).
@@ -54,20 +54,20 @@ does. Delete it.
 
 ## 5. Enforce honestly
 
-The paired `enforcement.md` records how each claim is known to hold. It is a
-mirror, not a target.
+The paired `enforcement.yaml` is a compact index from requirements to evidence
+sources. It is a mirror, not a target.
 
-- Bind checks at the requirement level, not per scenario. One binding's test
-  family covers a requirement's scenarios.
-- Prefer the highest-leverage check. One fitness function or property test
+- Give each binding exactly `type`, requirement-level `covers`, and `source`.
+- Select the type from the project's resolved roster.
+- Keep assertions, harness details, failure signals, and limitations in the
+  source and planning artifacts, not the manifest.
+- Separate a resolvable link from an executed result and from semantic
+  correspondence.
+- Bind checks at the requirement level, not per scenario. One binding's source
+  covers a requirement's scenarios.
+- Prefer the highest-leverage source. One fitness function or property test
   beats many example tests.
-- Match the mechanism to the claim: structural → lint / conformance;
-  behavioral → tests / property tests; subjective → `review` with a named
-  lens; unverifiable today → `manual` with stated `limitations`.
-- Bind an automated check only when it truly exercises the claim. State
-  `limitations` when it covers only part.
-- Never write a test to inflate coverage. `degraded` is a fact, not a
-  failure.
+- Never write a test to inflate coverage. `degraded` is a fact, not a failure.
 
 ## 6. Smells
 
@@ -91,7 +91,7 @@ of the writing rules injected into the generated spec-driven skills:
 Edit the rules here — never in the generator, and never in a skill file.
 
 <!-- BEGIN RULES -->
-Writing one governed spec pair (`spec.md` + `enforcement.md`):
+Writing one governed spec pair (`spec.md` + `enforcement.yaml`):
 
 - State only current, verifiable truth. Write WHAT the system promises, never
   HOW the code delivers it. Delete mechanism narration.
@@ -112,11 +112,12 @@ Writing one governed spec pair (`spec.md` + `enforcement.md`):
 - Bind checks at the requirement level, not per scenario.
 - Prefer the highest-leverage check. One fitness function or property test beats
   many example tests.
-- Match the mechanism to the claim: structural → lint / conformance; behavioral
-  → tests / property tests; subjective → `review` with a named lens;
-  unverifiable today → `manual` with stated `limitations`.
-- Bind an automated check only when it truly exercises the claim, and state
-  `limitations` when it covers only part.
+- Select a type from the resolved project roster and keep each binding to exactly
+  `type`, requirement-level `covers`, and one `source`.
+- Keep source behavior, harness details, failure signals, and known boundaries in
+  planning artifacts and the source itself.
+- Report structural linkage, native-harness execution, and semantic
+  correspondence separately.
 - Never write a test to inflate coverage. `degraded` is a fact, not a failure.
 
 Reject these writing smells: mechanism narration, untestable claim, compound

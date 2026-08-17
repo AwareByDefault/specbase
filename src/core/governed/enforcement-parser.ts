@@ -1,5 +1,7 @@
 import { parse as parseYaml } from 'yaml';
 import {
+  CompactEnforcementDeltaDocumentSchema,
+  CompactEnforcementDocumentSchema,
   EnforcementDocumentSchema,
   type Binding,
 } from '../schemas/governed-spec.schema.js';
@@ -44,6 +46,8 @@ export interface EnforcementIssue {
 }
 
 export interface ParsedEnforcement {
+  /** Source grammar used for this document. */
+  format?: 'yaml' | 'markdown';
   /** Declared document version, or null when absent/invalid. */
   version: number | null;
   /** The stable spec ID this enforcement claims to pair with, or null. */
@@ -146,25 +150,94 @@ function dedupeBindingIds(
   return unique;
 }
 
+export interface ParseEnforcementOptions {
+  /** Native discovered path. Its filename selects the grammar; content never does. */
+  sourcePath: string;
+  /** Compact change deltas alone may carry the top-level `remove` operation. */
+  allowDeltaRemove?: boolean;
+}
+
 /**
- * Parse an `enforcement.md` file into its declared spec identity and binding
- * model. On any failure the returned `bindings` is empty and `issues` explains
- * why; `spec`/`version` are still salvaged when present so pair-identity
- * mismatch diagnostics stay useful even when the document is otherwise invalid.
+ * Parse a governed enforcement manifest using the grammar selected by its
+ * discovered filename. `enforcement.yaml` is always compact direct YAML;
+ * `enforcement.md` is always legacy Markdown with an authoritative YAML fence.
+ * Content sniffing is deliberately forbidden so renaming a legacy document to
+ * `.yaml` cannot preserve the legacy grammar accidentally.
  */
-export function parseEnforcement(content: string): ParsedEnforcement {
+export function parseEnforcement(
+  content: string,
+  options: ParseEnforcementOptions
+): ParsedEnforcement {
   const issues: EnforcementIssue[] = [];
+  const filename = options.sourcePath.replace(/\\/gu, '/').split('/').pop();
+  const format = filename === 'enforcement.yaml'
+    ? 'yaml'
+    : filename === 'enforcement.md'
+      ? 'markdown'
+      : null;
+
+  if (format === null) {
+    issues.push({
+      code: 'invalid-document',
+      message: `Unsupported enforcement filename '${filename ?? options.sourcePath}'; expected enforcement.yaml or enforcement.md.`,
+    });
+    return { version: null, spec: null, bindings: [], issues };
+  }
+
+  if (format === 'yaml') {
+    if (extractFencedBlocks(content).length > 0) {
+      issues.push({
+        code: 'invalid-document',
+        message: 'enforcement.yaml must be compact direct YAML and cannot contain fenced Markdown.',
+      });
+      return { format, version: null, spec: null, bindings: [], issues };
+    }
+    let raw: unknown;
+    try {
+      raw = parseYaml(content);
+    } catch (err) {
+      issues.push({
+        code: 'invalid-yaml',
+        message: `Enforcement YAML is not valid: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      return { format, version: null, spec: null, bindings: [], issues };
+    }
+    const schema = options.allowDeltaRemove
+      ? CompactEnforcementDeltaDocumentSchema
+      : CompactEnforcementDocumentSchema;
+    const result = schema.safeParse(raw);
+    if (!result.success) {
+      for (const issue of result.error.issues) {
+        const location = issue.path.length > 0 ? ` at '${issue.path.join('.')}'` : '';
+        issues.push({
+          code: 'invalid-document',
+          message: `Enforcement document is invalid${location}: ${issue.message}`,
+        });
+      }
+      return { format, version: null, spec: null, bindings: [], issues };
+    }
+    const bindings: Binding[] = Object.entries(result.data.bindings).map(([id, value]) => ({
+      id,
+      type: value.type,
+      source: value.source,
+      covers: Array.isArray(value.covers) ? value.covers : [value.covers],
+      mechanism: value.type,
+      strength: 'unenforced',
+      status: 'active',
+      targets: [value.source.split('#', 1)[0]],
+    }));
+    return { format, version: null, spec: null, bindings, issues };
+  }
+
   const yamlBlocks = extractFencedBlocks(content).filter(
     (block) => block.lang === 'yaml' || block.lang === 'yml'
   );
-
   if (yamlBlocks.length === 0) {
     issues.push({
       code: 'missing-yaml-document',
-      message:
-        'Enforcement file must contain one authoritative fenced ```yaml document.',
+      message: 'Legacy enforcement.md must contain exactly one fenced yaml document.',
     });
-    return { version: null, spec: null, bindings: [], issues };
+    return { format, version: null, spec: null, bindings: [], issues };
   }
 
   if (yamlBlocks.length > 1) {
@@ -184,7 +257,7 @@ export function parseEnforcement(content: string): ParsedEnforcement {
         err instanceof Error ? err.message : String(err)
       }`,
     });
-    return { version: null, spec: null, bindings: [], issues };
+    return { format: 'markdown', version: null, spec: null, bindings: [], issues };
   }
 
   const result = EnforcementDocumentSchema.safeParse(raw);
@@ -197,6 +270,7 @@ export function parseEnforcement(content: string): ParsedEnforcement {
       });
     }
     return {
+      format: 'markdown',
       version: rawVersion(raw),
       spec: rawString(raw, 'spec'),
       bindings: [],
@@ -204,9 +278,19 @@ export function parseEnforcement(content: string): ParsedEnforcement {
     };
   }
 
-  const bindings = dedupeBindingIds(result.data.bindings, issues);
+  const bindings = dedupeBindingIds(result.data.bindings, issues).map((binding) => ({
+    ...binding,
+    type: binding.mechanism,
+    source:
+      binding.lens ??
+      binding.targets[0] ??
+      binding.review?.inputs[0] ??
+      binding.procedure ??
+      '',
+  }));
 
   return {
+    format: 'markdown',
     version: result.data.version,
     spec: result.data.spec,
     bindings,

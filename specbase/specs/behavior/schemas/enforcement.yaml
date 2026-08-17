@@ -1,0 +1,23 @@
+bindings:
+  change-schema-precedence-tests:
+    type: test
+    covers:
+      - change-schema-precedence
+      - schema-backwards-compatibility
+    source: test/utils/change-metadata.test.ts
+  schema-lookup-precedence-tests:
+    type: test
+    covers: schema-lookup-precedence
+    source: test/core/artifact-graph/resolver.test.ts
+  new-change-schema-binding-tests:
+    type: test
+    covers: new-change-binds-schema
+    source: test/commands/artifact-workflow.test.ts
+  new-change-schema-binding-tests-change-utils-test:
+    type: test
+    covers: new-change-binds-schema
+    source: test/utils/change-utils.test.ts
+  planning-home-default-tier-review:
+    type: review
+    covers: change-schema-precedence
+    source: behavioural

@@ -1,0 +1,20 @@
+bindings:
+  dag-invariant-tests:
+    type: test
+    covers:
+      - acyclic-graph
+      - resolvable-requires
+      - unique-artifact-ids
+    source: test/core/artifact-graph/schema.test.ts
+  load-path-validation-tests:
+    type: test
+    covers: validated-at-parse-boundary
+    source: test/core/artifact-graph/resolver.test.ts
+  load-path-validation-tests-schema-test:
+    type: test
+    covers: validated-at-parse-boundary
+    source: test/commands/schema.test.ts
+  parse-boundary-review:
+    type: review
+    covers: validated-at-parse-boundary
+    source: architectural

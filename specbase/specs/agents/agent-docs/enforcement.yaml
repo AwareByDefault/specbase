@@ -1,0 +1,25 @@
+bindings:
+  quick-reference-conformance:
+    type: command
+    covers:
+      - quick-reference-first
+      - embedded-templates
+    source: AGENTS.md
+  checklist-conformance:
+    type: command
+    covers: pre-validation-checklist
+    source: AGENTS.md
+  guidance-sections-conformance:
+    type: command
+    covers:
+      - progressive-disclosure
+      - behavior-first-guidance
+      - lightweight-by-default-guidance
+    source: AGENTS.md
+  guidance-quality-review:
+    type: review
+    covers:
+      - progressive-disclosure
+      - behavior-first-guidance
+      - lightweight-by-default-guidance
+    source: enforcement

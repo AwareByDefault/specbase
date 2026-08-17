@@ -1,0 +1,29 @@
+bindings:
+  archive-task-gate-tests:
+    type: test
+    covers: task-completion-gate
+    source: test/core/archive.test.ts
+  archive-task-gate-tests-task-progress-test:
+    type: test
+    covers: task-completion-gate
+    source: test/utils/task-progress.test.ts
+  archive-sequence-and-delta-tests:
+    type: test
+    covers:
+      - archive-sequence
+      - current-state-update
+      - pre-archive-validation
+      - update-confirmation
+      - skip-specs
+    source: test/core/archive.test.ts
+  governed-archive-tests:
+    type: test
+    covers:
+      - archive-sequence
+      - current-state-update
+      - pre-archive-validation
+    source: test/core/archive.governed.test.ts
+  confirmation-summary-review:
+    type: review
+    covers: update-confirmation
+    source: behavioural

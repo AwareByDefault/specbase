@@ -1,0 +1,7 @@
+bindings:
+  availability-and-lens-content:
+    type: test
+    covers:
+      - panel-available-every-project
+      - skill-names-own-lenses
+    source: test/core/init/review-panel-availability.test.ts

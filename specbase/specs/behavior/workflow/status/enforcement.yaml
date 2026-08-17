@@ -1,0 +1,49 @@
+bindings:
+  status-command-tests:
+    type: test
+    covers:
+      - status-reports-artifact-states
+      - status-empty-is-not-an-error
+      - status-errors-preserved
+      - status-machine-context
+    source: test/commands/artifact-workflow.test.ts
+  status-formatting-tests:
+    type: test
+    covers: status-reports-artifact-states
+    source: test/core/artifact-graph/instruction-loader.test.ts
+  completion-detection-tests:
+    type: test
+    covers: completion-read-from-disk
+    source: test/core/artifact-graph/state.test.ts
+  completion-detection-tests-workflow-integration-test:
+    type: test
+    covers: completion-read-from-disk
+    source: test/core/artifact-graph/workflow.integration.test.ts
+  next-work-tests:
+    type: test
+    covers: next-work-from-status
+    source: test/core/artifact-graph/graph.test.ts
+  next-work-tests-workflow-integration-test:
+    type: test
+    covers: next-work-from-status
+    source: test/core/artifact-graph/workflow.integration.test.ts
+  status-machine-context-tests:
+    type: test
+    covers: status-machine-context
+    source: test/commands/declared-store-fallback.test.ts
+  status-machine-context-tests-legacy-groups-removed-test:
+    type: test
+    covers: status-machine-context
+    source: test/commands/legacy-groups-removed.test.ts
+  status-machine-context-tests-store-references-test:
+    type: test
+    covers: status-machine-context
+    source: test/commands/store-references.test.ts
+  governed-status-model-tests:
+    type: test
+    covers: status-machine-context
+    source: test/core/artifact-graph/governed-context.test.ts
+  empty-state-scope-review:
+    type: review
+    covers: status-errors-preserved
+    source: behavioural

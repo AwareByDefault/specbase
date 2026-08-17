@@ -19,7 +19,7 @@
  * It holds no hardcoded lens list; the lens table and methods are rendered from
  * `lensesFromPlanes`. The deterministic-gate and `coverage --json` steps are
  * emitted only when the projection produced plane lenses (a flat project has no
- * `enforcement.md` bindings or lens rollup to read, so those steps are no-ops).
+ * `enforcement.yaml` bindings or lens rollup to read, so those steps are no-ops).
  *
  * Skill and command projections share one body builder (parity requirement):
  * `getReviewPanelSkillTemplate` and `getReviewPanelCommandTemplate` emit the
@@ -106,17 +106,17 @@ function reviewPanelBody(specModel?: SpecModel): string {
 
   // ── Step 0 ───────────────────────────────────────────────────────────────
   const stepZero = flat
-    ? `This project resolves to the **flat/legacy spec model** (or a governed model\nwith no plane lenses): there is no per-plane lens partitioning and no\n\`enforcement.md\` bindings, so the deterministic gate and the \`coverage --json\`\nlens rollup are **no-ops**. The panel reviews the flat spec set through the single\n\`spec-conformance\` reviewer.\n\n\`\`\`bash\nspecbase status --change "<name>" --json   # resolve the review model and affected pairs\n\`\`\`\nRead the specs the change touches from the status output. If the change touches\nno spec, say so and stop.`
-    : `Confirm the review model and load the affected pairs:\n\`\`\`bash\nspecbase status --change "<name>" --json   # resolve the model and touched pairs\nspecbase coverage --json                    # lens rollup, un-lensed gaps, split candidates\n\`\`\`\nRead every affected \`spec.md\` / \`enforcement.md\` pair the status reports; the set\nof touched pairs (their locators) is the router's input. If the change touches\nno spec pair, say so and stop.`;
+    ? `This project resolves to the **flat/legacy spec model** (or a governed model\nwith no plane lenses): there is no per-plane lens partitioning and no\n\`enforcement.yaml\` bindings, so the deterministic gate and the \`coverage --json\`\nlens rollup are **no-ops**. The panel reviews the flat spec set through the single\n\`spec-conformance\` reviewer.\n\n\`\`\`bash\nspecbase status --change "<name>" --json   # resolve the review model and affected pairs\n\`\`\`\nRead the specs the change touches from the status output. If the change touches\nno spec, say so and stop.`
+    : `Confirm the review model and load the affected pairs:\n\`\`\`bash\nspecbase status --change "<name>" --json   # resolve the model and touched pairs\nspecbase coverage --json                    # lens rollup, un-lensed gaps, split candidates\n\`\`\`\nRead every affected \`spec.md\` / \`enforcement.yaml\` pair the status reports; the set\nof touched pairs (their locators) is the router's input. If the change touches\nno spec pair, say so and stop.`;
 
   // ── Step 2 gate ───────────────────────────────────────────────────────────
   const gateStep = flat
-    ? `The deterministic gate is a **no-op** in this project: there are no automated\nbindings or \`enforcement.md\` targets to run (flat/legacy has none). Skip to the\nreviewer directly — the residue is the whole review surface.`
-    : `Run the project's declared automated bindings (their \`run: {command, args,\ncwd}\` vectors) BEFORE any reviewer, so each lens reviews only the residue above\nthe gate. For each lens, prepare two inputs:
-1. **already-covered findings** — the concrete gate output, so no reviewer\n   re-reports a line a deterministic check already flagged.
-2. **blind list** — the deterministic binding IDs named in each review binding's\n   \`covered_by\`. As deterministic bindings are added to \`covered_by\`, the\n   residue shrinks with NO edit to any lens method.
+    ? `The deterministic gate is a **no-op** in this project: there are no automated\nbindings or \`enforcement.yaml\` sources to run (flat/legacy has none). Skip to the\nreviewer directly — the residue is the whole review surface.`
+    : `For each structurally valid automated binding, follow its \`source\` into the\nrepository and run it through the project's native harness BEFORE any reviewer.\nA resolved source is linkage, not proof that the source ran or passed. Record\nexecution outcomes honestly, including sources whose harness cannot be found or\nrun.
 
-If the gate is red, note it prominently at the top of the report — the panel\nreviews the residue above a passing gate, it does not excuse a failing one.`;
+For each lens-backed binding, derive its **blind list** from structurally valid\nautomated sibling bindings covering the same requirement. The lens reviews the\nresidue above that deterministic evidence; no manual \`covered_by\` list or inline\ncommand vector exists in the compact manifest.
+
+If the gate is red or could not run, note it prominently at the top of the\nreport — the panel reviews the residue above the gate, it does not excuse a\nfailing or unexecuted source.`;
 
   const policySource = flat ? 'the flat specs the change touches' : 'the specs AND their enforcement bindings';
 

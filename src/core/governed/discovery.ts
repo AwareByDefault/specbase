@@ -25,7 +25,8 @@ import {
  */
 
 const SPEC_FILENAME = 'spec.md';
-const ENFORCEMENT_FILENAME = 'enforcement.md';
+const ENFORCEMENT_YAML_FILENAME = 'enforcement.yaml';
+const LEGACY_ENFORCEMENT_FILENAME = 'enforcement.md';
 
 export interface GovernedDiscovery {
   /** Every discovered pair, including incomplete ones, sorted by locator. */
@@ -58,8 +59,10 @@ function toRecord(
   segments: string[],
   dir: string,
   hasSpec: boolean,
-  hasEnforcement: boolean
+  enforcementFilename: string | null,
+  conflictPaths: string[] = []
 ): GovernedPairRecord {
+  const hasEnforcement = enforcementFilename !== null;
   const completeness = hasSpec
     ? hasEnforcement
       ? ('complete' as const)
@@ -70,7 +73,8 @@ function toRecord(
     locator: locatorFromSegments(plane, segments),
     dir,
     specPath: hasSpec ? path.join(dir, SPEC_FILENAME) : null,
-    enforcementPath: hasEnforcement ? path.join(dir, ENFORCEMENT_FILENAME) : null,
+    enforcementPath: enforcementFilename ? path.join(dir, enforcementFilename) : null,
+    ...(conflictPaths.length > 0 ? { enforcementConflictPaths: conflictPaths } : {}),
     completeness,
   };
 }
@@ -102,14 +106,23 @@ async function walkPlane(
       relSegments.join(path.sep),
       nativeSourcePath
     );
-    const [hasSpec, hasEnforcement] = await Promise.all([
+    const [hasSpec, hasYamlEnforcement, hasLegacyEnforcement] = await Promise.all([
       hasFile(dir, SPEC_FILENAME),
-      hasFile(dir, ENFORCEMENT_FILENAME),
+      hasFile(dir, ENFORCEMENT_YAML_FILENAME),
+      hasFile(dir, LEGACY_ENFORCEMENT_FILENAME),
     ]);
-    if (hasSpec || hasEnforcement) {
+    const enforcementFilename = hasYamlEnforcement
+      ? ENFORCEMENT_YAML_FILENAME
+      : hasLegacyEnforcement
+        ? LEGACY_ENFORCEMENT_FILENAME
+        : null;
+    const conflictPaths = hasYamlEnforcement && hasLegacyEnforcement
+      ? [path.join(dir, ENFORCEMENT_YAML_FILENAME), path.join(dir, LEGACY_ENFORCEMENT_FILENAME)]
+      : [];
+    if (hasSpec || enforcementFilename) {
       if (analysis.ok) {
         out.pairs.push(
-          toRecord(plane, analysis.segments, dir, hasSpec, hasEnforcement)
+          toRecord(plane, analysis.segments, dir, hasSpec, enforcementFilename, conflictPaths)
         );
       } else {
         out.unsafe.push(analysis.problem);

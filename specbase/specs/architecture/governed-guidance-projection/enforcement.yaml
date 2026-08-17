@@ -1,0 +1,21 @@
+bindings:
+  guidance-roster-parity:
+    type: test
+    covers: guidance-projects-resolved-model
+    source: test/governed-guidance-projection.test.ts
+  no-frozen-roster-static:
+    type: static-analysis
+    covers: no-frozen-roster
+    source: test/governed-guidance-projection.test.ts
+  triggers-cover-defaults:
+    type: test
+    covers: curated-defaults-derived-extras
+    source: test/governed-guidance-projection.test.ts
+  enforcement-type-projection-tests:
+    type: test
+    covers: guidance-projects-enforcement-types
+    source: test/governed-guidance-projection.test.ts
+  compact-binding-guidance-tests:
+    type: test
+    covers: guidance-teaches-compact-binding
+    source: test/core/templates/governed-guidance.test.ts

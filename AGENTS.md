@@ -86,31 +86,22 @@ concrete next step the author can take.
 - **THEN** the output names the file and line and states the fix
 ```
 
-### `enforcement.md` — paired with every governed `spec.md`
+### `enforcement.yaml` — paired with every governed `spec.md`
 
 See [Pairs and enforcement](#pairs-and-enforcement).
 
-````markdown
-# Enforcement: <paired spec title>
-
 ```yaml
-version: 1
-spec: <plane>.<locator-slug>
 bindings:
-  - id: <binding-slug>
-    covers: [<requirement-slug>, <scenario-slug>]
-    mechanism: test        # test | lint | static-analysis | command | review | manual
-    strength: automated    # automated | review | manual | unenforced
-    status: active         # planned | active
-    targets:
-      - test/<path>.test.ts
-    run:
-      command: pnpm
-      args: [test, --, test/<path>.test.ts]
-      cwd: .
-    limitations: <what this check does NOT prove>
+  <binding-slug>:
+    type: test
+    covers: <requirement-slug>
+    source: test/<path>.test.ts
 ```
-````
+
+Binding IDs are map keys. Each value has exactly `type`, `covers`, and `source`.
+Choose `type` from the resolved project roster; `covers` names requirement IDs
+only and may be a scalar or list. A file-backed source is a project-relative
+file, optionally with `#selector`; a review source is a configured lens ID.
 
 ---
 
@@ -221,12 +212,14 @@ Before `openspec validate`:
 - [ ] Requirement and scenario IDs are unique within the pair and unchanged
       from any earlier version (IDs are immutable; titles are not).
 - [ ] `MODIFIED` requirements restate the full requirement.
-- [ ] `enforcement.md` exists beside every governed `spec.md`, its `spec:`
-      equals the paired frontmatter `id`, and every `covers` entry names a real
-      ID in that pair.
-- [ ] Every automated binding has `run:`; every review binding has `review:`;
-      every `active` binding has an existing target on disk.
-- [ ] Run the binding commands. A binding that exits non-zero is not evidence.
+- [ ] `enforcement.yaml` exists beside every governed `spec.md`; every binding
+      value has exactly `type`, `covers`, and `source`, and every `covers` entry
+      names a requirement ID in that pair.
+- [ ] Every type belongs to the resolved project roster and every source resolves
+      as that type's configured file or lens source kind.
+- [ ] Run each file-backed source through its repository-native harness. Record
+      execution separately; a resolvable link is not proof that the source passed
+      or semantically corresponds to the claim.
 
 ---
 
@@ -261,16 +254,31 @@ artifact from the spec.
 
 ## Pairs and enforcement
 
-Every governed `spec.md` has an `enforcement.md` beside it holding exactly one
-authoritative fenced `yaml` document.
+Every governed `spec.md` has a direct-YAML `enforcement.yaml` beside it. The
+manifest is only a durable index from requirement truth to evidence sources; it
+does not store execution commands, lifecycle status, results, procedures, or
+limitations.
 
-- Bind at the **requirement** level; name what the check misses in
-  `limitations`.
-- Use `review` with a real lens where no test honestly covers the claim, and
-  point `covered_by` at the deterministic bindings the review sits above.
-- Lens roster: `architectural`, `behavioural`, `ops`, `code-quality`, `design`,
-  and the cross-cutting `enforcement`. The `agents` plane declares no default
-  lens — name `enforcement` explicitly.
+- Bind at the **requirement** level. Scenarios inherit their owning requirement's
+  bindings.
+- Keep every binding value to exactly `type`, `covers`, and `source`; use
+  multiple bindings when a claim has multiple sources.
+- During a change, the proposal commits to intended proof, design defines each
+  source contract and boundary, and tasks implement, link, execute through the
+  native harness, and record the outcome. The source owns its assertions or
+  procedure.
+- Structural linkage, native-harness execution, and semantic correspondence are
+  separate facts. Migration establishes linkage only.
+- Use a configured review type with a real lens where deterministic evidence is
+  dishonest. Review residue is derived from deterministic sibling bindings that
+  cover the same requirement; do not enumerate it in the manifest.
+- A compact change delta may retire current bindings with top-level
+  `remove: [binding-id]`; archive consumes this operation and omits it from the
+  permanent `enforcement.yaml`.
+- Configured lens roster: `architectural`, `behavioural`, `ops`, `code-quality`,
+  `design`, and the cross-cutting `enforcement`. The `agents` plane declares no
+  default lens; use `enforcement` only for semantically appropriate
+  artifact-conformance review.
 
 ## Multi-capability changes
 
@@ -283,8 +291,8 @@ independently and leave the store valid in between.
 
 `/spcb:archive` applies the change's deltas into `specbase/specs/` and moves the
 change to `specbase/changes/archive/<date>-<change-id>/`. Before archiving:
-tasks complete, `openspec validate --strict` green, and every `active` binding
-actually run.
+tasks complete, `openspec validate --strict` green, and every declared source
+resolved and executed through its native harness where available.
 
 ## Repo conventions
 

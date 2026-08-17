@@ -1,0 +1,44 @@
+bindings:
+  instruction-enrichment-tests:
+    type: test
+    covers:
+      - artifact-instructions
+      - context-injection
+      - verbatim-injection
+      - rules-scoped-to-artifact
+    source: test/core/artifact-graph/instruction-loader.test.ts
+  instructions-command-tests:
+    type: test
+    covers:
+      - artifact-instructions
+      - apply-instructions
+      - context-injection
+      - rules-scoped-to-artifact
+    source: test/commands/artifact-workflow.test.ts
+  rules-id-validation-tests:
+    type: test
+    covers: rules-id-validation-at-load
+    source: test/core/artifact-graph/instruction-loader.test.ts
+  rules-id-validation-tests-project-config-test:
+    type: test
+    covers: rules-id-validation-at-load
+    source: test/core/project-config.test.ts
+  resolved-planning-path-tests:
+    type: test
+    covers: instructions-use-resolved-paths
+    source: test/cli-e2e/store-lifecycle.test.ts
+  resolved-planning-path-tests-declared-store-fallback-test:
+    type: test
+    covers: instructions-use-resolved-paths
+    source: test/commands/declared-store-fallback.test.ts
+  governed-instruction-context-tests:
+    type: test
+    covers: governed-instruction-context
+    source: test/core/artifact-graph/governed-context.test.ts
+  instruction-rendering-review:
+    type: review
+    covers:
+      - rules-formatting
+      - rules-are-additive
+      - verbatim-injection
+    source: behavioural

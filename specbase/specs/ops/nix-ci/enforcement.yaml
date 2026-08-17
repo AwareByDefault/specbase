@@ -1,0 +1,40 @@
+bindings:
+  flake-evaluates:
+    type: command
+    covers: flake-builds-the-cli
+    source: flake.nix
+  flake-evaluates-flake-lock:
+    type: command
+    covers: flake-builds-the-cli
+    source: flake.lock
+  flake-manifest-conformance:
+    type: command
+    covers: flake-builds-the-cli
+    source: flake.nix
+  flake-manifest-conformance-flake-lock:
+    type: command
+    covers: flake-builds-the-cli
+    source: flake.lock
+  nix-ci-job-conformance:
+    type: command
+    covers:
+      - nix-job-runs-in-ci
+      - flake-builds-the-cli
+      - nix-installed-and-cached-in-ci
+    source: .github/workflows/ci.yml
+  update-script-conformance:
+    type: command
+    covers: update-script-keeps-the-hash-honest
+    source: scripts/update-flake.sh
+  update-script-conformance-ci:
+    type: command
+    covers: update-script-keeps-the-hash-honest
+    source: .github/workflows/ci.yml
+  act-local-run-conformance:
+    type: command
+    covers: workflow-runs-locally-with-act
+    source: .actrc
+  act-local-run-conformance-ci:
+    type: command
+    covers: workflow-runs-locally-with-act
+    source: .github/workflows/ci.yml

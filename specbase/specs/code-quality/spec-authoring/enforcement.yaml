@@ -1,0 +1,21 @@
+bindings:
+  store-validator-floor:
+    type: command
+    covers:
+      - lightweight-by-default
+      - behavior-first-boundary
+    source: src/core/artifact-graph/governed-validate.ts
+  behavior-first-review:
+    type: review
+    covers: behavior-first-boundary
+    source: code-quality
+  rigor-proportionality-review:
+    type: review
+    covers:
+      - progressive-rigor
+      - lightweight-by-default
+    source: code-quality
+  current-truth-review:
+    type: review
+    covers: current-truth-only
+    source: code-quality

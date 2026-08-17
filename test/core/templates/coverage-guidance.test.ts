@@ -137,7 +137,8 @@ describe('enforcement philosophy reaches authoring (concrete altitude)', () => {
     'Enforcement philosophy (governed)',
     'Prefer the highest-leverage check.',
     'Author bindings by the philosophy below',
-    '"At least\n  one binding" is a floor for honest evidence, not a quota to maximize',
+    'highest-leverage real source',
+    'assertions, procedures, harness details, and boundaries in the proposal',
   ];
 
   for (const marker of AUTHORING_MARKERS) {

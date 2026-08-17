@@ -1,0 +1,34 @@
+bindings:
+  config-file-discovery-tests:
+    type: test
+    covers:
+      - project-config-file
+      - yml-extension-alias
+    source: test/core/project-config.test.ts
+  resilient-parsing-tests:
+    type: test
+    covers:
+      - resilient-field-parsing
+      - context-size-limit
+    source: test/core/project-config.test.ts
+  plane-resolution-tests:
+    type: test
+    covers: &a1
+      - declared-plane-set
+      - spec-model-kind-derived
+    source: test/core/shared/skill-generation.test.ts
+  plane-resolution-tests-spec-model-test:
+    type: test
+    covers: *a1
+    source: test/core/artifact-graph/spec-model.test.ts
+  planning-root-and-degradation-review:
+    type: review
+    covers:
+      - project-config-file
+      - config-errors-never-halt
+      - spec-model-kind-derived
+    source: behavioural
+  enforcement-type-resolution-tests:
+    type: test
+    covers: declared-enforcement-type-set
+    source: test/core/governed/enforcement-types.test.ts

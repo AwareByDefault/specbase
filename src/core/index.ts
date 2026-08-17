@@ -16,3 +16,10 @@ export * from './references.js';
 export * from './store/index.js';
 export * from './planning-home.js';
 export * from './openspec-root.js';
+export {
+  EnforcementTypeSchema,
+  EnforcementStrengthSchema,
+  EnforcementSourceKindSchema,
+  DEFAULT_ENFORCEMENT_TYPES,
+  type EnforcementType,
+} from './artifact-graph/types.js';

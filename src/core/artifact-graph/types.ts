@@ -52,6 +52,30 @@ export const PlaneSchema = z.object({
 
 export type Plane = z.infer<typeof PlaneSchema>;
 
+export const EnforcementStrengthSchema = z.enum([
+  'automated',
+  'review',
+  'manual',
+  'unenforced',
+]);
+export const EnforcementSourceKindSchema = z.enum(['file', 'lens']);
+export const EnforcementTypeSchema = z.object({
+  id: z.string().min(1).regex(PLANE_ID_RE, { error: 'Enforcement type id must be kebab-case' }),
+  purpose: z.string().min(1, { error: 'Enforcement type purpose is required' }),
+  strength: EnforcementStrengthSchema,
+  sourceKind: EnforcementSourceKindSchema,
+});
+export type EnforcementType = z.infer<typeof EnforcementTypeSchema>;
+
+export const DEFAULT_ENFORCEMENT_TYPES: readonly EnforcementType[] = Object.freeze([
+  { id: 'test', purpose: 'Executable tests run by the project native test harness.', strength: 'automated', sourceKind: 'file' },
+  { id: 'lint', purpose: 'Static lint rules run by the project native lint harness.', strength: 'automated', sourceKind: 'file' },
+  { id: 'static-analysis', purpose: 'Deterministic structural analysis run by project tooling.', strength: 'automated', sourceKind: 'file' },
+  { id: 'command', purpose: 'A project-owned executable conformance source.', strength: 'automated', sourceKind: 'file' },
+  { id: 'review', purpose: 'Judgment performed through a configured review lens.', strength: 'review', sourceKind: 'lens' },
+  { id: 'manual', purpose: 'A project-owned manual verification procedure.', strength: 'manual', sourceKind: 'file' },
+]);
+
 // Explicit, versioned declaration of the spec model a schema selects. Core
 // dispatches on this resolved value — never on the schema's name — so a legacy
 // schema and a governed schema are told apart only by what they declare.
@@ -68,6 +92,9 @@ export const SpecModelSchema = z.object({
   // with no config override it is the `defaultSelected: true` subset; a config
   // `planes:`/`planes+:` override replaces or appends onto it.
   planes: z.array(PlaneSchema).default([]),
+  enforcement: z.object({
+    types: z.array(EnforcementTypeSchema).default([...DEFAULT_ENFORCEMENT_TYPES]),
+  }).default({ types: [...DEFAULT_ENFORCEMENT_TYPES] }),
   pairedEnforcement: z.boolean().default(false),
 });
 
@@ -102,6 +129,7 @@ export const LEGACY_SPEC_MODEL: SpecModel = Object.freeze({
   kind: 'legacy',
   version: 1,
   planes: Object.freeze([] as Plane[]) as Plane[],
+  enforcement: Object.freeze({ types: Object.freeze([] as EnforcementType[]) as EnforcementType[] }),
   pairedEnforcement: false,
 });
 

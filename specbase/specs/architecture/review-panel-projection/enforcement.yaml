@@ -1,0 +1,9 @@
+bindings:
+  skill-projection-conformance:
+    type: test
+    covers: skill-is-projection
+    source: test/core/templates/review-panel-projection.conformance.test.ts
+  regeneration-conformance:
+    type: test
+    covers: regenerated-every-model
+    source: test/core/init/review-panel-regeneration.test.ts

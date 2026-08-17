@@ -1,0 +1,41 @@
+bindings:
+  plane-awareness-generation-tests:
+    type: test
+    covers: &a1
+      - plane-awareness-baked-in
+      - cli-is-the-source-of-truth
+      - generated-workflow-parity
+      - explore-classifies-insights
+    source: test/core/templates/governed-guidance.test.ts
+  plane-awareness-generation-tests-coverage-guidance-test:
+    type: test
+    covers: *a1
+    source: test/core/templates/coverage-guidance.test.ts
+  verify-sync-archive-onboard-guidance-tests:
+    type: test
+    covers:
+      - verify-uses-bindings-first
+      - sync-preserves-pairs
+      - archive-requires-readiness
+      - onboarding-teaches-governed-truth
+    source: test/core/templates/governed-guidance.test.ts
+  archive-readiness-gate-tests:
+    type: test
+    covers:
+      - archive-requires-readiness
+      - sync-preserves-pairs
+    source: test/core/archive.governed.test.ts
+  cli-artifact-context-tests:
+    type: test
+    covers: cli-is-the-source-of-truth
+    source: test/core/templates/update-change.test.ts
+  creation-and-update-review:
+    type: review
+    covers:
+      - creation-classifies-by-plane
+      - updates-preserve-pair-coherence
+    source: behavioural
+  apply-evidence-review:
+    type: review
+    covers: apply-resolves-bindings
+    source: behavioural

@@ -68,13 +68,11 @@ export const GovernedSpecRecordSchema = z.object({
 // the pair record shape is stable, but nothing here computes drift states.
 // ---------------------------------------------------------------------------
 
-export const BindingMechanismSchema = z.enum([
-  'test',
-  'lint',
-  'static-analysis',
-  'command',
-  'review',
-  'manual',
+/** Public current vocabulary is open project data. */
+export const BindingMechanismSchema = LocalSlugSchema;
+/** Transitional fenced-Markdown grammar remains frozen for safe fallback reads. */
+const LegacyBindingMechanismSchema = z.enum([
+  'test', 'lint', 'static-analysis', 'command', 'review', 'manual',
 ]);
 
 export const BindingStrengthSchema = z.enum([
@@ -105,6 +103,27 @@ export const BindingReviewSchema = z.object({
  * active binding needing existing targets) is a coverage/readiness concern the
  * drift engine reports, so authoring may leave a `planned` binding incomplete.
  */
+export const CompactBindingValueSchema = z.object({
+  type: LocalSlugSchema,
+  covers: z.union([LocalSlugSchema, z.array(LocalSlugSchema).min(1)]),
+  source: z.string().min(1),
+}).strict();
+
+export const CompactEnforcementDocumentSchema = z.object({
+  bindings: z.record(LocalSlugSchema, CompactBindingValueSchema).default({}),
+}).strict();
+
+/**
+ * Change-local compact manifest grammar. A delta may explicitly retire current
+ * binding IDs; archive merge consumes this operation and never writes it into
+ * the permanent manifest.
+ */
+export const CompactEnforcementDeltaDocumentSchema = z.object({
+  bindings: z.record(LocalSlugSchema, CompactBindingValueSchema).default({}),
+  remove: z.array(LocalSlugSchema).default([]),
+}).strict();
+
+/** Legacy fenced-Markdown binding retained only by the transitional reader. */
 export const BindingSchema = z.object({
   id: LocalSlugSchema,
   covers: z.array(LocalSlugSchema).default([]),
@@ -112,6 +131,9 @@ export const BindingSchema = z.object({
   strength: BindingStrengthSchema,
   status: BindingStatusSchema,
   targets: z.array(z.string().min(1)).default([]),
+  /** Normalized compact fields; absent only on direct legacy-schema consumers. */
+  type: LocalSlugSchema.optional(),
+  source: z.string().min(1).optional(),
   run: BindingRunSchema.optional(),
   review: BindingReviewSchema.optional(),
   procedure: z.string().min(1).optional(),
@@ -128,11 +150,12 @@ export const BindingSchema = z.object({
   covered_by: z.array(LocalSlugSchema).optional(),
 });
 
-/** The authoritative fenced YAML document inside an `enforcement.md`. */
+/** The authoritative fenced YAML document inside a legacy `enforcement.md`. */
+const LegacyBindingSchema = BindingSchema.extend({ mechanism: LegacyBindingMechanismSchema });
 export const EnforcementDocumentSchema = z.object({
   version: z.number().int().positive(),
   spec: SpecIdSchema,
-  bindings: z.array(BindingSchema).default([]),
+  bindings: z.array(LegacyBindingSchema).default([]),
 });
 
 /** How complete a discovered governed pair is on disk. */
@@ -156,6 +179,8 @@ export const GovernedPairRecordSchema = z.object({
   // Native absolute paths, or null when that half of the pair is absent.
   specPath: z.string().nullable(),
   enforcementPath: z.string().nullable(),
+  /** Both supported filenames exist. Discovery selects YAML for inspection but validation rejects the pair. */
+  enforcementConflictPaths: z.array(z.string()).optional(),
   completeness: PairCompletenessSchema,
 });
 
@@ -169,6 +194,9 @@ export type BindingStrength = z.infer<typeof BindingStrengthSchema>;
 export type BindingStatus = z.infer<typeof BindingStatusSchema>;
 export type BindingRun = z.infer<typeof BindingRunSchema>;
 export type BindingReview = z.infer<typeof BindingReviewSchema>;
+export type CompactBindingValue = z.infer<typeof CompactBindingValueSchema>;
+export type CompactEnforcementDocument = z.infer<typeof CompactEnforcementDocumentSchema>;
+export type CompactEnforcementDeltaDocument = z.infer<typeof CompactEnforcementDeltaDocumentSchema>;
 export type Binding = z.infer<typeof BindingSchema>;
 export type EnforcementDocument = z.infer<typeof EnforcementDocumentSchema>;
 export type PairCompleteness = z.infer<typeof PairCompletenessSchema>;

@@ -42,9 +42,9 @@ function staleEnforcement(id: string, target: string): string {
   return `# Enforcement\n\n\`\`\`yaml\nversion: 1\nspec: ${id}\nbindings:\n  - id: b\n    covers: [r, gone]\n    mechanism: test\n    strength: automated\n    status: active\n    targets: [${target}]\n    run:\n      command: pnpm\n      args: [vitest, run, ${target}]\n      cwd: .\n\`\`\`\n`;
 }
 
-/** Planned binding covering `r` — allowed while authoring, blocks archive. */
-function plannedEnforcement(id: string, target: string): string {
-  return `# Enforcement\n\n\`\`\`yaml\nversion: 1\nspec: ${id}\nbindings:\n  - id: b\n    covers: [r]\n    mechanism: test\n    strength: automated\n    status: planned\n    targets: [${target}]\n    run:\n      command: pnpm\n      args: [vitest, run, ${target}]\n      cwd: .\n\`\`\`\n`;
+/** Compact binding whose project-defined type is not in the resolved roster. */
+function unknownTypeEnforcement(target: string): string {
+  return `bindings:\n  b:\n    type: unknown-check\n    covers: r\n    source: ${target}\n`;
 }
 
 /** A single active binding `bid` covering `cover`, targeting one file. */
@@ -206,7 +206,7 @@ describe('governed archive — reconciliation and reporting', () => {
 
     expect(out.archive.governed.verification).toBe('verified');
     expect(await exists('specbase/specs/architecture/domain/spec.md')).toBe(true);
-    expect(await exists('specbase/specs/architecture/domain/enforcement.md')).toBe(true);
+    expect(await exists('specbase/specs/architecture/domain/enforcement.yaml')).toBe(true);
     const [pair] = out.archive.governed.pairs;
     expect(pair.specId).toBe('architecture.domain');
     expect(pair.normativeOps.added).toBe(1);
@@ -304,7 +304,10 @@ describe('governed archive — delta operations merge by stable ID (no silent lo
     expect(parsedSpec.requirements.map((r) => r.id).sort()).toEqual(['r', 'r2', 'r3']);
 
     // Merged enforcement: the original 2 bindings are preserved plus the new one.
-    const mergedEnf = parseEnforcement(await read('specbase/specs/behavior/temp/enforcement.md'));
+    const mergedEnf = parseEnforcement(
+      await read('specbase/specs/behavior/temp/enforcement.yaml'),
+      { sourcePath: 'enforcement.yaml' }
+    );
     expect(mergedEnf.issues).toEqual([]);
     expect(mergedEnf.bindings.map((b) => b.id).sort()).toEqual(['b', 'b2', 'b3']);
   });
@@ -425,6 +428,50 @@ describe('governed archive — blocking conditions (no writes, change not moved)
     await expectBlocked(change, 'archive_governed_incomplete_pair');
   });
 
+  it('blocks a delta pair containing both enforcement filenames and names both conflicts', async () => {
+    const change = 'dual-delta';
+    await ensureChange(change);
+    await writePair('delta', change, 'behavior/dual', {
+      spec: deltaAdded('behavior.dual'),
+      enforcement: coveredEnforcement('behavior.dual', 'src/dual.test.ts'),
+    });
+    const pairDir = path.join(tempDir, 'specbase', 'changes', change, 'specs', 'behavior', 'dual');
+    await fs.writeFile(path.join(pairDir, 'enforcement.yaml'), 'bindings: {}\n');
+
+    const out = await runArchive(change);
+    expect(out.archive).toBeNull();
+    expect(out.status[0].code).toBe('archive_governed_merge_conflict');
+    expect(out.status[0].message).toContain(path.join(pairDir, 'enforcement.yaml'));
+    expect(out.status[0].message).toContain(path.join(pairDir, 'enforcement.md'));
+    expect(await exists('specbase/specs/behavior/dual/spec.md')).toBe(false);
+    process.exitCode = 0;
+  });
+
+  it('blocks a touched current pair containing both enforcement filenames', async () => {
+    const change = 'dual-current';
+    await ensureChange(change);
+    await writeTarget('src/dual.test.ts');
+    await writePair('current', change, 'behavior/dual', {
+      spec: specDoc('behavior.dual'),
+      enforcement: coveredEnforcement('behavior.dual', 'src/dual.test.ts'),
+    });
+    const currentDir = path.join(tempDir, 'specbase', 'specs', 'behavior', 'dual');
+    await fs.writeFile(path.join(currentDir, 'enforcement.yaml'), `bindings:\n  b:\n    type: test\n    covers: r\n    source: src/dual.test.ts\n`);
+    await writePair('delta', change, 'behavior/dual', {
+      spec: deltaModified('behavior.dual', 'Updated'),
+      enforcement: `bindings:\n  b:\n    type: test\n    covers: r\n    source: src/dual.test.ts\n`,
+    });
+
+    const out = await runArchive(change);
+    expect(out.archive).toBeNull();
+    expect(out.status[0].code).toBe('archive_governed_merge_conflict');
+    expect(out.status[0].message).toContain(path.join(currentDir, 'enforcement.yaml'));
+    expect(out.status[0].message).toContain(path.join(currentDir, 'enforcement.md'));
+    expect(await exists('specbase/specs/behavior/dual/enforcement.md')).toBe(true);
+    expect(await exists('specbase/specs/behavior/dual/enforcement.yaml')).toBe(true);
+    process.exitCode = 0;
+  });
+
   it('blocks a hanging mandatory claim', async () => {
     const change = 'hanging';
     await ensureChange(change);
@@ -457,14 +504,19 @@ describe('governed archive — blocking conditions (no writes, change not moved)
     await expectBlocked(change, 'archive_governed_not_ready');
   });
 
-  it('blocks an unresolved planned binding', async () => {
-    const change = 'planned';
+  it('blocks a binding whose compact type is unresolved', async () => {
+    const change = 'unknown-type';
     await ensureChange(change);
     await writeTarget('src/p.test.ts');
-    await writePair('delta', change, 'behavior/planned', {
-      spec: deltaAdded('behavior.planned'),
-      enforcement: plannedEnforcement('behavior.planned', 'src/p.test.ts'),
+    await writePair('delta', change, 'behavior/unknown-type', {
+      spec: deltaAdded('behavior.unknown-type'),
+      enforcement: unknownTypeEnforcement('src/p.test.ts'),
     });
+    const pairDir = path.join(tempDir, 'specbase', 'changes', change, 'specs', 'behavior', 'unknown-type');
+    await fs.rename(
+      path.join(pairDir, 'enforcement.md'),
+      path.join(pairDir, 'enforcement.yaml')
+    );
     await expectBlocked(change, 'archive_governed_not_ready');
   });
 
@@ -490,11 +542,16 @@ describe('governed archive — explicit bypass', () => {
     const change = 'bypass';
     await ensureChange(change);
     await writeTarget('src/p.test.ts');
-    // Planned binding would normally block; --no-validate --yes bypasses.
+    // An unknown compact type would normally block; --no-validate --yes bypasses.
     await writePair('delta', change, 'behavior/planned', {
       spec: deltaAdded('behavior.planned'),
-      enforcement: plannedEnforcement('behavior.planned', 'src/p.test.ts'),
+      enforcement: unknownTypeEnforcement('src/p.test.ts'),
     });
+    const pairDir = path.join(tempDir, 'specbase', 'changes', change, 'specs', 'behavior', 'planned');
+    await fs.rename(
+      path.join(pairDir, 'enforcement.md'),
+      path.join(pairDir, 'enforcement.yaml')
+    );
 
     const out = await runArchive(change, { noValidate: true });
 

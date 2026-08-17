@@ -166,14 +166,22 @@ This project uses the governed spec model (6 permanent truth planes with paired 
 **Under the governed model, derive concrete paths from CLI output** (`status`
 `artifactPaths` and `specbase instructions <artifact> --change ... --json`),
 never hardcode them. Durable truth lives in the declared planes:
-- behavior: User/client-visible outcomes that must remain true (enforcement: tests / property tests) → `specs/behavior/<locator>/{spec.md,enforcement.md}`
-- architecture: Package responsibilities, boundaries, and structural invariants (enforcement: lint / static-analysis / conformance) → `specs/architecture/<locator>/{spec.md,enforcement.md}`
-- ops: What we use and how it runs: packages, dev env, IaC, deployment (enforcement: lockfile audit / plan validate / drift detect) → `specs/ops/<locator>/{spec.md,enforcement.md}`
-- code-quality: What good code looks like: smells, qualities, and rules (enforcement: smell-lint + review) → `specs/code-quality/<locator>/{spec.md,enforcement.md}`
-- design-system: The product's expressed identity: visual design tokens (color, type, spacing, radius, motion), design principles, and the voice/tone of user-facing copy. Governs HOW outcomes are presented, orthogonal to behavior (WHAT they do). Token truths DESCRIBE the token artifact (tailwind.config / tokens.json), which stays the runtime source of truth, and bind lint/contrast/a11y checks against it; principle and voice truths bind the design review lens for the judgment a linter cannot make. (enforcement: token-lint / contrast + a11y checks + design review) → `specs/design-system/<locator>/{spec.md,enforcement.md}`
-- agents: The repo's own agentic instruments: review panel, repo-specific skills, subagents, and hooks it builds. Members are instruments the repo owns, NOT behavioral guardrails on agents (those ride on the plane whose subject they constrain). Each spec DESCRIBES an agent-operational artifact (config.yaml, DEFAULT_LENSES, a SKILL.md, a hook) and its enforcement binds a conformance/drift check to that artifact. (enforcement: instrument conforms to its spec (config / lens / frontmatter / hook checks)) → `specs/agents/<locator>/{spec.md,enforcement.md}`
+- behavior: User/client-visible outcomes that must remain true (enforcement: tests / property tests) → `specs/behavior/<locator>/{spec.md,enforcement.yaml}`
+- architecture: Package responsibilities, boundaries, and structural invariants (enforcement: lint / static-analysis / conformance) → `specs/architecture/<locator>/{spec.md,enforcement.yaml}`
+- ops: What we use and how it runs: packages, dev env, IaC, deployment (enforcement: lockfile audit / plan validate / drift detect) → `specs/ops/<locator>/{spec.md,enforcement.yaml}`
+- code-quality: What good code looks like: smells, qualities, and rules (enforcement: smell-lint + review) → `specs/code-quality/<locator>/{spec.md,enforcement.yaml}`
+- design-system: The product's expressed identity: visual design tokens (color, type, spacing, radius, motion), design principles, and the voice/tone of user-facing copy. Governs HOW outcomes are presented, orthogonal to behavior (WHAT they do). Token truths DESCRIBE the token artifact (tailwind.config / tokens.json), which stays the runtime source of truth, and bind lint/contrast/a11y checks against it; principle and voice truths bind the design review lens for the judgment a linter cannot make. (enforcement: token-lint / contrast + a11y checks + design review) → `specs/design-system/<locator>/{spec.md,enforcement.yaml}`
+- agents: The repo's own agentic instruments: review panel, repo-specific skills, subagents, and hooks it builds. Members are instruments the repo owns, NOT behavioral guardrails on agents (those ride on the plane whose subject they constrain). Each spec DESCRIBES an agent-operational artifact (config.yaml, DEFAULT_LENSES, a SKILL.md, a hook) and its enforcement binds a conformance/drift check to that artifact. (enforcement: instrument conforms to its spec (config / lens / frontmatter / hook checks)) → `specs/agents/<locator>/{spec.md,enforcement.yaml}`
 
-Every governed `spec.md` is PAIRED with an `enforcement.md`. Stable identity is
+Every governed `spec.md` is PAIRED with an `enforcement.yaml`. Its binding values contain exactly `type`, requirement-level `covers`, and one `source`; the binding map key is its stable identity. Scenarios inherit coverage from their requirement. The resolved enforcement types are:
+- test: Executable tests run by the project native test harness. (strength: automated; source: file)
+- lint: Static lint rules run by the project native lint harness. (strength: automated; source: file)
+- static-analysis: Deterministic structural analysis run by project tooling. (strength: automated; source: file)
+- command: A project-owned executable conformance source. (strength: automated; source: file)
+- review: Judgment performed through a configured review lens. (strength: review; source: lens)
+- manual: A project-owned manual verification procedure. (strength: manual; source: file)
+
+Stable identity is
 scoped narrowly: the frontmatter `id` (e.g. `behavior.<locator>`) is the only project-unique governed ID; requirement, scenario, and binding `**ID:**` slugs are unique only within their pair, and stay fixed when titles or locators move.
 
 **Plane classification:** match each proposed claim to the plane whose declared
@@ -184,18 +192,18 @@ purpose best fits the claim's nature. The shipped defaults are behavior, archite
   JSON reports normalized slash-separated locators, filesystem access is native.
 - A directory that only GROUPS child pairs is a **namespace** and needs no pair of
   its own. Only a directory that contains `spec.md` must also contain
-  `enforcement.md`; ancestry provides navigation, never inherited requirements.
-- A change stores its `spec.md` and `enforcement.md` deltas under the SAME
+  `enforcement.yaml`; ancestry provides navigation, never inherited requirements.
+- A change stores its `spec.md` and `enforcement.yaml` deltas under the SAME
   plane-qualified locator as the target current pair, so both members move together.
 
 **Agents plane (this project declares it):** its members are the repo's OWN
 agentic instruments (review panel, repo-specific skills, subagents, hooks), NOT
 guardrails on agent behavior — those ride on the plane whose subject they
 constrain. Each agents `spec.md` **describes** an agent-operational artifact
-(`config.yaml`, the lens set, a `SKILL.md`, a hook) and its `enforcement.md`
-binds a **conformance/drift check** to that artifact using the ordinary
-mechanisms (`command`, `test`) — no new mechanism, and the spec never generates
-the artifact (the runtime keeps the artifact as its source of truth). `specbase
+(`config.yaml`, the lens set, a `SKILL.md`, a hook) and its `enforcement.yaml`
+binds a **conformance/drift source** to that artifact using a type from the
+resolved project roster — no agents-only type, and the spec never generates the
+artifact (the runtime keeps the artifact as its source of truth). `specbase
 init` may PLANT baseline agents specs (`agents/spec-driven`, `agents/review-panel`)
 directly as scaffolding — the one exception to the proposal→spec→archive flow;
 edit a planted baseline through a change, never by re-running init.
@@ -248,7 +256,7 @@ parent, enumerating parent, speculative parent, leaf exemption.
 
 **Writing - what one pair says:**
 
-Writing one governed spec pair (`spec.md` + `enforcement.md`):
+Writing one governed spec pair (`spec.md` + `enforcement.yaml`):
 
 - State only current, verifiable truth. Write WHAT the system promises, never
   HOW the code delivers it. Delete mechanism narration.
@@ -269,34 +277,20 @@ Writing one governed spec pair (`spec.md` + `enforcement.md`):
 - Bind checks at the requirement level, not per scenario.
 - Prefer the highest-leverage check. One fitness function or property test beats
   many example tests.
-- Match the mechanism to the claim: structural → lint / conformance; behavioral
-  → tests / property tests; subjective → `review` with a named lens;
-  unverifiable today → `manual` with stated `limitations`.
-- Bind an automated check only when it truly exercises the claim, and state
-  `limitations` when it covers only part.
+- Select a type from the resolved project roster and keep each binding to exactly
+  `type`, requirement-level `covers`, and one `source`.
+- Keep source behavior, harness details, failure signals, and known boundaries in
+  planning artifacts and the source itself.
+- Report structural linkage, native-harness execution, and semantic
+  correspondence separately.
 - Never write a test to inflate coverage. `degraded` is a fact, not a failure.
 
 Reject these writing smells: mechanism narration, untestable claim, compound
 claim, enumerated scenarios, foreign fact, restated truth, hollow binding,
 per-scenario binding.
 
-### Implementing truth and evidence (governed)
+### Delivering enforcement sources (governed)
 
-Apply implements BOTH the product/architecture change and its declared evidence:
+Use `specbase coverage --json` as the aggregated coverage health signal while applying.
 
-- **Resolve planned bindings.** As each binding's target and command land, move it
-  from `status: planned` to `status: active`. If implementation finishes but a
-  mandatory binding is still `planned` (or stale, hanging, broken, or missing its
-  target), report the unresolved evidence and do **not** mark that spec's related
-  work complete.
-- **New enforcement mechanism.** If an architectural requirement needs a new lint
-  rule or conformance check, implement the rule AND its checks, and make the
-  binding name concrete `targets` and a runnable command. Any user-visible
-  behavior of that tooling is itself behavioral truth - capture it in the
-  appropriate behavioral spec pair.
-- **Assess retired-target cleanup safely.** When reconciliation reports a retired
-  test, rule, fixture, or review target, check surviving bindings and project usage
-  before removing it. Never auto-delete a shared or intentionally retained target.
-- **Consult `specbase coverage` (and `specbase coverage --json`) for the
-  aggregated coverage health signal** while resolving bindings - the same view
-  exploration and verification consume.
+For every planned source: implement or update the source, link it with exactly `type`, requirement-level `covers`, and `source` in `enforcement.yaml`, execute it through its native project harness, and record the result. Do not copy commands, status, targets, procedures, or limitations into the compact manifest. Before cleaning up a retired file source, prove no surviving binding references it.

@@ -21,12 +21,16 @@
      policies that must remain true now. Live at specs/architecture/<locator>/. -->
 - `architecture.<locator>`: <what durable structural truth this covers> (new | modified)
 
-## Spec pairs
+## Enforcement intent
 
-<!-- Each governed spec is paired with an enforcement.md. For each plane target
-     above, name the stable project-wide spec id and the mechanism you expect to
-     protect it (test, lint, static-analysis, command, review, manual). -->
-- `<spec-id>` -> paired enforcement via <mechanism>
+<!-- For every durable truth, name the planned project-defined type and source,
+     the requirement-level truth it covers, and the outcome the source must
+     establish. This is the planning commitment; enforcement.yaml later keeps
+     only the durable link. -->
+
+| Covered truth | Planned type | Planned source | Intended proof |
+|---|---|---|---|
+| `<requirement-id>` | `<resolved-type-id>` | `<project-relative-file-or-lens>` | `<observable outcome the source establishes>` |
 
 ## Impact
 

@@ -18,6 +18,8 @@ import {
 } from '../parsers/requirement-text.js';
 import { findMainSpecStructureIssues } from '../parsers/spec-structure.js';
 import { FileSystemUtils } from '../../utils/file-system.js';
+import { prepareGovernedArchive } from '../governed-archive.js';
+import { resolveProjectSpecModel } from '../shared/skill-generation.js';
 
 export class Validator {
   private strictMode: boolean;
@@ -305,6 +307,74 @@ export class Validator {
 
     if (totalDeltas === 0) {
       issues.push({ level: 'ERROR', path: 'file', message: this.enrichTopLevelError('change', VALIDATION_MESSAGES.CHANGE_NO_DELTAS) });
+    }
+
+    // Strict governed change validation treats the paired enforcement manifest
+    // as part of the delta, not as an archive-only concern. Preparing the
+    // prospective archive state validates discovery/completeness, filename-bound
+    // grammar, exact compact fields, configured type/source semantics, and
+    // requirement coverage without writing to the store.
+    if (this.strictMode) {
+      const projectRoot = path.resolve(changeDir, '..', '..', '..');
+      const model = resolveProjectSpecModel(projectRoot);
+      if (model.kind === 'governed') {
+        const plan = await prepareGovernedArchive({
+          changeDir,
+          specbaseRoot: path.resolve(changeDir, '..', '..'),
+          projectRoot,
+        });
+        const relativeIssuePath = (sourcePath: string | undefined, fallback: string): string => {
+          if (!sourcePath) return fallback;
+          const relative = path.relative(specsDir, sourcePath);
+          if (relative.startsWith('..') || path.isAbsolute(relative)) {
+            return FileSystemUtils.toPosixPath(path.join(fallback, path.basename(sourcePath)));
+          }
+          return FileSystemUtils.toPosixPath(relative);
+        };
+
+        for (const pair of plan.incompletePairs) {
+          issues.push({
+            level: 'ERROR',
+            path: pair.locator,
+            message: `Governed delta pair is missing ${pair.missingMember}; present member: ${pair.presentPath}.`,
+          });
+        }
+        for (const unsafe of plan.unsafeLocators) {
+          issues.push({
+            level: 'ERROR',
+            path: relativeIssuePath(unsafe.nativeSourcePath, 'specs'),
+            message: `Unsafe governed locator (${unsafe.reason}): ${unsafe.nativeSourcePath}.`,
+          });
+        }
+        for (const mergeError of plan.mergeErrors) {
+          for (const message of mergeError.messages) {
+            issues.push({ level: 'ERROR', path: mergeError.locator, message });
+          }
+        }
+        for (const validated of plan.validation?.specs ?? []) {
+          for (const diagnostic of validated.diagnostics) {
+            issues.push({
+              level: diagnostic.severity === 'error' ? 'ERROR' : 'WARNING',
+              path: relativeIssuePath(diagnostic.sourcePath, validated.locator),
+              message: diagnostic.message,
+            });
+          }
+        }
+        for (const unsafe of plan.validation?.unsafeLocators ?? []) {
+          issues.push({
+            level: 'ERROR',
+            path: relativeIssuePath(unsafe.nativeSourcePath, 'specs'),
+            message: `Unsafe governed locator (${unsafe.reason}): ${unsafe.nativeSourcePath}.`,
+          });
+        }
+        for (const unknown of plan.validation?.unknownPlanes ?? []) {
+          issues.push({
+            level: 'ERROR',
+            path: relativeIssuePath(unknown.sourcePath, 'specs'),
+            message: unknown.message,
+          });
+        }
+      }
     }
 
     return this.createReport(issues);

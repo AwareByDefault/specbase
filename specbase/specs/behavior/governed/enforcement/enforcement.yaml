@@ -1,0 +1,115 @@
+bindings:
+  pair-contract-and-parser-tests:
+    type: test
+    covers: &a1
+      - paired-enforcement-contract
+      - structured-bindings
+    source: test/core/governed/enforcement-parser.test.ts
+  pair-contract-and-parser-tests-governed-spec-schema-test:
+    type: test
+    covers: *a1
+    source: test/core/schemas/governed-spec.schema.test.ts
+  pair-contract-and-parser-tests-drift-test:
+    type: test
+    covers: *a1
+    source: test/core/governed/drift.test.ts
+  evidence-strength-tests:
+    type: test
+    covers: honest-evidence-strength
+    source: test/core/governed/coverage.test.ts
+  evidence-strength-tests-governed-coverage-test:
+    type: test
+    covers: honest-evidence-strength
+    source: test/core/artifact-graph/governed-coverage.test.ts
+  drift-and-retired-target-tests:
+    type: test
+    covers: &a2
+      - bidirectional-drift
+      - retired-target-candidates
+    source: test/core/governed/drift.test.ts
+  drift-and-retired-target-tests-coverage-test:
+    type: test
+    covers: *a2
+    source: test/core/governed/coverage.test.ts
+  drift-and-retired-target-tests-archive-governed-test:
+    type: test
+    covers: *a2
+    source: test/core/archive.governed.test.ts
+  target-validation-tests:
+    type: test
+    covers: resolvable-targets
+    source: test/core/governed/target-validation.test.ts
+  pair-coherent-sync-tests:
+    type: test
+    covers: pair-coherent-sync
+    source: test/core/archive.governed.test.ts
+  pair-coherent-sync-tests-validate-governed-test:
+    type: test
+    covers: pair-coherent-sync
+    source: test/commands/validate.governed.test.ts
+  binding-execution-guidance-tests:
+    type: test
+    covers: automated-execution-and-correspondence
+    source: test/core/templates/governed-guidance.test.ts
+  binding-execution-review:
+    type: review
+    covers: automated-execution-and-correspondence
+    source: behavioural
+  conformance-pattern-example-tests:
+    type: test
+    covers: conformance-binding-pattern
+    source: test/core/governed/review-panel.conformance.test.ts
+  conformance-pattern-example-tests-governed-spec-schema-test:
+    type: test
+    covers: conformance-binding-pattern
+    source: test/core/schemas/governed-spec.schema.test.ts
+  describe-direction-review:
+    type: review
+    covers: describe-direction-of-truth
+    source: behavioural
+  compact-pair-parser-tests:
+    type: test
+    covers: &a3
+      - paired-enforcement-contract
+      - structured-bindings
+      - pair-coherent-sync
+    source: test/core/governed/enforcement-yaml.test.ts
+  compact-pair-parser-tests-archive-governed-test:
+    type: test
+    covers: *a3
+    source: test/core/archive.governed.test.ts
+  type-derived-strength-tests:
+    type: test
+    covers: honest-evidence-strength
+    source: test/core/governed/enforcement-types.test.ts
+  type-derived-strength-tests-coverage-test:
+    type: test
+    covers: honest-evidence-strength
+    source: test/core/governed/coverage.test.ts
+  source-drift-tests:
+    type: test
+    covers: &a4
+      - bidirectional-drift
+      - retired-target-candidates
+      - resolvable-targets
+    source: test/core/governed/coverage.test.ts
+  source-drift-tests-target-validation-test:
+    type: test
+    covers: *a4
+    source: test/core/governed/target-validation.test.ts
+  source-drift-tests-archive-governed-test:
+    type: test
+    covers: *a4
+    source: test/core/archive.governed.test.ts
+  source-verification-guidance-tests:
+    type: test
+    covers: automated-execution-and-correspondence
+    source: test/core/templates/governed-guidance.test.ts
+  conformance-source-pattern-tests:
+    type: test
+    covers: conformance-binding-pattern
+    source: test/core/governed/review-panel.conformance.test.ts
+  conformance-source-pattern-tests-governed-spec-schema-test:
+    type: test
+    covers: conformance-binding-pattern
+    source: test/core/schemas/governed-spec.schema.test.ts

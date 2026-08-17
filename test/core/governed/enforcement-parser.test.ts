@@ -33,7 +33,7 @@ bindings:
 
 describe('governed/enforcement-parser', () => {
   it('parses the authoritative yaml document, spec id, and bindings', () => {
-    const parsed = parseEnforcement(wellFormed);
+    const parsed = parseEnforcement(wellFormed, { sourcePath: 'enforcement.md' });
     expect(parsed.issues).toEqual([]);
     expect(parsed.version).toBe(1);
     expect(parsed.spec).toBe('architecture.domain');
@@ -54,9 +54,10 @@ describe('governed/enforcement-parser', () => {
     expect(review.review?.procedure).toContain('confirm the boundary');
   });
 
-  it('reports a missing yaml document', () => {
-    const parsed = parseEnforcement('# Enforcement\n\nNo fenced yaml here.\n');
+  it('requires a fenced YAML document for enforcement.md', () => {
+    const parsed = parseEnforcement('# Enforcement\n\nNo fenced yaml here.\n', { sourcePath: 'enforcement.md' });
     expect(parsed.bindings).toEqual([]);
+    expect(parsed.format).toBe('markdown');
     expect(parsed.issues.map((i) => i.code)).toContain('missing-yaml-document');
   });
 
@@ -73,7 +74,7 @@ spec: behavior.b
 bindings: []
 \`\`\`
 `;
-    const parsed = parseEnforcement(doc);
+    const parsed = parseEnforcement(doc, { sourcePath: 'enforcement.md' });
     expect(parsed.issues.some((i) => i.code === 'multiple-yaml-documents')).toBe(
       true
     );
@@ -82,7 +83,7 @@ bindings: []
 
   it('reports invalid yaml', () => {
     const doc = '```yaml\nversion: 1\nspec: [unbalanced\n```\n';
-    const parsed = parseEnforcement(doc);
+    const parsed = parseEnforcement(doc, { sourcePath: 'enforcement.md' });
     expect(parsed.issues.some((i) => i.code === 'invalid-yaml')).toBe(true);
   });
 
@@ -97,7 +98,7 @@ bindings:
     status: active
 \`\`\`
 `;
-    const parsed = parseEnforcement(doc);
+    const parsed = parseEnforcement(doc, { sourcePath: 'enforcement.md' });
     expect(parsed.bindings).toEqual([]);
     expect(parsed.issues.some((i) => i.code === 'invalid-document')).toBe(true);
     expect(parsed.spec).toBe('architecture.domain');
@@ -115,7 +116,7 @@ bindings:
     status: active
 \`\`\`
 `;
-    const parsed = parseEnforcement(doc);
+    const parsed = parseEnforcement(doc, { sourcePath: 'enforcement.md' });
     expect(parsed.issues.some((i) => i.code === 'invalid-document')).toBe(true);
   });
 
@@ -140,7 +141,7 @@ bindings:
     run: { command: pnpm, args: [vitest] }
 \`\`\`
 `;
-    const parsed = parseEnforcement(doc);
+    const parsed = parseEnforcement(doc, { sourcePath: 'enforcement.md' });
     expect(parsed.bindings).toHaveLength(1);
     expect(parsed.bindings[0].covers).toEqual(['r']);
     const dup = parsed.issues.find((i) => i.code === 'duplicate-binding-id');

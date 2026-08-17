@@ -1,0 +1,9 @@
+bindings:
+  openspec-validates:
+    type: command
+    covers: practices-sdd
+    source: specbase/config.yaml
+  governed-schema-declared:
+    type: command
+    covers: practices-sdd
+    source: specbase/config.yaml

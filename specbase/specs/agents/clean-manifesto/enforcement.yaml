@@ -1,0 +1,29 @@
+bindings:
+  rules-single-source:
+    type: command
+    covers: single-source
+    source: docs/clean-spec.md
+  rules-single-source-clean-specbase:
+    type: command
+    covers: single-source
+    source: docs/clean-specbase.md
+  rules-single-source-governed-guidance:
+    type: command
+    covers: single-source
+    source: src/core/templates/workflows/governed-guidance.ts
+  rules-drift-check:
+    type: command
+    covers: build-propagates
+    source: src/core/templates/workflows/clean-rules.generated.ts
+  emitted-skill-carries-rules:
+    type: command
+    covers: skills-carry-rules
+    source: src/core/templates/workflows/governed-guidance.ts
+  propose-surface-present:
+    type: command
+    covers: propose-surfaces-structure
+    source: src/core/templates/workflows/governed-guidance.ts
+  propose-surface-quality:
+    type: review
+    covers: propose-surfaces-structure
+    source: enforcement

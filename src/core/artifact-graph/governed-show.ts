@@ -28,6 +28,8 @@ import type {
   PairCompleteness,
 } from '../schemas/governed-spec.schema.js';
 import type { SpecPlane } from './types.js';
+import { resolveProjectSpecModel } from '../shared/skill-generation.js';
+import { lensesFromPlanes } from '../governed/lenses.js';
 
 /** Concise coverage/pair state, mirroring the cli-list ordering. */
 export type GovernedCoverageState =
@@ -268,10 +270,10 @@ export function buildGovernedSpecView(input: {
     return {
       id: binding.id,
       covers: binding.covers,
-      mechanism: binding.mechanism,
-      strength: binding.strength,
+      mechanism: drift?.mechanism ?? binding.type ?? binding.mechanism,
+      strength: drift?.strength ?? binding.strength,
       status: binding.status,
-      targets: binding.targets,
+      targets: binding.source ? [binding.source] : binding.targets,
       limitations: binding.limitations ?? null,
       state: drift?.state ?? 'active',
       complete: drift?.complete ?? false,
@@ -336,13 +338,25 @@ export async function analyzeGovernedPair(input: {
   let enforcement = EMPTY_ENFORCEMENT;
   if (record.enforcementPath) {
     try {
-      enforcement = parseEnforcement(readFileSync(record.enforcementPath, 'utf-8'));
+      enforcement = parseEnforcement(readFileSync(record.enforcementPath, 'utf-8'), {
+        sourcePath: record.enforcementPath,
+      });
     } catch {
       // Keep the empty enforcement; an unreadable half is reported as such.
     }
   }
 
-  const analysis = await analyzePairDrift({ record, spec, enforcement, projectRoot });
+  const specModel = resolveProjectSpecModel(projectRoot);
+  const enforcementTypes = specModel.kind === 'governed' ? specModel.enforcement.types : [];
+  const lensIds = lensesFromPlanes(specModel).map((lens) => lens.id);
+  const analysis = await analyzePairDrift({
+    record,
+    spec,
+    enforcement,
+    projectRoot,
+    enforcementTypes,
+    lensIds,
+  });
   const view = buildGovernedSpecView({
     record,
     spec,
@@ -368,7 +382,7 @@ export function renderGovernedSpecSummary(view: GovernedSpecView): string {
   lines.push(`  pair:        ${view.pairStatus}`);
   if (view.missingPairMember) {
     const missingFile =
-      view.missingPairMember === 'enforcement' ? 'enforcement.md' : 'spec.md';
+      view.missingPairMember === 'enforcement' ? 'enforcement.yaml' : 'spec.md';
     lines.push(`  Missing ${missingFile} for this pair.`);
   }
 

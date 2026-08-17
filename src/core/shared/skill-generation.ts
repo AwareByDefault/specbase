@@ -36,7 +36,7 @@ import {
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
 import type { SpecModel } from '../artifact-graph/types.js';
-import { LEGACY_SPEC_MODEL, resolveSpecModel } from '../artifact-graph/types.js';
+import { EnforcementTypeSchema, LEGACY_SPEC_MODEL, resolveSpecModel } from '../artifact-graph/types.js';
 import { resolveSchema } from '../artifact-graph/resolver.js';
 import { readProjectConfig } from '../project-config.js';
 import { SPECBASE_CLI_ALLOWED_TOOLS } from './allowed-tools.js';
@@ -61,7 +61,7 @@ export function resolveProjectSpecModel(projectRoot: string): SpecModel {
     const schemaName = config?.schema ?? DEFAULT_SCHEMA_NAME;
     const schema = resolveSchema(schemaName, projectRoot);
     const model = resolveSpecModel(schema);
-    return mergeProjectPlanes(model, config);
+    return mergeProjectSpecModel(model, config);
   } catch {
     return LEGACY_SPEC_MODEL;
   }
@@ -83,6 +83,14 @@ export function resolveProjectSpecModel(projectRoot: string): SpecModel {
  * kebab ids and non-collision; an invalid override is ignored with the default
  * subset retained so a malformed config never silently empties the plane set.
  */
+export function mergeProjectSpecModel(
+  model: SpecModel,
+  config: ReturnType<typeof readProjectConfig>
+): SpecModel {
+  const withPlanes = mergeProjectPlanes(model, config);
+  return mergeProjectEnforcementTypes(withPlanes, config);
+}
+
 export function mergeProjectPlanes(
   model: SpecModel,
   config: ReturnType<typeof readProjectConfig>
@@ -117,6 +125,54 @@ export function mergeProjectPlanes(
     return withPlanes(Array.from(byId.values()));
   }
   return withPlanes(defaults);
+}
+
+export function mergeProjectEnforcementTypes(
+  model: SpecModel,
+  config: ReturnType<typeof readProjectConfig>
+): SpecModel {
+  if (model.kind !== 'governed') return model;
+  const defaults = model.enforcement?.types ?? [];
+  const override = (config as Record<string, unknown> | null)?.specModel as
+    | Record<string, unknown>
+    | undefined;
+  const enforcement = override?.enforcement as Record<string, unknown> | undefined;
+  if (!enforcement) return model;
+  const replace = enforcement.types;
+  const append = enforcement.typesAppend ?? enforcement['types+'];
+  const fallback = (reason: string): SpecModel => {
+    console.warn(`Invalid specModel.enforcement type declaration (${reason}); using schema defaults.`);
+    return model;
+  };
+  if (replace !== undefined && append !== undefined) {
+    return fallback('types and types+ cannot be declared together');
+  }
+  if (replace !== undefined) {
+    const types = normalizeEnforcementTypes(replace);
+    return types ? { ...model, enforcement: { types } } : fallback('types must be a unique list of valid type records');
+  }
+  if (append !== undefined) {
+    const extra = normalizeEnforcementTypes(append);
+    if (!extra) return fallback('types+ must be a unique list of valid type records');
+    const ids = new Set(defaults.map((type) => type.id));
+    if (extra.some((type) => ids.has(type.id))) {
+      return fallback('types+ cannot duplicate a schema type id');
+    }
+    return { ...model, enforcement: { types: [...defaults, ...extra] } };
+  }
+  return model;
+}
+
+function normalizeEnforcementTypes(value: unknown): SpecModel['enforcement']['types'] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const parsed = value.map((entry) => {
+    const result = EnforcementTypeSchema.safeParse(entry);
+    return result.success ? result.data : null;
+  });
+  if (parsed.some((entry) => entry === null)) return undefined;
+  const types = parsed.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  if (new Set(types.map((type) => type.id)).size !== types.length) return undefined;
+  return types;
 }
 
 const PLANE_ID_RE = /^[a-z][a-z0-9-]*$/;

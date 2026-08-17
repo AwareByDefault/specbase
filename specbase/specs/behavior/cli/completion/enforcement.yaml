@@ -1,0 +1,65 @@
+bindings:
+  completion-command-surface-tests:
+    type: test
+    covers:
+      - completion-subcommands
+      - supported-shells
+      - shell-auto-detection
+      - generated-script-on-stdout
+      - idempotent-install
+      - clean-uninstall
+    source: test/commands/completion.test.ts
+  shell-detection-tests:
+    type: test
+    covers: shell-auto-detection
+    source: test/utils/shell-detection.test.ts
+  registry-surface-tests:
+    type: test
+    covers: completion-subcommands
+    source: test/core/completions/command-registry.test.ts
+  generator-tests:
+    type: test
+    covers: generated-script-on-stdout
+    source: test/core/completions/generators/zsh-generator.test.ts
+  generator-tests-bash-generator-test:
+    type: test
+    covers: generated-script-on-stdout
+    source: test/core/completions/generators/bash-generator.test.ts
+  generator-tests-fish-generator-test:
+    type: test
+    covers: generated-script-on-stdout
+    source: test/core/completions/generators/fish-generator.test.ts
+  generator-tests-powershell-generator-test:
+    type: test
+    covers: generated-script-on-stdout
+    source: test/core/completions/generators/powershell-generator.test.ts
+  dynamic-completion-tests:
+    type: test
+    covers: dynamic-value-completion
+    source: test/core/completions/completion-provider.test.ts
+  installer-tests:
+    type: test
+    covers: &a1
+      - idempotent-install
+      - clean-uninstall
+    source: test/core/completions/installers/zsh-installer.test.ts
+  installer-tests-bash-installer-test:
+    type: test
+    covers: *a1
+    source: test/core/completions/installers/bash-installer.test.ts
+  installer-tests-fish-installer-test:
+    type: test
+    covers: *a1
+    source: test/core/completions/installers/fish-installer.test.ts
+  installer-tests-powershell-installer-test:
+    type: test
+    covers: *a1
+    source: test/core/completions/installers/powershell-installer.test.ts
+  uninstall-confirmation-review:
+    type: review
+    covers: clean-uninstall
+    source: behavioural
+  native-feel-review:
+    type: review
+    covers: generated-script-on-stdout
+    source: behavioural

@@ -1,0 +1,44 @@
+bindings:
+  error-copy-tests:
+    type: test
+    covers: non-blaming-errors
+    source: test/commands/completion.test.ts
+  error-copy-tests-basic-test:
+    type: test
+    covers: non-blaming-errors
+    source: test/cli-e2e/basic.test.ts
+  stream-routing-tests:
+    type: test
+    covers: stream-routing
+    source: test/cli-e2e/basic.test.ts
+  stream-routing-tests-validate-enriched-output-test:
+    type: test
+    covers: stream-routing
+    source: test/commands/validate.enriched-output.test.ts
+  status-symbol-tests:
+    type: test
+    covers: status-vocabulary
+    source: test/core/view.test.ts
+  status-symbol-tests-archive-test:
+    type: test
+    covers: status-vocabulary
+    source: test/core/archive.test.ts
+  next-steps-tests:
+    type: test
+    covers: actionable-next-steps
+    source: test/core/update.test.ts
+  next-steps-tests-validate-enriched-output-test:
+    type: test
+    covers: actionable-next-steps
+    source: test/commands/validate.enriched-output.test.ts
+  copy-voice-review:
+    type: review
+    covers:
+      - terse-calm-copy
+      - non-blaming-errors
+      - actionable-next-steps
+    source: design
+  visual-vocabulary-review:
+    type: review
+    covers: status-vocabulary
+    source: design

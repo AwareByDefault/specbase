@@ -12,9 +12,16 @@
 
 ## Decisions
 
-<!-- Key design decisions and rationale. For each governed claim, note which
-     enforcement mechanism (test, lint, static-analysis, command, review, manual)
-     will protect it and why that mechanism fits. -->
+<!-- Key design decisions and rationale. -->
+
+## Enforcement design
+
+<!-- Define each planned source contract before implementation:
+     - assertions or observations the source performs
+     - fixtures, environment, and native harness used to execute it
+     - failure signal and how it is surfaced
+     - known boundary: what the source does not prove
+     Keep these details here and in the source, not in enforcement.yaml. -->
 
 ## Risks / Trade-offs
 

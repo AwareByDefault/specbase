@@ -58,6 +58,7 @@ export {
   type ParsedEnforcement,
   type EnforcementIssue,
   type EnforcementIssueCode,
+  type ParseEnforcementOptions,
 } from './enforcement-parser.js';
 
 export {

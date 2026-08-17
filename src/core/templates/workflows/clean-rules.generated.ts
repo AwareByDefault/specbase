@@ -11,7 +11,7 @@
  * Distilled rules for WRITING one governed spec pair, lifted verbatim from
  * the marked Rules section of `docs/clean-spec.md`.
  */
-export const CLEAN_SPEC_RULES = `Writing one governed spec pair (\`spec.md\` + \`enforcement.md\`):
+export const CLEAN_SPEC_RULES = `Writing one governed spec pair (\`spec.md\` + \`enforcement.yaml\`):
 
 - State only current, verifiable truth. Write WHAT the system promises, never
   HOW the code delivers it. Delete mechanism narration.
@@ -32,11 +32,12 @@ export const CLEAN_SPEC_RULES = `Writing one governed spec pair (\`spec.md\` + \
 - Bind checks at the requirement level, not per scenario.
 - Prefer the highest-leverage check. One fitness function or property test beats
   many example tests.
-- Match the mechanism to the claim: structural → lint / conformance; behavioral
-  → tests / property tests; subjective → \`review\` with a named lens;
-  unverifiable today → \`manual\` with stated \`limitations\`.
-- Bind an automated check only when it truly exercises the claim, and state
-  \`limitations\` when it covers only part.
+- Select a type from the resolved project roster and keep each binding to exactly
+  \`type\`, requirement-level \`covers\`, and one \`source\`.
+- Keep source behavior, harness details, failure signals, and known boundaries in
+  planning artifacts and the source itself.
+- Report structural linkage, native-harness execution, and semantic
+  correspondence separately.
 - Never write a test to inflate coverage. \`degraded\` is a fact, not a failure.
 
 Reject these writing smells: mechanism narration, untestable claim, compound

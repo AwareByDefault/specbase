@@ -1,0 +1,57 @@
+bindings:
+  validate-cli-tests:
+    type: test
+    covers:
+      - validation-scope
+      - item-resolution
+      - bulk-reporting
+    source: test/commands/validate.test.ts
+  validator-core-tests:
+    type: test
+    covers:
+      - strict-mode
+      - item-resolution
+      - delta-header-notes
+      - body-keyword-hint
+    source: test/core/validation.test.ts
+  enriched-diagnostics-tests:
+    type: test
+    covers: &a1
+      - actionable-diagnostics
+      - scenario-format-warning
+      - next-steps-footer
+    source: test/core/validation.enriched-messages.test.ts
+  enriched-diagnostics-tests-validate-enriched-output-test:
+    type: test
+    covers: *a1
+    source: test/commands/validate.enriched-output.test.ts
+  governed-validate-tests:
+    type: test
+    covers: governed-pair-validation
+    source: test/commands/validate.governed.test.ts
+  governed-validate-tests-diagnostics-test:
+    type: test
+    covers: governed-pair-validation
+    source: test/core/governed/diagnostics.test.ts
+  locator-and-plane-declaration-tests:
+    type: test
+    covers: &a2
+      - governed-pair-validation
+      - actionable-diagnostics
+    source: test/core/governed/locator.test.ts
+  locator-and-plane-declaration-tests-spec-model-test:
+    type: test
+    covers: *a2
+    source: test/core/artifact-graph/spec-model.test.ts
+  issue-location-review:
+    type: review
+    covers:
+      - issue-location
+      - actionable-diagnostics
+      - validation-scope
+      - bulk-reporting
+    source: behavioural
+  governed-delta-validation-review:
+    type: review
+    covers: governed-change-validation
+    source: behavioural

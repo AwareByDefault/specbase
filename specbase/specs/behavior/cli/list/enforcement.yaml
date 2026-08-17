@@ -1,0 +1,26 @@
+bindings:
+  list-changes-tests:
+    type: test
+    covers:
+      - list-scope
+      - task-counting
+      - list-output
+      - empty-state
+      - sorting
+    source: test/core/list.test.ts
+  list-governed-tests:
+    type: test
+    covers:
+      - list-scope
+      - list-output
+    source: test/core/list.governed.test.ts
+  change-list-shape-tests:
+    type: test
+    covers: list-output
+    source: test/core/commands/change-command.list.test.ts
+  list-spec-scope-review:
+    type: review
+    covers:
+      - list-output
+      - empty-state
+    source: behavioural

@@ -1,0 +1,29 @@
+bindings:
+  planning-root-shape-tests:
+    type: test
+    covers: planning-store-shape
+    source: test/core/openspec-root.test.ts
+  change-directory-tests:
+    type: test
+    covers: change-directory-shape
+    source: test/commands/artifact-workflow.test.ts
+  archive-layout-tests:
+    type: test
+    covers: archive-layout
+    source: test/core/archive.test.ts
+  archive-layout-tests-list-test:
+    type: test
+    covers: archive-layout
+    source: test/core/list.test.ts
+  governed-plane-root-tests:
+    type: test
+    covers: governed-plane-roots
+    source: test/core/governed/discovery.test.ts
+  governed-plane-root-tests-spec-model-test:
+    type: test
+    covers: governed-plane-roots
+    source: test/core/artifact-graph/spec-model.test.ts
+  legacy-flat-store-review:
+    type: review
+    covers: governed-plane-roots
+    source: behavioural

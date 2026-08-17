@@ -98,6 +98,16 @@ function extraDiagnostics(input: {
     });
   }
 
+  if (record.enforcementConflictPaths?.length) {
+    out.push({
+      ...base,
+      code: 'enforcement/parse-issue',
+      severity: 'error',
+      sourcePath: record.enforcementPath ?? undefined,
+      message: `Both enforcement.yaml and enforcement.md exist for this pair; remove one. Conflicting files: ${record.enforcementConflictPaths.join(', ')}.`,
+    });
+  }
+
   for (const issue of enforcement.issues) {
     out.push({
       ...base,
@@ -105,7 +115,7 @@ function extraDiagnostics(input: {
       severity: 'error',
       ...(issue.bindingId ? { bindingId: issue.bindingId } : {}),
       sourcePath: enforcementPath,
-      message: `enforcement.md ${issue.code}: ${issue.message}`,
+      message: `${record.enforcementPath?.endsWith('.yaml') ? 'enforcement.yaml' : 'enforcement.md'} ${issue.code}: ${issue.message}`,
     });
   }
 
@@ -134,6 +144,7 @@ function extraDiagnostics(input: {
         message: `Spec ID '${conflict.id}' is claimed by multiple pairs: ${conflict.locations.join(', ')}.`,
       });
     }
+
   }
 
   return out;

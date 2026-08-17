@@ -1,0 +1,50 @@
+bindings:
+  content-shape-tests:
+    type: test
+    covers: tool-agnostic-content
+    source: test/core/command-generation/types.test.ts
+  adapter-conformance-tests:
+    type: test
+    covers: adapter-boundary
+    source: test/core/command-generation/adapters.test.ts
+  adapter-conformance-tests-yaml-test:
+    type: test
+    covers: adapter-boundary
+    source: test/core/command-generation/yaml.test.ts
+  generator-tests:
+    type: test
+    covers: &a1
+      - generator-composition
+      - shared-command-body
+    source: test/core/command-generation/generator.test.ts
+  generator-tests-adapters-test:
+    type: test
+    covers: *a1
+    source: test/core/command-generation/adapters.test.ts
+  registry-tests:
+    type: test
+    covers: single-adapter-registry
+    source: test/core/command-generation/registry.test.ts
+  registry-tests-legacy-cleanup-test:
+    type: test
+    covers: single-adapter-registry
+    source: test/core/legacy-cleanup.test.ts
+  adapterless-tool-handling:
+    type: test
+    covers: single-adapter-registry
+    source: test/core/update.test.ts
+  workflow-projection-parity:
+    type: test
+    covers: single-workflow-source
+    source: test/core/templates/skill-templates-parity.test.ts
+  workflow-projection-parity-skill-generation-test:
+    type: test
+    covers: single-workflow-source
+    source: test/core/shared/skill-generation.test.ts
+  no-bypass-review:
+    type: review
+    covers:
+      - adapter-boundary
+      - single-generation-path
+      - single-workflow-source
+    source: architectural

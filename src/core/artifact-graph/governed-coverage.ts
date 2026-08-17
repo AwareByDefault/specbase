@@ -535,27 +535,22 @@ export async function computeRepoCoverage(
           missingTargets: [...binding.missingTargets],
         });
       }
-    }
 
-    for (const binding of analysis.enforcement.bindings) {
-      for (const target of binding.targets) {
+      if (binding.source && binding.strength !== 'review') {
         targetIndex.push({
-          target: normalizeTargetPath(target),
+          target: normalizeTargetPath(binding.source.split('#', 1)[0]),
           locator: record.locator,
           specId: analysis.analysis.specId,
           bindingId: binding.id,
         });
       }
-
-      // A review claim is a non-deterministic (review/manual) binding: it names
-      // (or defaults to) a lens the panel runs. Route it now for the lens views.
-      if (binding.strength === 'review' || binding.strength === 'manual') {
+      if (binding.strength === 'review') {
         reviewClaims.push({
           locator: record.locator,
           specId: analysis.analysis.specId,
           bindingId: binding.id,
-          declaredLens: binding.lens ?? null,
-          resolution: resolveLensForBinding(binding.lens, record.locator, projectedLenses),
+          declaredLens: binding.source || null,
+          resolution: resolveLensForBinding(binding.source || undefined, record.locator, projectedLenses),
         });
       }
     }
@@ -602,8 +597,8 @@ export async function computeRepoCoverage(
 
   // The strict gate is UNCHANGED: lens rollup, un-lensed reviews, and split
   // candidates never affect validity — they surface human decisions, they do not
-  // gate. Anti-rot for a `lens`/`covered_by` pointing at a missing target stays
-  // owned by the existing orphan detection above.
+  // gate. Anti-rot for unresolved lens and file sources stays owned by source
+  // validation above.
   const failingSpecs = specs.filter((spec) => isRotState(spec.state));
   const valid =
     failingSpecs.length === 0 &&

@@ -1,0 +1,14 @@
+# Compact binding index. The sibling spec.md supplies pair identity.
+# Each map key is a stable pair-local binding ID. Values contain exactly
+# type, requirement-level covers, and source.
+bindings:
+  import-boundary:
+    type: lint
+    covers: domain-determinism
+    source: tools/lint/boundaries.test.ts
+  determinism-review:
+    type: review
+    covers:
+      - domain-determinism
+      - injected-clock-accepted
+    source: architectural

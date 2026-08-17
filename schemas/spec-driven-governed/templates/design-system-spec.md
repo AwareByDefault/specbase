@@ -2,12 +2,13 @@
 id: design-system.color
 ---
 
+
 <!--
   Design-system truth: durable truth about the product's expressed identity -
   visual design tokens (color, type, spacing, radius, motion), design
   principles, and the voice/tone of user-facing copy. Governs HOW outcomes are
   presented, orthogonal to behavior (WHAT they do). Lives at
-  specs/design-system/<locator>/spec.md and is paired with an enforcement.md in
+  specs/design-system/<locator>/spec.md and is paired with an enforcement.yaml in
   the same directory. State only what must be true now; the rationale for
   adopting a token scale or a voice rule belongs in design/proposal and the
   dated archive.

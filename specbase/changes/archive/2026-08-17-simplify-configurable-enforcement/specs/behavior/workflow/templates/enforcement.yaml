@@ -1,0 +1,7 @@
+bindings:
+  enforcement-planning-template-tests:
+    type: test
+    covers:
+      - planning-artifacts-define-enforcement
+      - manifest-remains-an-index
+    source: test/core/templates/enforcement-planning.test.ts

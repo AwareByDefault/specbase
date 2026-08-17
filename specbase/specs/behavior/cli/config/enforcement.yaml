@@ -1,0 +1,36 @@
+bindings:
+  subcommand-surface-tests:
+    type: test
+    covers: config-subcommands
+    source: test/commands/config.test.ts
+  key-path-and-listing-tests:
+    type: test
+    covers:
+      - config-key-naming
+      - config-get-raw
+      - config-listing
+    source: test/core/config-schema.test.ts
+  write-and-clear-tests:
+    type: test
+    covers: &a1
+      - config-set-coercion
+      - config-unset-reverts
+    source: test/core/config-schema.test.ts
+  write-and-clear-tests-config-test:
+    type: test
+    covers: *a1
+    source: test/commands/config.test.ts
+  config-location-tests:
+    type: test
+    covers: config-path-output
+    source: test/core/global-config.test.ts
+  interactive-and-process-operations-review:
+    type: review
+    covers:
+      - config-reset-guarded
+      - config-edit-editor
+    source: behavioural
+  resolved-planes-read-review:
+    type: review
+    covers: config-subcommands
+    source: behavioural

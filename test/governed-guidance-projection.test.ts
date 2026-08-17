@@ -10,7 +10,12 @@ import {
 } from '../src/core/templates/workflows/governed-guidance.js';
 import { DEFAULT_PLANES } from '../src/core/governed/lenses.js';
 import { getCommandTemplates, getSkillTemplates } from '../src/core/shared/skill-generation.js';
-import type { Plane, SpecModel } from '../src/core/artifact-graph/types.js';
+import {
+  DEFAULT_ENFORCEMENT_TYPES,
+  type EnforcementType,
+  type Plane,
+  type SpecModel,
+} from '../src/core/artifact-graph/types.js';
 
 /**
  * Spec `architecture.governed-guidance-projection`, bindings
@@ -50,8 +55,17 @@ const EXTRA_PLANE: Plane = {
   defaultSelected: true,
 };
 
-function governedModel(planes: readonly Plane[]): SpecModel {
-  return { kind: 'governed', version: 1, planes: [...planes], pairedEnforcement: true };
+function governedModel(
+  planes: readonly Plane[],
+  types: readonly EnforcementType[] = DEFAULT_ENFORCEMENT_TYPES
+): SpecModel {
+  return {
+    kind: 'governed',
+    version: 1,
+    planes: [...planes],
+    enforcement: { types: [...types] },
+    pairedEnforcement: true,
+  };
 }
 
 /** More planes than the shipped defaults. */
@@ -204,6 +218,23 @@ describe('no guidance surface embeds a frozen roster', () => {
       expect(String(value), `${name} bakes the primer into a static string`).not.toContain(
         PRIMER_MARKER
       );
+    }
+  });
+
+  it('projects custom enforcement types and omits removed defaults on every model-aware surface', () => {
+    const custom: EnforcementType = {
+      id: 'nix-check',
+      purpose: 'Evaluated Nix configuration assertions.',
+      strength: 'automated',
+      sourceKind: 'file',
+    };
+    const model = governedModel(DEFAULT_PLANES.slice(0, 2), [custom]);
+    for (const surface of surfacesFor(model).filter(
+      (entry) => !MODEL_AGNOSTIC_WORKFLOWS.has(entry.workflowId)
+    )) {
+      expect(surface.content, surface.id).toContain('nix-check: Evaluated Nix configuration assertions.');
+      expect(surface.content, surface.id).not.toContain('- test: Executable tests');
+      expect(surface.content, surface.id).toContain('exactly `type`, requirement-level `covers`, and one `source`');
     }
   });
 

@@ -310,7 +310,7 @@ export class ListCommand {
       if (record.enforcementPath) {
         try {
           const content = readFileSync(record.enforcementPath, 'utf-8');
-          enforcement = parseEnforcement(content);
+          enforcement = parseEnforcement(content, { sourcePath: record.enforcementPath });
         } catch {
           enforcement = EMPTY_ENFORCEMENT;
         }

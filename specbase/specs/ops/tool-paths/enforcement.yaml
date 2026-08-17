@@ -1,0 +1,29 @@
+bindings:
+  ai-tools-registry-conformance:
+    type: command
+    covers:
+      - tool-registry-is-the-single-roster
+      - supported-tool-container-dirs
+    source: src/core/config.ts
+  skills-path-conformance:
+    type: command
+    covers: skills-live-under-the-container-dir
+    source: src/core/init.ts
+  skills-path-conformance-migration:
+    type: command
+    covers: skills-live-under-the-container-dir
+    source: src/core/migration.ts
+  skills-path-conformance-available-tools:
+    type: command
+    covers: skills-live-under-the-container-dir
+    source: src/core/available-tools.ts
+  path-construction-conformance:
+    type: command
+    covers: &a1
+      - paths-are-built-cross-platform
+      - global-surfaces-resolve-to-tool-home-dirs
+    source: src/core/command-generation/adapters/index.ts
+  path-construction-conformance-codex:
+    type: command
+    covers: *a1
+    source: src/core/command-generation/adapters/codex.ts

@@ -1,0 +1,13 @@
+bindings:
+  ideas-cli-contract:
+    type: test
+    covers:
+      - ideas-add
+      - ideas-list
+      - ideas-show
+      - ideas-delete
+    source: test/commands/ideas.test.ts
+  ideas-not-governed-exclusion:
+    type: test
+    covers: ideas-not-governed
+    source: test/ideas/not-governed.test.ts

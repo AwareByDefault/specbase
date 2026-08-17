@@ -101,7 +101,7 @@ export function collectDiagnostics(
       code: 'pair/incomplete',
       severity: 'error',
       sourcePath: specPath ?? enforcementPath,
-      message: `Governed pair '${record.locator}' is ${record.completeness}; both spec.md and enforcement.md are required.`,
+      message: `Governed pair '${record.locator}' is ${record.completeness}; both spec.md and enforcement.yaml are required (a lone legacy enforcement.md remains readable during migration).`,
     });
   }
   if (analysis.identityMismatch) {
@@ -156,7 +156,7 @@ export function collectDiagnostics(
         bindingId: binding.id,
         targetPath: target,
         sourcePath: enforcementPath,
-        message: `Active binding '${binding.id}' targets '${target}', which is missing (broken enforcement); covered IDs: ${binding.covers.join(', ') || 'none'}.`,
+        message: `Binding '${binding.id}' has missing source '${target}' (broken enforcement); covered IDs: ${binding.covers.join(', ') || 'none'}.`,
       });
     }
     if (binding.state === 'planned') {
@@ -186,7 +186,7 @@ export function collectDiagnostics(
         severity: 'error',
         bindingId: binding.id,
         sourcePath: enforcementPath,
-        message: `Active binding '${binding.id}' does not declare the evidence its '${binding.strength}' strength requires.`,
+        message: `Binding '${binding.id}' does not declare the source its '${binding.strength}' strength requires.`,
       });
     }
   }

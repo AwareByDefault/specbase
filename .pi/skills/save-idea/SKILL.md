@@ -48,7 +48,7 @@ If the session sharpened the one-line intent, update `summary` in
 ## Never write governed artifacts
 
 The idea is a scratchpad, not spec truth. Do NOT create or edit
-`spec.md`, `enforcement.md`, or any spec-delta content under
+`spec.md`, `enforcement.yaml`, or any spec-delta content under
 `specbase/ideas/` or anywhere else. If the session is proposal-ready, hand
 off to the propose workflow instead — proposing moves the idea into
 `specbase/changes/<id>/`.

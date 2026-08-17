@@ -1,0 +1,47 @@
+bindings:
+  generator-interface-tests:
+    type: test
+    covers: shell-generator-interface
+    source: test/core/completions/generators/zsh-generator.test.ts
+  generator-interface-tests-bash-generator-test:
+    type: test
+    covers: shell-generator-interface
+    source: test/core/completions/generators/bash-generator.test.ts
+  generator-interface-tests-fish-generator-test:
+    type: test
+    covers: shell-generator-interface
+    source: test/core/completions/generators/fish-generator.test.ts
+  generator-interface-tests-powershell-generator-test:
+    type: test
+    covers: shell-generator-interface
+    source: test/core/completions/generators/powershell-generator.test.ts
+  installer-interface-tests:
+    type: test
+    covers: shell-installer-interface
+    source: test/core/completions/installers/zsh-installer.test.ts
+  installer-interface-tests-bash-installer-test:
+    type: test
+    covers: shell-installer-interface
+    source: test/core/completions/installers/bash-installer.test.ts
+  installer-interface-tests-fish-installer-test:
+    type: test
+    covers: shell-installer-interface
+    source: test/core/completions/installers/fish-installer.test.ts
+  installer-interface-tests-powershell-installer-test:
+    type: test
+    covers: shell-installer-interface
+    source: test/core/completions/installers/powershell-installer.test.ts
+  registry-cli-parity:
+    type: test
+    covers: single-command-registry
+    source: test/core/completions/command-registry.test.ts
+  completion-command-routing:
+    type: test
+    covers: single-command-registry
+    source: test/commands/completion.test.ts
+  single-registry-review:
+    type: review
+    covers:
+      - shell-generator-interface
+      - single-command-registry
+    source: architectural

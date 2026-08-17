@@ -1,0 +1,27 @@
+bindings:
+  change-creation-tests:
+    type: test
+    covers:
+      - new-change-scaffolds
+      - change-name-validation
+    source: test/utils/change-utils.test.ts
+  new-change-command-tests:
+    type: test
+    covers:
+      - new-change-scaffolds
+      - change-name-validation
+    source: test/commands/artifact-workflow.test.ts
+  propose-workflow-shipping-tests:
+    type: test
+    covers: propose-single-step
+    source: test/core/shared/skill-generation.test.ts
+  propose-workflow-shipping-tests-skill-templates-parity-test:
+    type: test
+    covers: propose-single-step
+    source: test/core/templates/skill-templates-parity.test.ts
+  propose-workflow-content-review:
+    type: review
+    covers:
+      - propose-single-step
+      - propose-onboarding-narration
+    source: behavioural

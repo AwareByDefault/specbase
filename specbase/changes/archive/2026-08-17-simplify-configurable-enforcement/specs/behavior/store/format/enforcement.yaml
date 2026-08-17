@@ -1,0 +1,13 @@
+bindings:
+  enforcement-yaml-parser-tests:
+    type: test
+    covers: enforcement-yaml-format
+    source: test/core/governed/enforcement-yaml.test.ts
+  enforcement-migration-reader-tests:
+    type: test
+    covers: legacy-enforcement-reader
+    source: test/core/governed/enforcement-yaml.test.ts
+  enforcement-migration-reader-tests-discovery-test:
+    type: test
+    covers: legacy-enforcement-reader
+    source: test/core/governed/discovery.test.ts

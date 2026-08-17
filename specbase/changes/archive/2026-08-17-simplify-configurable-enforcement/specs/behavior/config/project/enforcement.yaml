@@ -1,0 +1,5 @@
+bindings:
+  enforcement-type-resolution-tests:
+    type: test
+    covers: declared-enforcement-type-set
+    source: test/core/governed/enforcement-types.test.ts

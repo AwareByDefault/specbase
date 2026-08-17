@@ -73,7 +73,7 @@ describe('propose surfaces its chosen structure before authoring', () => {
   it('reports the project plane roster rather than a hardcoded two-plane list', () => {
     for (const surface of [governedSkill(), governedCommand()]) {
       expect(surface).toContain('`planes: [behavior, architecture]`');
-      expect(surface).toContain('specs/behavior/<locator>/{spec.md,enforcement.md}');
+      expect(surface).toContain('specs/behavior/<locator>/{spec.md,enforcement.yaml}');
       expect(surface).not.toContain('specs/undefined/');
     }
   });

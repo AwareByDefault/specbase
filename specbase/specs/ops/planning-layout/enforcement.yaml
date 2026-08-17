@@ -1,0 +1,13 @@
+bindings:
+  layout-conformance:
+    type: command
+    covers: specbase-is-planning-root
+    source: specbase/config.yaml
+  cli-discovery-inertness:
+    type: command
+    covers: openspec-old-inert
+    source: specbase/config.yaml
+  legacy-store-retired:
+    type: review
+    covers: openspec-old-inert
+    source: ops

@@ -63,7 +63,7 @@ describe('plantBaselines — plane-parametric planter (planter-conformance)', ()
     await plantBaselines(project, pairs);
 
     for (const { plane, locator } of pairs) {
-      for (const file of ['spec.md', 'enforcement.md']) {
+      for (const file of ['spec.md', 'enforcement.yaml']) {
         expect(
           existsSync(specFile(project, plane, locator, file)),
           `${plane}/${locator}/${file}`

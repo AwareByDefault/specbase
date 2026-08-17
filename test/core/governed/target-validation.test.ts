@@ -93,6 +93,65 @@ describe('governed/target-validation', () => {
     expect(result.escapingBindingIds.has('b1')).toBe(true);
   });
 
+  it('resolves the file portion before a compact source selector', async () => {
+    fs.mkdirSync(path.join(root, 'test'));
+    fs.writeFileSync(path.join(root, 'test', 'a.test.ts'), '');
+    const result = await validateTargets(
+      [binding({ type: 'test', source: 'test/a.test.ts#named-case' })],
+      root,
+      { compactBindings: true }
+    );
+    expect(result.problems).toEqual([]);
+  });
+
+  it('rejects a compact file source with an empty path before its selector', async () => {
+    const result = await validateTargets(
+      [binding({ type: 'test', source: '#named-case' })],
+      root,
+      { compactBindings: true }
+    );
+    expect(result.problems).toEqual([
+      expect.objectContaining({
+        bindingId: 'b1',
+        field: 'source',
+        path: '#named-case',
+        kind: 'invalid-source',
+      }),
+    ]);
+    expect(result.missingTargetsByBinding.get('b1')).toEqual(['#named-case']);
+  });
+
+  it('rejects a directory where a compact file source requires a file', async () => {
+    fs.mkdirSync(path.join(root, 'test'));
+    const result = await validateTargets(
+      [binding({ type: 'test', source: 'test' })],
+      root,
+      { compactBindings: true }
+    );
+    expect(result.problems).toEqual([
+      expect.objectContaining({
+        bindingId: 'b1',
+        field: 'source',
+        path: 'test',
+        kind: 'not-file',
+      }),
+    ]);
+    expect(result.missingTargetsByBinding.get('b1')).toEqual(['test']);
+  });
+
+  it('resolves lens-backed compact sources against the configured roster', async () => {
+    const result = await validateTargets(
+      [binding({ type: 'review', source: 'architectural' })],
+      root,
+      { compactBindings: true, lensIds: ['enforcement'] }
+    );
+    expect(result.problems[0]).toMatchObject({
+      field: 'source',
+      path: 'architectural',
+      kind: 'missing',
+    });
+  });
+
   it('skips existence checks for non-path rule selectors', async () => {
     const result = await validateTargets(
       [binding({ targets: ['no-restricted-imports'] })],

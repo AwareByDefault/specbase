@@ -173,7 +173,7 @@ describe('governed show — incomplete pair and ambiguity', () => {
 
     const text = logOutput.join('\n');
     expect(text).toContain('pair:        spec-only');
-    expect(text).toContain('Missing enforcement.md for this pair.');
+    expect(text).toContain('Missing enforcement.yaml for this pair.');
     // JSON marks the missing member explicitly.
     logOutput.length = 0;
     await run('architecture/domain', { json: true });

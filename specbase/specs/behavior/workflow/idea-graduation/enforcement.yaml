@@ -1,0 +1,5 @@
+bindings:
+  propose-move-contract:
+    type: test
+    covers: propose-moves-idea
+    source: test/workflow/idea-graduation.test.ts

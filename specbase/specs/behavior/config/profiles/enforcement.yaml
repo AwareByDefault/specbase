@@ -1,0 +1,40 @@
+bindings:
+  profile-resolution-tests:
+    type: test
+    covers: profile-definitions
+    source: test/core/profiles.test.ts
+  delivery-semantics-tests:
+    type: test
+    covers: delivery-independent-of-profile
+    source: test/core/init.test.ts
+  delivery-semantics-tests-update-test:
+    type: test
+    covers: delivery-independent-of-profile
+    source: test/core/update.test.ts
+  preference-storage-tests:
+    type: test
+    covers: &a1
+      - profile-preferences-stored-globally
+      - delivery-independent-of-profile
+    source: test/core/global-config.test.ts
+  preference-storage-tests-config-test:
+    type: test
+    covers: *a1
+    source: test/commands/config.test.ts
+  profile-flow-tests:
+    type: test
+    covers: &a2
+      - interactive-profile-configuration
+      - no-op-writes-nothing
+      - preferences-applied-by-explicit-sync
+    source: test/commands/config-profile.test.ts
+  profile-flow-tests-profile-sync-drift-test:
+    type: test
+    covers: *a2
+    source: test/core/profile-sync-drift.test.ts
+  project-isolation-review:
+    type: review
+    covers:
+      - config-changes-never-touch-projects
+      - interactive-profile-configuration
+    source: behavioural

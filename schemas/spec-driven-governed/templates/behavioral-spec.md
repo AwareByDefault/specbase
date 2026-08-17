@@ -2,10 +2,11 @@
 id: behavior.session-loop
 ---
 
+
 <!--
   Behavioral truth: a user- or client-visible capability that must remain true
   now. Lives at specs/behavior/<locator>/spec.md and is paired with an
-  enforcement.md in the same directory.
+  enforcement.yaml in the same directory.
 -->
 
 ## ADDED Requirements

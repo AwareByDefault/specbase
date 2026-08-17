@@ -1,0 +1,115 @@
+bindings:
+  structured-format-tests:
+    type: test
+    covers: structured-spec-format
+    source: test/core/parsers/markdown-parser.test.ts
+  structured-format-tests-requirement-blocks-test:
+    type: test
+    covers: structured-spec-format
+    source: test/core/parsers/requirement-blocks.test.ts
+  structured-format-tests-validation-test:
+    type: test
+    covers: structured-spec-format
+    source: test/core/validation.test.ts
+  identity-tests:
+    type: test
+    covers: requirement-identity
+    source: test/core/governed/spec-parser.test.ts
+  identity-tests-spec-id-index-test:
+    type: test
+    covers: requirement-identity
+    source: test/core/governed/spec-id-index.test.ts
+  identity-tests-discovery-test:
+    type: test
+    covers: requirement-identity
+    source: test/core/governed/discovery.test.ts
+  identity-tests-archive-test:
+    type: test
+    covers: requirement-identity
+    source: test/core/archive.test.ts
+  delta-storage-tests:
+    type: test
+    covers: delta-storage
+    source: test/core/validation.test.ts
+  delta-storage-tests-requirement-blocks-test:
+    type: test
+    covers: delta-storage
+    source: test/core/parsers/requirement-blocks.test.ts
+  delta-storage-tests-archive-governed-test:
+    type: test
+    covers: delta-storage
+    source: test/core/archive.governed.test.ts
+  rename-tests:
+    type: test
+    covers: rename-semantics
+    source: test/core/archive.test.ts
+  rename-tests-archive-governed-test:
+    type: test
+    covers: rename-semantics
+    source: test/core/archive.governed.test.ts
+  schema-validation-tests:
+    type: test
+    covers: parsed-structure-schema
+    source: test/core/validation.test.ts
+  schema-validation-tests-governed-spec-schema-test:
+    type: test
+    covers: parsed-structure-schema
+    source: test/core/schemas/governed-spec.schema.test.ts
+  schema-validation-tests-json-converter-test:
+    type: test
+    covers: parsed-structure-schema
+    source: test/core/converters/json-converter.test.ts
+  line-ending-tests:
+    type: test
+    covers: line-ending-tolerance
+    source: test/core/parsers/markdown-parser.test.ts
+  line-ending-tests-validate-test:
+    type: test
+    covers: line-ending-tolerance
+    source: test/commands/validate.test.ts
+  body-extraction-tests:
+    type: test
+    covers: body-keyword-extraction
+    source: test/core/parsers/markdown-parser.test.ts
+  body-extraction-tests-validation-test:
+    type: test
+    covers: body-keyword-extraction
+    source: test/core/validation.test.ts
+  fenced-block-tests:
+    type: test
+    covers: fenced-block-fidelity
+    source: test/core/parsers/markdown-parser.test.ts
+  fenced-block-tests-validation-test:
+    type: test
+    covers: fenced-block-fidelity
+    source: test/core/validation.test.ts
+  fenced-block-tests-spec-parser-test:
+    type: test
+    covers: fenced-block-fidelity
+    source: test/core/governed/spec-parser.test.ts
+  proposal-section-tests:
+    type: test
+    covers: proposal-format
+    source: test/core/validation.test.ts
+  proposal-section-tests-markdown-parser-test:
+    type: test
+    covers: proposal-format
+    source: test/core/parsers/markdown-parser.test.ts
+  authoring-convention-review:
+    type: review
+    covers:
+      - proposal-format
+      - delta-storage
+    source: behavioural
+  enforcement-yaml-parser-tests:
+    type: test
+    covers: enforcement-yaml-format
+    source: test/core/governed/enforcement-yaml.test.ts
+  enforcement-migration-reader-tests:
+    type: test
+    covers: legacy-enforcement-reader
+    source: test/core/governed/enforcement-yaml.test.ts
+  enforcement-migration-reader-tests-discovery-test:
+    type: test
+    covers: legacy-enforcement-reader
+    source: test/core/governed/discovery.test.ts

@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import type { Binding } from '../schemas/governed-spec.schema.js';
+import { DEFAULT_ENFORCEMENT_TYPES, type EnforcementType } from '../artifact-graph/types.js';
 
 /**
  * Structural validation of active binding targets and working directories
@@ -16,9 +17,14 @@ import type { Binding } from '../schemas/governed-spec.schema.js';
  * that does not exist yet. Core only reports — it never executes a binding.
  */
 
-export type TargetField = 'targets' | 'run.cwd';
+export type TargetField = 'source' | 'targets' | 'run.cwd';
 
-export type TargetProblemKind = 'escapes-root' | 'missing';
+export type TargetProblemKind =
+  | 'escapes-root'
+  | 'missing'
+  | 'invalid-source'
+  | 'unknown-type'
+  | 'not-file';
 
 export interface TargetProblem {
   bindingId: string;
@@ -38,16 +44,25 @@ export interface TargetValidationResult {
 }
 
 export interface TargetValidationOptions {
-  /** Existence probe, overridable for tests. Defaults to a filesystem stat. */
+  /** Legacy existence probe override. It cannot distinguish files from directories. */
   pathExists?: (absolutePath: string) => Promise<boolean>;
+  /** File-kind probe override. Defaults to `fs.stat`; preferred by new tests/callers. */
+  pathKind?: (absolutePath: string) => Promise<'file' | 'directory' | 'other' | 'missing'>;
+  enforcementTypes?: readonly EnforcementType[];
+  lensIds?: readonly string[];
+  compactBindings?: boolean;
 }
 
-async function defaultExists(absolutePath: string): Promise<boolean> {
+async function defaultPathKind(
+  absolutePath: string
+): Promise<'file' | 'directory' | 'other' | 'missing'> {
   try {
-    await fs.stat(absolutePath);
-    return true;
+    const stat = await fs.stat(absolutePath);
+    if (stat.isFile()) return 'file';
+    if (stat.isDirectory()) return 'directory';
+    return 'other';
   } catch {
-    return false;
+    return 'missing';
   }
 }
 
@@ -95,10 +110,14 @@ export async function validateTargets(
   projectRoot: string,
   options: TargetValidationOptions = {}
 ): Promise<TargetValidationResult> {
-  const exists = options.pathExists ?? defaultExists;
+  const pathKind = options.pathKind ?? (options.pathExists
+    ? async (absolutePath: string) => (await options.pathExists!(absolutePath)) ? 'file' as const : 'missing' as const
+    : defaultPathKind);
   const problems: TargetProblem[] = [];
   const missingTargetsByBinding = new Map<string, string[]>();
   const escapingBindingIds = new Set<string>();
+  const typesById = new Map((options.enforcementTypes ?? DEFAULT_ENFORCEMENT_TYPES).map((type) => [type.id, type]));
+  const lensIds = new Set(options.lensIds ?? []);
 
   const recordMissing = (bindingId: string, declared: string): void => {
     const bucket = missingTargetsByBinding.get(bindingId);
@@ -110,7 +129,8 @@ export async function validateTargets(
     bindingId: string,
     field: TargetField,
     declared: string,
-    requireExists: boolean
+    requireExists: boolean,
+    requireFile = false
   ): Promise<void> => {
     const resolved = resolveInRoot(projectRoot, declared);
     if (!resolved.inRoot) {
@@ -125,7 +145,8 @@ export async function validateTargets(
       return;
     }
     if (!requireExists) return;
-    if (!(await exists(resolved.absolute))) {
+    const kind = await pathKind(resolved.absolute);
+    if (kind === 'missing') {
       recordMissing(bindingId, declared);
       problems.push({
         bindingId,
@@ -134,13 +155,64 @@ export async function validateTargets(
         kind: 'missing',
         message: `${field} '${declared}' does not exist under the project root.`,
       });
+    } else if (requireFile && kind !== 'file') {
+      recordMissing(bindingId, declared);
+      problems.push({
+        bindingId,
+        field,
+        path: declared,
+        kind: 'not-file',
+        message: `${field} '${declared}' must resolve to a file, but resolved to ${kind}.`,
+      });
     }
   };
 
   for (const binding of bindings) {
     if (binding.status !== 'active') continue;
 
-    // Working directory: always a real path; must resolve in-root and exist.
+    if (options.compactBindings && binding.type !== undefined && binding.source !== undefined) {
+      const resolvedType = typesById.get(binding.type);
+      if (!resolvedType) {
+        recordMissing(binding.id, binding.source);
+        problems.push({
+          bindingId: binding.id,
+          field: 'source',
+          path: binding.source,
+          kind: 'unknown-type',
+          message: `source cannot resolve because binding '${binding.id}' declares unknown type '${binding.type}'.`,
+        });
+        continue;
+      }
+      if (resolvedType.sourceKind === 'lens') {
+        if (!lensIds.has(binding.source)) {
+          recordMissing(binding.id, binding.source);
+          problems.push({
+            bindingId: binding.id,
+            field: 'source',
+            path: binding.source,
+            kind: 'missing',
+            message: `source lens '${binding.source}' is not configured for this project.`,
+          });
+        }
+      } else {
+        const filePath = binding.source.split('#', 1)[0];
+        if (filePath.length === 0) {
+          recordMissing(binding.id, binding.source);
+          problems.push({
+            bindingId: binding.id,
+            field: 'source',
+            path: binding.source,
+            kind: 'invalid-source',
+            message: `source '${binding.source}' has an empty file path before the selector.`,
+          });
+        } else {
+          await checkPath(binding.id, 'source', filePath, true, true);
+        }
+      }
+      continue;
+    }
+
+    // Legacy reader fallback: working directory and targets retain their old checks.
     if (binding.run) {
       await checkPath(binding.id, 'run.cwd', binding.run.cwd, true);
     }

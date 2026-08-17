@@ -1,0 +1,63 @@
+bindings:
+  update-precondition-tests:
+    type: test
+    covers: refresh-only-what-exists
+    source: test/core/update.test.ts
+  new-tool-detection-tests:
+    type: test
+    covers: new-tool-directories-reported
+    source: test/core/update.test.ts
+  configured-tool-detection-tests:
+    type: test
+    covers: configured-tool-detection
+    source: test/core/update.test.ts
+  configured-tool-detection-tests-tool-detection-test:
+    type: test
+    covers: configured-tool-detection
+    source: test/core/shared/tool-detection.test.ts
+  drift-detection-tests:
+    type: test
+    covers: drift-triggers-refresh
+    source: test/core/update.test.ts
+  drift-detection-tests-profile-sync-drift-test:
+    type: test
+    covers: drift-triggers-refresh
+    source: test/core/profile-sync-drift.test.ts
+  profile-and-delivery-sync-tests:
+    type: test
+    covers:
+      - profile-sync
+      - delivery-sync
+    source: test/core/update.test.ts
+  governed-regeneration-tests:
+    type: test
+    covers: governed-regeneration
+    source: test/core/templates/governed-guidance.test.ts
+  governed-regeneration-tests-skill-generation-test:
+    type: test
+    covers: governed-regeneration
+    source: test/core/shared/skill-generation.test.ts
+  migration-tests:
+    type: test
+    covers: one-time-migration
+    source: test/core/migration.test.ts
+  migration-tests-update-test:
+    type: test
+    covers: one-time-migration
+    source: test/core/update.test.ts
+  oh-my-pi-generator-tests:
+    type: test
+    covers: oh-my-pi-refresh
+    source: test/core/command-generation/adapters.test.ts
+  oh-my-pi-generator-tests-command-references-test:
+    type: test
+    covers: oh-my-pi-refresh
+    source: test/utils/command-references.test.ts
+  oh-my-pi-refresh-review:
+    type: review
+    covers: oh-my-pi-refresh
+    source: behavioural
+  archive-argument-review:
+    type: review
+    covers: archive-argument-support
+    source: behavioural

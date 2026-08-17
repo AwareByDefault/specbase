@@ -1,0 +1,21 @@
+bindings:
+  schema-directory-location-tests:
+    type: test
+    covers: self-contained-schema-directory
+    source: test/core/artifact-graph/resolver.test.ts
+  template-colocation-tests:
+    type: test
+    covers: self-contained-schema-directory
+    source: test/core/artifact-graph/governed-schema.test.ts
+  template-colocation-tests-instruction-loader-test:
+    type: test
+    covers: self-contained-schema-directory
+    source: test/core/artifact-graph/instruction-loader.test.ts
+  apply-block-tests:
+    type: test
+    covers: apply-block
+    source: test/commands/artifact-workflow.test.ts
+  config-project-local-schema-review:
+    type: review
+    covers: config-names-project-local-schema
+    source: behavioural

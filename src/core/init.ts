@@ -1012,4 +1012,4 @@ export async function plantBaselines(
 }
 
 /** The files a baseline pair comprises. A directory without these is a namespace, not a pair. */
-const BASELINE_FILES = ['spec.md', 'enforcement.md'] as const;
+const BASELINE_FILES = ['spec.md', 'enforcement.yaml'] as const;

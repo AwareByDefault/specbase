@@ -1,0 +1,28 @@
+bindings:
+  feedback-submission-tests:
+    type: test
+    covers:
+      - feedback-command
+      - issue-metadata
+      - literal-user-input
+    source: test/commands/feedback.test.ts
+  feedback-fallback-tests:
+    type: test
+    covers: manual-fallback
+    source: test/commands/feedback.test.ts
+  feedback-skill-template-tests:
+    type: test
+    covers: feedback-skill
+    source: test/core/templates/skill-templates-parity.test.ts
+  feedback-privacy-review:
+    type: review
+    covers: issue-metadata
+    source: behavioural
+  feedback-independence-review:
+    type: review
+    covers: feedback-independent-of-telemetry
+    source: behavioural
+  feedback-agent-flow-review:
+    type: review
+    covers: feedback-skill
+    source: behavioural

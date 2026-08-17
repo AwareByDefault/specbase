@@ -79,7 +79,7 @@ describe('bundled governed schema (task 1.3)', () => {
     const schema = resolveSchema(SCHEMA_NAME);
     const generates = Object.fromEntries(schema.artifacts.map((a) => [a.id, a.generates]));
     expect(generates.specs).toBe('specs/**/spec.md');
-    expect(generates.enforcement).toBe('specs/**/enforcement.md');
+    expect(generates.enforcement).toBe('specs/**/enforcement.yaml');
   });
 });
 
@@ -92,7 +92,7 @@ describe('bundled governed templates (task 1.4)', () => {
     'ops-spec.md',
     'code-quality-spec.md',
     'design-system-spec.md',
-    'enforcement.md',
+    'enforcement.yaml',
     'design.md',
     'tasks.md',
   ];
@@ -122,27 +122,22 @@ describe('bundled governed templates (task 1.4)', () => {
     expect(architectural.requirements[0]?.id).toBe('domain-determinism');
   });
 
-  it('enforcement template round-trips through the Unit 2 parser without issues', () => {
-    const parsed = parseEnforcement(readTemplate('enforcement.md'));
+  it('enforcement template round-trips through the compact parser without issues', () => {
+    const parsed = parseEnforcement(readTemplate('enforcement.yaml'), {
+      sourcePath: 'enforcement.yaml',
+    });
     expect(parsed.issues).toEqual([]);
-    expect(parsed.version).toBe(1);
-    expect(parsed.spec).toBe('architecture.domain');
-    // Exercises the full binding vocabulary the parser expects.
+    expect(parsed.format).toBe('yaml');
+    expect(parsed.version).toBeNull();
+    expect(parsed.spec).toBeNull();
     const ids = parsed.bindings.map((b) => b.id);
-    expect(ids).toEqual(['import-boundary', 'determinism-review', 'injected-clock-manual']);
+    expect(ids).toEqual(['import-boundary', 'determinism-review']);
     const automated = parsed.bindings.find((b) => b.id === 'import-boundary')!;
-    expect(automated.mechanism).toBe('lint');
-    expect(automated.strength).toBe('automated');
-    expect(automated.status).toBe('active');
-    expect(automated.run?.command).toBe('pnpm');
+    expect(automated.type).toBe('lint');
+    expect(automated.covers).toEqual(['domain-determinism']);
+    expect(automated.source).toBe('tools/lint/boundaries.test.ts');
     const review = parsed.bindings.find((b) => b.id === 'determinism-review')!;
-    expect(review.mechanism).toBe('review');
-    expect(review.review?.procedure).toBeTruthy();
-    // Manual binding demonstrates procedure + rationale (planned lifecycle).
-    const manual = parsed.bindings.find((b) => b.id === 'injected-clock-manual')!;
-    expect(manual.mechanism).toBe('manual');
-    expect(manual.status).toBe('planned');
-    expect(manual.procedure).toBeTruthy();
-    expect(manual.rationale).toBeTruthy();
+    expect(review.type).toBe('review');
+    expect(review.source).toBe('architectural');
   });
 });

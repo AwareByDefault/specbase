@@ -16,6 +16,7 @@
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { buildCodeFenceMask } from '../parsers/requirement-text.js';
 import { parseDeltaSpec } from '../parsers/requirement-blocks.js';
+import { parseEnforcement } from './enforcement-parser.js';
 
 const REQUIREMENT_HEADER = /^###\s+Requirement:\s*(.+?)\s*$/;
 // `**ID:** \`slug\`` with optional backticks and surrounding whitespace.
@@ -203,6 +204,7 @@ export function mergeGovernedSpec(
   }
 
   const content = assembleSpec(current.head, blocks);
+
   return { content, errors };
 }
 
@@ -282,11 +284,104 @@ function collectRemoveIds(doc: unknown): string[] {
   return ids;
 }
 
-function bindingId(binding: unknown): string | null {
-  if (binding && typeof binding === 'object' && typeof (binding as any).id === 'string') {
-    return (binding as any).id;
+function parseEnforcementYaml(content: string): unknown {
+  const fenced = extractYamlBody(content);
+  return parseYaml(fenced ?? content);
+}
+
+function compactBinding(
+  value: unknown,
+  source?: string
+): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  const type = raw.type ?? raw.mechanism;
+  const covers = raw.covers;
+  const resolvedSource = source ?? raw.source ?? raw.lens ??
+    ((raw.review as Record<string, unknown> | undefined)?.inputs as unknown[] | undefined)?.[0];
+  if (typeof type !== 'string' || typeof resolvedSource !== 'string' || resolvedSource.length === 0) {
+    return null;
   }
-  return null;
+  return { type, covers: covers ?? [], source: resolvedSource };
+}
+
+function targetSuffix(target: string): string {
+  const filePart = target.split('#', 1)[0].replace(/\\/gu, '/');
+  const basename = filePart.split('/').pop() ?? '';
+  const withoutExtension = basename.replace(/(?:\.[^.]+)+$/u, '');
+  const slug = withoutExtension
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '');
+  return slug || 'target';
+}
+
+function collisionSafeSplitId(baseId: string, target: string, used: Set<string>): string {
+  const stem = `${baseId}-${targetSuffix(target)}`;
+  let candidate = stem;
+  let index = 2;
+  while (used.has(candidate)) candidate = `${stem}-${index++}`;
+  used.add(candidate);
+  return candidate;
+}
+
+function bindingMap(
+  doc: unknown,
+  reservedIds: ReadonlySet<string> = new Set()
+): {
+  bindings: Map<string, Record<string, unknown>>;
+  errors: string[];
+} {
+  const bindings = new Map<string, Record<string, unknown>>();
+  const errors: string[] = [];
+  const raw = (doc as Record<string, unknown> | null)?.bindings;
+  if (Array.isArray(raw)) {
+    const declaredIds = new Set(
+      raw.flatMap((binding) => {
+        const id = binding && typeof binding === 'object'
+          ? (binding as Record<string, unknown>).id
+          : null;
+        return typeof id === 'string' ? [id] : [];
+      })
+    );
+    const used = new Set([...declaredIds, ...reservedIds]);
+    for (const binding of raw) {
+      if (!binding || typeof binding !== 'object') continue;
+      const value = binding as Record<string, unknown>;
+      const id = value.id;
+      if (typeof id !== 'string') continue;
+
+      const explicit = value.source ?? value.lens ??
+        ((value.review as Record<string, unknown> | undefined)?.inputs as unknown[] | undefined)?.[0];
+      if (typeof explicit === 'string' && explicit.length > 0) {
+        const compact = compactBinding(value, explicit);
+        if (compact) bindings.set(id, compact);
+        continue;
+      }
+
+      const targets = Array.isArray(value.targets)
+        ? value.targets.filter((target): target is string => typeof target === 'string' && target.length > 0)
+        : [];
+      if (targets.length === 0) {
+        errors.push(
+          `Legacy binding '${id}' has no target/source; resolve it explicitly before on-touch migration.`
+        );
+        continue;
+      }
+      targets.forEach((target, index) => {
+        const compact = compactBinding(value, target);
+        if (!compact) return;
+        const splitId = index === 0 ? id : collisionSafeSplitId(id, target, used);
+        bindings.set(splitId, compact);
+      });
+    }
+  } else if (raw && typeof raw === 'object') {
+    for (const [id, binding] of Object.entries(raw as Record<string, unknown>)) {
+      const compact = compactBinding(binding);
+      if (compact) bindings.set(id, compact);
+    }
+  }
+  return { bindings, errors };
 }
 
 /**
@@ -299,78 +394,52 @@ function bindingId(binding: unknown): string | null {
  */
 export function mergeEnforcement(
   currentContent: string | null,
-  deltaContent: string
+  deltaContent: string,
+  options: { currentSourcePath?: string; deltaSourcePath: string }
 ): EnforcementMergeResult {
   const errors: string[] = [];
-  if (currentContent === null) {
-    return { content: deltaContent, errors };
-  }
-
-  const currentBody = extractYamlBody(currentContent);
-  const deltaBody = extractYamlBody(deltaContent);
-  if (currentBody === null || deltaBody === null) {
-    errors.push('Enforcement merge could not locate a fenced yaml document.');
-    return { content: currentContent, errors };
-  }
-
-  let currentDoc: unknown;
+  let currentDoc: unknown = { bindings: {} };
   let deltaDoc: unknown;
   try {
-    currentDoc = parseYaml(currentBody);
-    deltaDoc = parseYaml(deltaBody);
+    if (currentContent !== null) currentDoc = parseEnforcementYaml(currentContent);
+    deltaDoc = parseEnforcementYaml(deltaContent);
   } catch (err) {
     errors.push(
       `Enforcement merge failed to parse yaml: ${err instanceof Error ? err.message : String(err)}`
     );
-    return { content: currentContent, errors };
+    return { content: currentContent ?? deltaContent, errors };
   }
 
-  const currentBindings: unknown[] = Array.isArray(
-    (currentDoc as any)?.bindings
-  )
-    ? [...(currentDoc as any).bindings]
-    : [];
-  const deltaBindings: unknown[] = Array.isArray((deltaDoc as any)?.bindings)
-    ? (deltaDoc as any).bindings
-    : [];
-  const removeIds = new Set(collectRemoveIds(deltaDoc));
-
-  const merged: unknown[] = [...currentBindings];
-  const indexById = new Map<string, number>();
-  merged.forEach((b, i) => {
-    const id = bindingId(b);
-    if (id !== null) indexById.set(id, i);
+  // Grammar comes from the discovered filename, never from content sniffing.
+  // Compact deltas alone may carry `remove`; legacy fenced deltas remain
+  // readable during migration.
+  const parsedDelta = parseEnforcement(deltaContent, {
+    sourcePath: options.deltaSourcePath,
+    allowDeltaRemove: options.deltaSourcePath.endsWith('enforcement.yaml'),
   });
-
-  for (const binding of deltaBindings) {
-    const id = bindingId(binding);
-    if (id === null) continue;
-    if (indexById.has(id)) {
-      merged[indexById.get(id)!] = binding;
-    } else {
-      indexById.set(id, merged.length);
-      merged.push(binding);
-    }
+  errors.push(...parsedDelta.issues.map((issue) => issue.message));
+  if (currentContent !== null && options.currentSourcePath) {
+    const parsedCurrent = parseEnforcement(currentContent, {
+      sourcePath: options.currentSourcePath,
+    });
+    errors.push(...parsedCurrent.issues.map((issue) => issue.message));
+  }
+  if (errors.length > 0) {
+    return { content: currentContent ?? deltaContent, errors };
   }
 
-  const finalBindings =
-    removeIds.size > 0
-      ? merged.filter((b) => {
-          const id = bindingId(b);
-          return id === null || !removeIds.has(id);
-        })
-      : merged;
+  // Resolve delta identities first so generated IDs for split legacy-current
+  // targets cannot be overwritten by an unrelated delta binding with the same
+  // derived suffix. An exact current ID can still be intentionally upserted.
+  const delta = bindingMap(deltaDoc);
+  const current = bindingMap(currentDoc, new Set(delta.bindings.keys()));
+  errors.push(...current.errors, ...delta.errors);
+  if (errors.length > 0) {
+    return { content: currentContent ?? deltaContent, errors };
+  }
+  for (const [id, binding] of delta.bindings) current.bindings.set(id, binding);
+  for (const id of collectRemoveIds(deltaDoc)) current.bindings.delete(id);
 
-  const mergedDoc: Record<string, unknown> = {
-    ...(currentDoc as Record<string, unknown>),
-  };
-  delete mergedDoc.remove;
-  delete mergedDoc.removed;
-  mergedDoc.bindings = finalBindings;
-
-  const yamlBody = stringifyYaml(mergedDoc).replace(/\n$/, '');
-  const spliced =
-    spliceYamlBody(currentContent, yamlBody) ??
-    `# Enforcement\n\n\`\`\`yaml\n${yamlBody}\n\`\`\`\n`;
-  return { content: spliced, errors };
+  const bindings = Object.fromEntries(current.bindings);
+  return { content: stringifyYaml({ bindings }), errors };
 }

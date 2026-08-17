@@ -1,0 +1,9 @@
+bindings:
+  stable-id-conformance:
+    type: test
+    covers: stable-id-across-moves
+    source: test/ideas/stable-id.test.ts
+  governed-enumeration-excludes-ideas:
+    type: test
+    covers: ideas-outside-governed-enumeration
+    source: test/ideas/enumeration-exclusion.test.ts

@@ -1,0 +1,66 @@
+bindings:
+  plane-resolution-tests:
+    type: test
+    covers: &a1
+      - governance-from-plane-selection
+      - planes-as-schema-data
+    source: test/core/shared/skill-generation.test.ts
+  plane-resolution-tests-spec-model-test:
+    type: test
+    covers: *a1
+    source: test/core/artifact-graph/spec-model.test.ts
+  governed-vs-legacy-branching:
+    type: test
+    covers: governance-from-plane-selection
+    source: test/core/artifact-graph/governed-context.test.ts
+  plane-metadata-schema-tests:
+    type: test
+    covers: &a2
+      - plane-metadata-record
+      - agents-plane-membership
+      - design-system-plane-membership
+    source: test/core/artifact-graph/governed-schema.test.ts
+  plane-metadata-schema-tests-review-panel-conformance-test:
+    type: test
+    covers: *a2
+    source: test/core/governed/review-panel.conformance.test.ts
+  locator-discovery-and-pair-tests:
+    type: test
+    covers: &a3
+      - open-plane-locators
+      - no-implicit-inheritance
+      - governed-pair-resolution
+    source: test/core/governed/locator.test.ts
+  locator-discovery-and-pair-tests-discovery-test:
+    type: test
+    covers: *a3
+    source: test/core/governed/discovery.test.ts
+  stable-identity-tests:
+    type: test
+    covers: stable-scoped-identities
+    source: test/core/governed/spec-id-index.test.ts
+  stable-identity-tests-spec-parser-test:
+    type: test
+    covers: stable-scoped-identities
+    source: test/core/governed/spec-parser.test.ts
+  stable-identity-tests-governed-spec-schema-test:
+    type: test
+    covers: stable-scoped-identities
+    source: test/core/schemas/governed-spec.schema.test.ts
+  plane-declaration-validation-tests:
+    type: test
+    covers: plane-declaration-validation
+    source: test/core/artifact-graph/spec-model.test.ts
+  plane-membership-diagnostics-review:
+    type: review
+    covers:
+      - plane-declaration-validation
+      - stable-scoped-identities
+      - plane-metadata-record
+    source: behavioural
+  plane-catalog-review:
+    type: review
+    covers:
+      - agents-plane-membership
+      - design-system-plane-membership
+    source: behavioural

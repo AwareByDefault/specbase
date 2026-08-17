@@ -39,7 +39,7 @@ bindings:
 
 describe('enforcement binding lens/covered_by vocabulary', () => {
   it('parses and surfaces lens and covered_by when present (round-trip)', () => {
-    const parsed = parseEnforcement(WITH_FIELDS);
+    const parsed = parseEnforcement(WITH_FIELDS, { sourcePath: 'enforcement.md' });
     expect(parsed.issues).toEqual([]);
     expect(parsed.bindings).toHaveLength(1);
     const [binding] = parsed.bindings;
@@ -48,7 +48,7 @@ describe('enforcement binding lens/covered_by vocabulary', () => {
   });
 
   it('leaves the fields absent (not defaulted) when omitted — backward-compatible', () => {
-    const parsed = parseEnforcement(WITHOUT_FIELDS);
+    const parsed = parseEnforcement(WITHOUT_FIELDS, { sourcePath: 'enforcement.md' });
     expect(parsed.issues).toEqual([]);
     const [binding] = parsed.bindings;
     expect(binding.lens).toBeUndefined();
@@ -60,7 +60,7 @@ describe('enforcement binding lens/covered_by vocabulary', () => {
 
   it('rejects a non-kebab lens id via schema validation', () => {
     const bad = WITH_FIELDS.replace('lens: architectural', 'lens: Not_Kebab');
-    const parsed = parseEnforcement(bad);
+    const parsed = parseEnforcement(bad, { sourcePath: 'enforcement.md' });
     expect(parsed.bindings).toHaveLength(0);
     expect(parsed.issues.some((i) => i.code === 'invalid-document')).toBe(true);
   });

@@ -2,10 +2,11 @@
 id: code-quality.no-ambient-time
 ---
 
+
 <!--
   Code-quality truth: a smell, quality, or rule about what good code looks
   like. Lives at specs/code-quality/<locator>/spec.md and is paired with an
-  enforcement.md in the same directory. Softer than behavior (WHEN/THEN over
+  enforcement.yaml in the same directory. Softer than behavior (WHEN/THEN over
   outcomes), but still normative - a prohibition or quality the code MUST hold.
   Enforcement mixes deterministic smell-lint with review for the residue the
   lint cannot catch; the code-quality lens judges that residue.

@@ -64,6 +64,13 @@ export const ProjectConfigSchema = z.object({
     .object({
       planes: z.array(z.unknown()).optional(),
       planesAppend: z.array(z.unknown()).optional(),
+      enforcement: z
+        .object({
+          types: z.array(z.unknown()).optional(),
+          typesAppend: z.array(z.unknown()).optional(),
+        })
+        .passthrough()
+        .optional(),
     })
     .passthrough()
     .optional()
@@ -84,6 +91,11 @@ export type ProjectConfig = z.infer<typeof ProjectConfigSchema> & {
   specModel?: {
     planes?: unknown[];
     planesAppend?: unknown[];
+    enforcement?: {
+      types?: unknown[];
+      typesAppend?: unknown[];
+      [key: string]: unknown;
+    };
   };
 };
 
@@ -274,14 +286,35 @@ export function readProjectConfig(projectRoot: string): ProjectConfig | null {
       }
     }
 
-    // Parse specModel overrides (planes+ to append, planes to replace). Kept
-    // raw here; skill-generation.ts validates and normalizes plane records.
+    // Parse specModel overrides. Keep declarations raw here so the shared model
+    // resolver can apply whole-roster validation and safe fallback semantics.
     if (raw.specModel !== undefined && typeof raw.specModel === 'object' && raw.specModel !== null) {
       const smRaw = raw.specModel as Record<string, unknown>;
       config.specModel = {};
       if (smRaw.planes !== undefined) config.specModel.planes = smRaw.planes as unknown[];
       const append = smRaw.planesAppend ?? smRaw['planes+'];
       if (append !== undefined) config.specModel.planesAppend = append as unknown[];
+
+      if (smRaw.enforcement !== undefined) {
+        if (typeof smRaw.enforcement === 'object' && smRaw.enforcement !== null && !Array.isArray(smRaw.enforcement)) {
+          const enforcementRaw = smRaw.enforcement as Record<string, unknown>;
+          config.specModel.enforcement = {};
+          if (enforcementRaw.types !== undefined) {
+            config.specModel.enforcement.types = enforcementRaw.types as unknown[];
+          }
+          const typesAppend = enforcementRaw.typesAppend ?? enforcementRaw['types+'];
+          if (typesAppend !== undefined) {
+            config.specModel.enforcement.typesAppend = typesAppend as unknown[];
+          }
+          // Preserve simultaneous alias declarations so the resolver can reject
+          // the ambiguity rather than silently preferring one spelling.
+          if (enforcementRaw.typesAppend !== undefined && enforcementRaw['types+'] !== undefined) {
+            config.specModel.enforcement['types+'] = enforcementRaw['types+'];
+          }
+        } else {
+          console.warn("Invalid 'specModel.enforcement' field in config (must be an object); using schema enforcement types");
+        }
+      }
     }
 
     // Return partial config even if some fields failed

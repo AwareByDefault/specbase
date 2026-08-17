@@ -103,11 +103,12 @@ describe('review-panel projection conformance (skill-is-projection / lenses-conf
     const flat = getReviewPanelSkillTemplate(LEGACY_SPEC_MODEL).instructions;
     const full = getReviewPanelSkillTemplate(governed(DEFAULT_PLANES)).instructions;
 
+    const nativeGate = 'For each structurally valid automated binding';
     // Flat: the gate/coverage steps are no-ops, not real instructions.
     expect(flat).toContain('no-ops');
-    expect(flat).not.toContain("Run the project's declared automated bindings");
-    // Governed: the honest gate step runs the declared bindings.
-    expect(full).toContain("Run the project's declared automated bindings");
+    expect(flat).not.toContain(nativeGate);
+    // Governed: the honest gate follows each source into its native harness.
+    expect(full).toContain(nativeGate);
     expect(full).not.toContain('no-ops');
   });
 });

@@ -1,0 +1,32 @@
+bindings:
+  opt-out-tests:
+    type: test
+    covers:
+      - env-opt-out
+      - ci-auto-disable
+    source: test/telemetry/index.test.ts
+  tracking-and-privacy-tests:
+    type: test
+    covers:
+      - command-executed-tracking
+      - privacy-preserving-events
+      - silent-failure
+    source: test/telemetry/index.test.ts
+  notice-tests:
+    type: test
+    covers: first-run-notice
+    source: test/telemetry/index.test.ts
+  identity-and-config-tests:
+    type: test
+    covers: anonymous-identity
+    source: test/telemetry/config.test.ts
+  shutdown-flush-tests:
+    type: test
+    covers:
+      - graceful-shutdown
+      - immediate-send
+    source: test/telemetry/index.test.ts
+  e2e-event-emission:
+    type: review
+    covers: command-executed-tracking
+    source: behavioural

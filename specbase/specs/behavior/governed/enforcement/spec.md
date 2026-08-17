@@ -2,210 +2,163 @@
 id: behavior.governed.enforcement
 ---
 
+## Purpose
+Governed enforcement is a concise, project-configurable index from normative requirements to the evidence sources that assure them, with declaration, execution, and semantic correspondence reported honestly as separate facts.
+
 ### Requirement: Every governed spec is paired with a declaration of how it is assured
-**ID:** paired-enforcement-contract
-The system SHALL require a sibling `enforcement.md` beside every governed `spec.md`
-that names its paired spec by stable ID and declares how each normative requirement
-and scenario is assured. A pair whose two members disagree on identity SHALL be
-reported rather than accepted.
+**ID:** `paired-enforcement-contract`
+The system SHALL require a sibling `enforcement.yaml` beside every governed `spec.md`. The manifest SHALL pair by location with that spec and declare the evidence source for each normative requirement. During migration, a lone legacy `enforcement.md` SHALL satisfy the pair contract, while both filenames together SHALL make the pair invalid.
 
-#### Scenario: Complete pair
-**ID:** pair-identity-matches
-- **WHEN** a governed pair is parsed
-- **THEN** the stable spec ID declared by `enforcement.md` matches the one in `spec.md`
-- **AND** both files share one locator
+#### Scenario: Complete compact pair
+**ID:** `pair-identity-matches`
+- **WHEN** a governed directory contains `spec.md` and `enforcement.yaml`
+- **THEN** the files resolve as one pair with the spec's stable identity
 
-#### Scenario: Mismatched pair identity
-**ID:** pair-identity-mismatch
-- **WHEN** `enforcement.md` names a different stable spec ID
-- **THEN** validation reports both source files and the mismatched values
+#### Scenario: Conflicting enforcement members
+**ID:** `pair-identity-mismatch`
+- **WHEN** a governed directory contains both supported enforcement filenames
+- **THEN** validation reports both source files as an ambiguous pair
 
-### Requirement: Each binding declares what it covers and how
-**ID:** structured-bindings
-Each enforcement binding SHALL declare the pair-local requirement or scenario IDs it
-covers, its mechanism, its evidence strength, its lifecycle status, concrete targets
-or a review procedure with its inputs, and any limitations the author accepts.
+### Requirement: Each binding declares a type, covered requirements, and one source
+**ID:** `structured-bindings`
+Each enforcement binding SHALL use its map key as pair-local stable identity and SHALL declare exactly `type`, `covers`, and `source`. The type SHALL resolve from the project's enforcement type roster, `covers` SHALL name one or more requirements from the paired spec, and `source` SHALL identify the artifact that owns the check or procedure.
 
-#### Scenario: Automated test binding
-**ID:** binding-test-shape
-- **WHEN** a requirement or scenario is covered by a test
-- **THEN** the binding declares the test target and the executable argument vector
-- **AND** classifies its strength as automated
+#### Scenario: File-backed binding
+**ID:** `binding-test-shape`
+- **WHEN** a binding uses a configured file-backed type
+- **THEN** its source identifies a project-relative evidence file with an optional selector
 
-#### Scenario: Lint or static-analysis binding
-**ID:** binding-lint-shape
-- **WHEN** an invariant is checked by a linter or static-analysis rule
-- **THEN** the binding declares the configuration, rule or conformance target, and the executable argument vector
+#### Scenario: Lens-backed binding
+**ID:** `binding-review-shape`
+- **WHEN** a binding uses a configured lens-backed type
+- **THEN** its source names a resolved review lens
 
-#### Scenario: Structured review binding
-**ID:** binding-review-shape
-- **WHEN** a claim cannot be checked mechanically
-- **THEN** the binding declares the review procedure and its required inputs
-- **AND** classifies its strength as review rather than automated
+#### Scenario: Type vocabulary is project-defined
+**ID:** `binding-lint-shape`
+- **WHEN** a binding declares a type ID outside Specbase's shipped defaults
+- **THEN** it parses and validates when that ID exists in the resolved project roster
 
-### Requirement: Evidence strength is classified honestly
-**ID:** honest-evidence-strength
-The system SHALL distinguish automated, review, manual, and unenforced evidence so
-human or probabilistic judgment is never presented as deterministic proof. A binding
-that remains planned or unenforced SHALL leave planning open while holding
-verification and archive readiness closed.
+### Requirement: Evidence strength is derived from configured types
+**ID:** `honest-evidence-strength`
+The system SHALL derive each binding's automated, review, manual, or unenforced evidence strength from its resolved enforcement type so a project-defined mechanism is classified without repeating strength in every manifest. A missing type, unresolved source, or unenforced type SHALL leave the requirement unready.
 
-#### Scenario: Agentic review is review evidence
-**ID:** agentic-review-strength
-- **WHEN** an agent completes a declared review procedure
-- **THEN** the result is reported at review strength and is not labelled automated evidence
+#### Scenario: Project type supplies strength
+**ID:** `agentic-review-strength`
+- **WHEN** a binding resolves to a type whose strength is `review`
+- **THEN** coverage reports review-strength evidence regardless of the type's project-defined ID
 
-#### Scenario: Manual evidence
-**ID:** manual-evidence
-- **WHEN** a binding needs human or external observation
-- **THEN** it carries a repeatable procedure and rationale and reports manual strength
+#### Scenario: Manual type supplies strength
+**ID:** `manual-evidence`
+- **WHEN** a binding resolves to a type whose strength is `manual`
+- **THEN** coverage reports manual evidence and the source points to its procedure artifact
 
-#### Scenario: Planned binding blocks readiness
-**ID:** planned-binding-blocks
-- **WHEN** a binding remains planned or unenforced
+#### Scenario: Invalid binding blocks readiness
+**ID:** `planned-binding-blocks`
+- **WHEN** a binding type or source does not resolve
 - **THEN** planning may continue
 - **AND** verification and archive readiness stay blocked
 
-### Requirement: A non-deterministic binding may name its lens and its deterministic residue
-**ID:** review-lens-and-residue
-A binding whose mechanism is non-deterministic MAY declare the review lens that
-executes it and MAY declare the sibling binding IDs whose deterministic checks
-already own part of its territory. Both fields SHALL be optional and additive, and
-their absence SHALL NOT change how a binding parses or how coverage and drift are
-computed.
-
-#### Scenario: Review binding names its lens
-**ID:** binding-names-lens
-- **WHEN** a review binding declares a lens
-- **THEN** the binding parses with that lens recorded and its covered claims route to that lens
-
-#### Scenario: Covered-by names the deterministic residue
-**ID:** binding-covered-by
-- **WHEN** a review binding names sibling binding IDs as already covering part of its territory
-- **THEN** those IDs are recorded so the executing lens reviews only the remaining residue
-
-#### Scenario: Absent fields are backward compatible
-**ID:** lens-fields-optional
-- **WHEN** a binding declares neither field
-- **THEN** it parses as before and coverage, drift, and validation are unchanged
-
-### Requirement: Drift is detected in both directions
-**ID:** bidirectional-drift
-The system SHALL use stable identities to detect enforcement left behind after a
-normative claim is removed, and enforcement that is broken or missing for a claim
-that survives.
+### Requirement: Drift is detected between requirements and evidence sources
+**ID:** `bidirectional-drift`
+The system SHALL use stable binding and requirement identities to detect a binding left behind after a requirement is removed, a surviving requirement with no valid binding, and a binding whose configured type or source no longer resolves.
 
 #### Scenario: Removed requirement leaves a stale binding
-**ID:** stale-after-requirement-removal
-- **WHEN** a prepared spec no longer holds an ID a binding still covers
-- **THEN** validation reports the binding and the stale covered ID
-- **AND** the pair is not promoted until coverage is reconciled
+**ID:** `stale-after-requirement-removal`
+- **WHEN** a prepared spec no longer holds a requirement ID a binding still covers
+- **THEN** validation reports the binding and stale covered ID
 
-#### Scenario: Removed scenario leaves a stale binding
-**ID:** stale-after-scenario-removal
-- **WHEN** a scenario is removed while a binding still covers its stable ID
-- **THEN** validation reports that binding as stale enforcement
+#### Scenario: Removed source leaves a hanging claim
+**ID:** `broken-target-hangs-claim`
+- **WHEN** an evidence source disappears or its type no longer resolves
+- **THEN** validation reports the binding ID, source, and covered requirements
+- **AND** those requirements are not reported ready
 
-#### Scenario: Removed target leaves a hanging claim
-**ID:** broken-target-hangs-claim
-- **WHEN** an active binding targets a file that no longer exists
-- **THEN** validation reports the missing target, the binding ID, and the covered normative IDs
-- **AND** the covered claims are not reported as ready
+#### Scenario: Scenario edits do not stale bindings
+**ID:** `stale-after-scenario-removal`
+- **WHEN** scenarios are added, renamed, or removed under a covered requirement
+- **THEN** its requirement-level bindings remain valid
 
-### Requirement: Retired enforcement targets are reported, never deleted
-**ID:** retired-target-candidates
-When requirements, scenarios, or bindings are removed, the system SHALL report the
-enforcement targets nothing references any more as cleanup candidates, and SHALL NOT
-delete project code on its own.
+### Requirement: Retired evidence sources are reported, never deleted
+**ID:** `retired-target-candidates`
+When requirements or bindings are removed, the system SHALL report evidence source files referenced by no surviving binding as cleanup candidates and SHALL NOT delete project files on its own.
 
-#### Scenario: Binding removed with its requirement
-**ID:** retired-candidate-reported
-- **WHEN** a change removes a normative ID and its binding
-- **THEN** synchronization reports the binding's former targets as retired candidates
+#### Scenario: Binding removal retires a source
+**ID:** `retired-candidate-reported`
+- **WHEN** a change removes the final binding that references a file source
+- **THEN** synchronization reports that source as a retired candidate
 
-#### Scenario: Target still shared
-**ID:** shared-target-not-retired
-- **WHEN** a surviving binding still references a candidate target
-- **THEN** the candidate is reported as still shared and is not offered as safe cleanup
+#### Scenario: Source remains shared
+**ID:** `shared-target-not-retired`
+- **WHEN** a surviving binding still references a candidate source
+- **THEN** the source is reported as shared and is not offered as safe cleanup
 
-### Requirement: Active binding targets resolve inside the project
-**ID:** resolvable-targets
-The system SHALL check that every active binding's targets and working directories
-exist and resolve inside the selected project root before reporting enforcement
-readiness, and SHALL reject an escaping path without reading the external location.
+### Requirement: Binding sources resolve according to their configured type
+**ID:** `resolvable-targets`
+The system SHALL resolve every binding source using its enforcement type's source kind. File sources SHALL resolve inside the selected project root before readiness; lens sources SHALL name a configured review lens. Validation SHALL reject an escaping path without reading the external location.
 
-#### Scenario: Targets resolve
-**ID:** targets-resolve
-- **WHEN** every active target and working directory exists inside the project root
-- **THEN** structural target validation passes
+#### Scenario: File source resolves
+**ID:** `targets-resolve`
+- **WHEN** a file-backed source exists inside the project root
+- **THEN** structural source validation passes
 
-#### Scenario: Missing target
-**ID:** missing-target-reported
-- **WHEN** an active target does not exist
-- **THEN** validation reports the binding ID, the structured field, the missing path, and the covered IDs
+#### Scenario: Missing source is reported
+**ID:** `missing-target-reported`
+- **WHEN** a configured source cannot be resolved
+- **THEN** validation reports the binding ID, source, type, and covered requirements
 
-#### Scenario: Escaping target
-**ID:** escaping-target-rejected
-- **WHEN** a target or working directory resolves outside the project root
+#### Scenario: Escaping source is rejected
+**ID:** `escaping-target-rejected`
+- **WHEN** a file source resolves outside the project root
 - **THEN** validation rejects it without accessing the external location
 
-### Requirement: Automated bindings are executed, and their fit is judged separately
-**ID:** automated-execution-and-correspondence
-The system SHALL run an affected automated binding through its declared executable
-and argument vector, attach the result to the IDs it covers, and fail readiness when
-a mandatory check fails or cannot start. Executable success SHALL be reported
-separately from the judgment of whether a changed check plausibly proves the claim
-it covers.
+### Requirement: Evidence linkage, execution, and correspondence are reported separately
+**ID:** `automated-execution-and-correspondence`
+The system SHALL report structural linkage when a binding resolves, execution only when its source is run through the project's native evidence harness, and semantic correspondence only when the source plausibly exercises the covered requirement. A valid source link alone SHALL NOT be reported as a passing execution result.
 
-#### Scenario: Automated check passes
-**ID:** automated-check-passes
-- **WHEN** an affected binding's declared command exits successfully
-- **THEN** a passing automated result is recorded for its covered IDs
+#### Scenario: Evidence source passes
+**ID:** `automated-check-passes`
+- **WHEN** verification runs an automated source through the project harness and it succeeds
+- **THEN** a passing execution result is attached to its covered requirements
 
-#### Scenario: Automated check fails
-**ID:** automated-check-fails
-- **WHEN** a mandatory declared command exits unsuccessfully or cannot start
-- **THEN** the failure output and the affected stable IDs are reported
-- **AND** governed archive is marked not ready
+#### Scenario: Evidence source cannot run
+**ID:** `automated-check-fails`
+- **WHEN** an automated source fails, cannot start, or has no available harness
+- **THEN** verification reports that outcome separately from structural coverage
+- **AND** does not claim the source passed
 
-#### Scenario: A passing check asserts the wrong contract
-**ID:** semantic-mismatch-reported
-- **WHEN** a command passes but the changed check does not plausibly correspond to its covered claim
-- **THEN** the mismatch is reported as a review-strength correspondence issue, separate from command status
+#### Scenario: Source asserts the wrong contract
+**ID:** `semantic-mismatch-reported`
+- **WHEN** a source exists or passes but does not plausibly correspond to its covered requirement
+- **THEN** the mismatch is reported as a review-strength correspondence issue
 
 ### Requirement: A pair is validated and promoted as one unit
-**ID:** pair-coherent-sync
-The system SHALL prepare and validate a governed specification and its enforcement
-together, and SHALL promote both members or neither.
+**ID:** `pair-coherent-sync`
+The system SHALL prepare and validate a governed `spec.md` and its enforcement manifest together, and SHALL promote both members or neither. Promotion SHALL write the current enforcement member as `enforcement.yaml`.
 
 #### Scenario: Pair validation fails
-**ID:** pair-not-promoted-on-failure
-- **WHEN** a prepared pair holds a duplicate ID, a stale binding, a hanging mandatory claim, an unresolved status, or a missing active target
+**ID:** `pair-not-promoted-on-failure`
+- **WHEN** a prepared pair holds a duplicate ID, stale binding, hanging requirement, unknown type, or unresolved source
 - **THEN** neither member is promoted
 - **AND** actionable diagnostics name the conflict
 
 #### Scenario: Pair validation succeeds
-**ID:** pair-promoted-together
-- **WHEN** both prepared files and their coverage validate
-- **THEN** synchronization updates the complete pair and reports requirement, scenario, binding, and retired-target changes together
+**ID:** `pair-promoted-together`
+- **WHEN** both prepared members and their coverage validate
+- **THEN** synchronization updates the complete pair and reports requirement, binding, and retired-source changes together
 
-### Requirement: A spec over an operational artifact binds a conformance check to it
-**ID:** conformance-binding-pattern
-When a governed spec states durable truth about an operational artifact an agent or
-runtime reads — a project config, a resolved lens set, a skill file, a hook
-configuration, or a token file — its paired enforcement SHALL bind a normative claim
-to a check that the artifact conforms to the spec. The pattern SHALL reuse the
-existing binding mechanisms and SHALL NOT introduce a new one.
+### Requirement: A spec over an operational artifact binds a conformance source to it
+**ID:** `conformance-binding-pattern`
+When a governed spec states durable truth about an operational artifact, its paired enforcement SHALL bind the requirement to a source that checks the artifact's conformance. The binding SHALL use a configured enforcement type and SHALL keep the operational artifact as the runtime source of truth.
 
 #### Scenario: Spec bound to its operational artifact
-**ID:** artifact-conformance-bound
+**ID:** `artifact-conformance-bound`
 - **WHEN** a governed spec declares durable truth about an operational artifact
-- **THEN** its enforcement binds a claim to a check that the artifact conforms to the spec
+- **THEN** its enforcement source checks that artifact against the requirement
 
-#### Scenario: No new mechanism
-**ID:** no-new-mechanism
+#### Scenario: Project vocabulary is reused
+**ID:** `no-new-mechanism`
 - **WHEN** enforcement is authored for such a spec
-- **THEN** its bindings use only the existing mechanisms
+- **THEN** its binding selects a type from the resolved project roster
 
 ### Requirement: A spec describes the artifact the runtime reads and never generates it
 **ID:** describe-direction-of-truth

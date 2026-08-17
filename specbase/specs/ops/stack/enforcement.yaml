@@ -1,0 +1,35 @@
+bindings:
+  stack-manifest-audit:
+    type: command
+    covers: &a1
+      - node-runtime-floor
+      - pnpm-is-the-package-manager
+      - commander-is-the-cli-framework
+      - posthog-is-the-telemetry-backend
+    source: package.json
+  stack-manifest-audit-pnpm-lock:
+    type: command
+    covers: *a1
+    source: pnpm-lock.yaml
+  toolchain-pin-agreement:
+    type: command
+    covers: &a2
+      - node-runtime-floor
+      - pnpm-is-the-package-manager
+    source: package.json
+  toolchain-pin-agreement-ci:
+    type: command
+    covers: *a2
+    source: .github/workflows/ci.yml
+  toolchain-pin-agreement-flake:
+    type: command
+    covers: *a2
+    source: flake.nix
+  gh-external-tool-conformance:
+    type: command
+    covers: github-cli-is-an-external-tool
+    source: src/commands/feedback.ts
+  gh-external-tool-conformance-package:
+    type: command
+    covers: github-cli-is-an-external-tool
+    source: package.json

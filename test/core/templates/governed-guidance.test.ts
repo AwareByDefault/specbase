@@ -172,38 +172,16 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
   // identity and reports retired enforcement targets as cleanup candidates. None
   // of this appears in the legacy sync guidance.
   describe('governed sync guidance (specs-sync-skill)', () => {
-    const SYNC_MARKERS = [
+    const markers = [
       'Reconciling governed pairs (governed)',
-      'the whole pair - `spec.md` and `enforcement.md` - together in one step',
-      'by their pair-local `**ID:**` slug',
-      'Apply binding add/modify/remove/rename\n  by pair-local binding ID',
-      'update the moved pair in place without changing its ID',
-      'Never promote a spec-only or enforcement-only half',
-      'report the binding\'s former `targets` as\n  **cleanup candidates**',
-      'Never auto-delete a test, rule, fixture, or review target here',
-      'leave that current pair\n  unchanged and report the actionable conflicts',
-      'Use the governed sync CLI behavior',
+      'compact bindings by their map keys',
+      'Treat `spec.md` and `enforcement.yaml` as one coherent write',
+      'Normalize every touched pair to `enforcement.yaml`',
+      'never delete project code',
     ];
-
-    for (const marker of SYNC_MARKERS) {
-      it(`teaches sync guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
-        const skill = getSyncSpecsSkillTemplate(GOVERNED).instructions;
-        const command = getSpcbSyncCommandTemplate(GOVERNED).content;
-        expect(skill).toContain(marker);
-        expect(command).toContain(marker);
-        expect(getSyncSpecsSkillTemplate().instructions).not.toContain(marker);
-        expect(getSpcbSyncCommandTemplate().content).not.toContain(marker);
-      });
-    }
-
-    it('does not apply legacy header-identity merging to governed pairs', () => {
-      for (const surface of [
-        getSyncSpecsSkillTemplate(GOVERNED).instructions,
-        getSpcbSyncCommandTemplate(GOVERNED).content,
-      ]) {
-        expect(surface).toContain('stable scoped identity, never by title');
-        expect(surface).toContain('Discover every concrete delta from status');
-      }
+    for (const marker of markers) it(`projects sync: ${marker}`, () => {
+      expect(getSyncSpecsSkillTemplate(GOVERNED).instructions).toContain(marker);
+      expect(getSpcbSyncCommandTemplate(GOVERNED).content).toContain(marker);
     });
   });
 
@@ -212,48 +190,18 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
   // correspondence as review (not deterministic automation), reports retired
   // targets, and reports evidence strength. None of this appears under legacy.
   describe('governed verify guidance (spcb-verify-skill)', () => {
-    const VERIFY_MARKERS = [
-      'Verifying coverage and evidence (governed)',
-      'Assess enforcement COVERAGE first',
-      'EXECUTE each affected automated binding',
-      'declared \\`run: {command, args, cwd}\\`',
-      'Associate each pass/fail with the binding',
-      'does NOT by itself prove the check verifies the intended claim',
-      'Perform structured REVIEW procedures',
-      'Report \\`manual\\` evidence separately',
-      'Assess SEMANTIC CORRESPONDENCE honestly',
-      'distinguish "command passed" from "the check verifies the intended',
-      'never upgrade it to automated strength',
-      'Report RETIRED enforcement targets',
-      'never delete a target here',
-      'Report evidence STRENGTH per binding',
-      'Block archive-readiness while any affected binding is',
-    ]
-      // Source strings use single backticks; markers escape them for readability.
-      .map((m) => m.replace(/\\`/g, '`'));
-
-    for (const marker of VERIFY_MARKERS) {
-      it(`teaches verify guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
-        const skill = getVerifyChangeSkillTemplate(GOVERNED).instructions;
-        const command = getSpcbVerifyCommandTemplate(GOVERNED).content;
-        expect(skill).toContain(marker);
-        expect(command).toContain(marker);
-        expect(getVerifyChangeSkillTemplate().instructions).not.toContain(marker);
-        expect(getSpcbVerifyCommandTemplate().content).not.toContain(marker);
-      });
-    }
-
-    it('raises CRITICAL with stable IDs for incomplete coverage and failed commands', () => {
-      for (const surface of [
-        getVerifyChangeSkillTemplate(GOVERNED).instructions,
-        getSpcbVerifyCommandTemplate(GOVERNED).content,
-      ]) {
-        // Incomplete governed coverage -> CRITICAL naming stable spec/normative/binding IDs.
-        expect(surface).toContain('raise a **CRITICAL** issue that');
-        expect(surface).toContain('names the stable spec `id`');
-        // Automated enforcement fails -> CRITICAL + not ready to archive.
-        expect(surface).toContain('mark the change **not ready to');
-      }
+    const markers = [
+      'Verifying linkage, execution, and correspondence (governed)',
+      'Structural linkage',
+      'Native-harness execution',
+      'Semantic correspondence',
+      'Never invent a command vector from the manifest',
+      'Do not use manual `covered_by` lists',
+      'Never describe a resolvable source as a passing execution',
+    ];
+    for (const marker of markers) it(`projects verify: ${marker}`, () => {
+      expect(getVerifyChangeSkillTemplate(GOVERNED).instructions).toContain(marker);
+      expect(getSpcbVerifyCommandTemplate(GOVERNED).content).toContain(marker);
     });
   });
 
@@ -262,69 +210,18 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
   // retired-target cleanup candidates without auto-deleting code, and reports an
   // explicit validation bypass honestly. None of this appears under legacy.
   describe('governed archive guidance (spcb-archive-skill)', () => {
-    const ARCHIVE_MARKERS = [
+    const markers = [
       'Archiving a governed change (governed)',
-      'Require governed readiness BEFORE archiving',
-      'no **hanging**\n  mandatory SHALL/MUST claims',
-      'every active\n  binding\'s declared \\`targets\\` exist',
-      'NO \\`planned\\`, unenforced, unresolved,\n  **broken**, or failing-mandatory bindings remain',
-      'Reuse the \\`/spcb:verify\\`\n  results as the readiness evidence',
-      'Interactive confirmation is NOT\n  enforcement evidence',
-      'Treat governed deltas as an inseparable pair on sync',
-      'invoke **pair-aware\n  governed synchronization**',
-      'Never promote a\n  spec-only or enforcement-only half',
-      'report a blocking validation error rather than offering partial\n  synchronization',
-      'Archive through the schema-aware CLI path',
-      'report the dated archive location',
-      'Report retired-target CLEANUP candidates; never auto-delete project code',
-      'never auto-delete project code from this workflow',
-      'Report an explicit BYPASS honestly',
-      'the archive was NOT fully verified rather than claiming\n  governed readiness',
-    ]
-      // Source strings use single backticks; markers escape them for readability.
-      .map((m) => m.replace(/\\`/g, '`'));
-
-    for (const marker of ARCHIVE_MARKERS) {
-      it(`teaches archive guidance "${marker.slice(0, 40)}..." under governed, absent under legacy`, () => {
-        // Both single-change and bulk archive carry the shared readiness gate.
-        const surfaces = [
-          getArchiveChangeSkillTemplate(GOVERNED).instructions,
-          getSpcbArchiveCommandTemplate(GOVERNED).content,
-          getBulkArchiveChangeSkillTemplate(GOVERNED).instructions,
-          getSpcbBulkArchiveCommandTemplate(GOVERNED).content,
-        ];
-        for (const surface of surfaces) expect(surface).toContain(marker);
-
-        expect(getArchiveChangeSkillTemplate().instructions).not.toContain(marker);
-        expect(getSpcbArchiveCommandTemplate().content).not.toContain(marker);
-        expect(getBulkArchiveChangeSkillTemplate().instructions).not.toContain(marker);
-        expect(getSpcbBulkArchiveCommandTemplate().content).not.toContain(marker);
-      });
-    }
-
-    it('bulk archive applies the readiness gate per change and reports each outcome', () => {
-      const bulkOnly = [
-        'Applying the governed gate across a batch (governed)',
-        'Apply the governed readiness gate PER change',
-        'whether it was **archived**',
-        '**blocked**',
-        '**bypassed**',
-        'Never\n  fold a blocked or bypassed change into the archived count',
-      ];
-      for (const surface of [
-        getBulkArchiveChangeSkillTemplate(GOVERNED).instructions,
-        getSpcbBulkArchiveCommandTemplate(GOVERNED).content,
-      ]) {
-        for (const marker of bulkOnly) expect(surface).toContain(marker);
-      }
-      // The batch-specific section is unique to bulk archive, not single archive.
-      expect(getArchiveChangeSkillTemplate(GOVERNED).instructions).not.toContain(
-        'Applying the governed gate across a batch (governed)'
-      );
-      // And it never leaks into legacy bulk output.
-      expect(getBulkArchiveChangeSkillTemplate().instructions).not.toContain(
-        'Applying the governed gate across a batch (governed)'
-      );
+      'resolved types and sources',
+      'compact `enforcement.yaml` as one unit',
+      'validation bypass is explicit and unverified',
+    ];
+    for (const marker of markers) it(`projects archive: ${marker}`, () => {
+      expect(getArchiveChangeSkillTemplate(GOVERNED).instructions).toContain(marker);
+      expect(getSpcbArchiveCommandTemplate(GOVERNED).content).toContain(marker);
+    });
+    it('applies readiness independently in bulk', () => {
+      expect(getBulkArchiveChangeSkillTemplate(GOVERNED).instructions).toContain('independently to every change');
     });
   });
 
@@ -341,7 +238,7 @@ describe('governed workflow guidance gating (tasks 6.1-6.3)', () => {
       'under `specs/architecture/...`',
       'durable identity while titles and locators are mutable',
       'assign a project-unique stable spec',
-      'stale** bindings (covering a removed ID)',
+      'stale** bindings (covering a removed requirement)',
       'hanging** claims (a mandatory',
       'governed verification',
       'archived **proposal and design preserve WHY**',

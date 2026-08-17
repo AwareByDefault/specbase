@@ -1,0 +1,31 @@
+bindings:
+  config-location-tests:
+    type: test
+    covers: global-config-location
+    source: test/core/global-config.test.ts
+  load-save-defaults-tests:
+    type: test
+    covers: &a1
+      - global-config-store
+      - global-config-load-defaults
+      - global-config-save
+      - schema-evolution-merge
+    source: test/core/global-config.test.ts
+  load-save-defaults-tests-config-test:
+    type: test
+    covers: *a1
+    source: test/commands/config.test.ts
+  schema-authority-tests:
+    type: test
+    covers: config-schema-is-authority
+    source: test/core/config-schema.test.ts
+  schema-authority-tests-config-test:
+    type: test
+    covers: config-schema-is-authority
+    source: test/commands/config.test.ts
+  write-path-and-override-review:
+    type: review
+    covers:
+      - config-schema-is-authority
+      - global-config-store
+    source: behavioural

@@ -57,7 +57,7 @@ describe('governed/coverage', () => {
     expect(report.scenarios[0].coveredBy).toEqual(['b1']);
   });
 
-  it('covers a scenario directly without requiring one binding per scenario', () => {
+  it('rejects scenario IDs as binding boundaries while scenarios inherit from the requirement', () => {
     const report = computeCoverage({
       spec: oneRequirement,
       enforcement: enforcement([
@@ -66,7 +66,8 @@ describe('governed/coverage', () => {
       ]),
     });
     const ambient = report.scenarios.find((s) => s.id === 'ambient-time-rejected');
-    expect(ambient?.coveredBy).toEqual(['req', 'scen']);
+    expect(ambient?.coveredBy).toEqual(['req']);
+    expect(report.staleBindingIds).toEqual(['scen']);
   });
 
   it('reports a hanging requirement when no binding covers it', () => {
@@ -85,7 +86,11 @@ describe('governed/coverage', () => {
       enforcement: enforcement([automated('s', ['ambient-time-rejected'])]),
     });
     expect(report.hangingRequirementIds).toEqual(['domain-determinism']);
-    expect(report.uncoveredScenarioIds).toEqual(['injected-time-accepted']);
+    expect(report.uncoveredScenarioIds).toEqual([
+      'ambient-time-rejected',
+      'injected-time-accepted',
+    ]);
+    expect(report.staleBindingIds).toEqual(['s']);
   });
 
   it('flags a stale binding covering a removed normative ID', () => {
@@ -160,6 +165,33 @@ describe('governed/coverage', () => {
     expect(report.incompleteBindingIds).toEqual(['b1']);
     expect(report.bindings[0].state).toBe('incomplete');
     expect(report.hangingRequirementIds).toEqual(['domain-determinism']);
+  });
+
+  it('derives compact binding strength from a custom resolved type', () => {
+    const compact = automated('custom', ['domain-determinism'], {
+      type: 'nix-check',
+      source: 'checks/domain.nix',
+      mechanism: 'nix-check',
+      strength: 'unenforced',
+      targets: ['checks/domain.nix'],
+      run: undefined,
+    });
+    const report = computeCoverage({
+      spec: oneRequirement,
+      enforcement: { ...enforcement([compact]), format: 'yaml' },
+      enforcementTypes: [{
+        id: 'nix-check',
+        purpose: 'Evaluated Nix assertions.',
+        strength: 'automated',
+        sourceKind: 'file',
+      }],
+    });
+    expect(report.bindings[0]).toMatchObject({
+      type: 'nix-check',
+      strength: 'automated',
+      complete: true,
+    });
+    expect(report.hangingRequirementIds).toEqual([]);
   });
 
   it('counts a complete review binding as coverage', () => {

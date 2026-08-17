@@ -1,0 +1,9 @@
+bindings:
+  save-idea-skill-conformance:
+    type: command
+    covers: save-idea-skill
+    source: .pi/skills/save-idea/SKILL.md
+  explore-idea-input-conformance:
+    type: command
+    covers: explore-reads-idea
+    source: .pi/skills/specbase-explore/SKILL.md

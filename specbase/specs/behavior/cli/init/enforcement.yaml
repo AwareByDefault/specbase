@@ -1,0 +1,93 @@
+bindings:
+  init-structure-and-config-tests:
+    type: test
+    covers: store-scaffolding
+    source: test/core/init.test.ts
+  init-tool-selection-tests:
+    type: test
+    covers: &a1
+      - tool-detection-and-confirmation
+      - explicit-tool-selection
+    source: test/core/init.test.ts
+  init-tool-selection-tests-available-tools-test:
+    type: test
+    covers: *a1
+    source: test/core/available-tools.test.ts
+  tool-picker-presentation-review:
+    type: review
+    covers: tool-detection-and-confirmation
+    source: behavioural
+  picker-interaction-tests:
+    type: test
+    covers: tool-detection-and-confirmation
+    source: test/prompts/searchable-multi-select.test.ts
+  generation-profile-delivery-tests:
+    type: test
+    covers: &a2
+      - profile-driven-generation
+      - commands-optional-per-tool
+    source: test/core/init.test.ts
+  generation-profile-delivery-tests-skill-generation-test:
+    type: test
+    covers: *a2
+    source: test/core/shared/skill-generation.test.ts
+  skill-header-tests:
+    type: test
+    covers: skill-frontmatter
+    source: test/core/templates/skill-templates-parity.test.ts
+  skill-header-tests-skill-generation-test:
+    type: test
+    covers: skill-frontmatter
+    source: test/core/shared/skill-generation.test.ts
+  oh-my-pi-artifact-tests:
+    type: test
+    covers: oh-my-pi-artifacts
+    source: test/core/command-generation/adapters.test.ts
+  oh-my-pi-artifact-tests-command-references-test:
+    type: test
+    covers: oh-my-pi-artifacts
+    source: test/utils/command-references.test.ts
+  oh-my-pi-artifact-tests-available-tools-test:
+    type: test
+    covers: oh-my-pi-artifacts
+    source: test/core/available-tools.test.ts
+  preference-application-tests:
+    type: test
+    covers: configured-preferences-applied
+    source: test/core/init.test.ts
+  preference-application-tests-global-config-test:
+    type: test
+    covers: configured-preferences-applied
+    source: test/core/global-config.test.ts
+  extend-and-reinit-tests:
+    type: test
+    covers:
+      - extend-mode
+      - reinit-preserves-and-cleans
+    source: test/core/init.test.ts
+  extend-mode-review:
+    type: review
+    covers:
+      - extend-mode
+      - reinit-preserves-and-cleans
+    source: behavioural
+  init-migration-tests:
+    type: test
+    covers: init-migration
+    source: test/core/migration.test.ts
+  init-migration-tests-init-test:
+    type: test
+    covers: init-migration
+    source: test/core/init.test.ts
+  phase-reporting-review:
+    type: review
+    covers: setup-phase-reporting
+    source: behavioural
+  plane-picker-review:
+    type: review
+    covers: plane-picker
+    source: behavioural
+  baseline-planting-review:
+    type: review
+    covers: baseline-planting
+    source: behavioural

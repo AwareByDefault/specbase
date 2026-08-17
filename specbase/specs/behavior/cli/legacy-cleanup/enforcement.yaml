@@ -1,0 +1,30 @@
+bindings:
+  detection-tests:
+    type: test
+    covers: legacy-artifact-detection
+    source: test/core/legacy-cleanup.test.ts
+  surgical-removal-tests:
+    type: test
+    covers:
+      - surgical-config-edit
+      - managed-artifact-removal
+      - project-document-preserved
+    source: test/core/legacy-cleanup.test.ts
+  reporting-tests:
+    type: test
+    covers:
+      - cleanup-report
+      - project-document-preserved
+    source: test/core/legacy-cleanup.test.ts
+  auto-cleanup-tests:
+    type: test
+    covers: cleanup-confirmation
+    source: test/core/init.test.ts
+  auto-cleanup-tests-update-test:
+    type: test
+    covers: cleanup-confirmation
+    source: test/core/update.test.ts
+  cleanup-prompt-review:
+    type: review
+    covers: cleanup-confirmation
+    source: behavioural

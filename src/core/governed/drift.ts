@@ -1,4 +1,5 @@
 import type { GovernedPairRecord } from '../schemas/governed-spec.schema.js';
+import type { EnforcementType } from '../artifact-graph/types.js';
 import type { ParsedGovernedSpec } from './spec-parser.js';
 import type { ParsedEnforcement } from './enforcement-parser.js';
 import { computeCoverage, type CoverageReport } from './coverage.js';
@@ -35,7 +36,8 @@ function targetReferences(
 ): Map<string, Set<string>> {
   const refs = new Map<string, Set<string>>();
   for (const binding of enforcement.bindings) {
-    for (const target of binding.targets) {
+    const targets = binding.source ? [binding.source.split('#', 1)[0]] : binding.targets;
+    for (const target of targets) {
       const bucket = refs.get(target);
       if (bucket) bucket.add(binding.id);
       else refs.set(target, new Set([binding.id]));
@@ -103,6 +105,8 @@ export interface PairAnalysisInput {
   /** Absolute project root that active binding targets must stay inside. */
   projectRoot: string;
   targetOptions?: TargetValidationOptions;
+  enforcementTypes?: readonly EnforcementType[];
+  lensIds?: readonly string[];
 }
 
 export interface PairAnalysis {
@@ -154,7 +158,12 @@ export async function analyzePairDrift(
   const targets = await validateTargets(
     enforcement.bindings,
     input.projectRoot,
-    input.targetOptions
+    {
+      ...input.targetOptions,
+      enforcementTypes: input.enforcementTypes,
+      lensIds: input.lensIds,
+      compactBindings: enforcement.format === 'yaml',
+    }
   );
 
   const coverage = computeCoverage({
@@ -162,6 +171,7 @@ export async function analyzePairDrift(
     enforcement,
     missingTargetsByBinding: targets.missingTargetsByBinding,
     escapingBindingIds: targets.escapingBindingIds,
+    enforcementTypes: input.enforcementTypes,
   });
 
   const incompletePair = record.completeness !== 'complete';

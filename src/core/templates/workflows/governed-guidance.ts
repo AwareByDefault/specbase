@@ -16,7 +16,7 @@
  * `specbase instructions` output, satisfying "derive from CLI output rather than
  * hardcoding a flat capability layout".
  */
-import type { SpecModel } from '../../artifact-graph/types.js';
+import { DEFAULT_ENFORCEMENT_TYPES, type SpecModel } from '../../artifact-graph/types.js';
 import { DEFAULT_PLANES } from '../../governed/lenses.js';
 import { CLEAN_SPEC_RULES, CLEAN_SPECBASE_RULES } from './clean-rules.generated.js';
 
@@ -149,9 +149,15 @@ export const DEFAULT_PLANE_TRIGGERS: Record<string, string> = {
 export function buildGovernedPrimer(specModel: SpecModel): string {
   const planes = specModel.kind === 'governed' ? specModel.planes : [];
   const planeLines = planes.map(
-    (p) => `- ${p.id}: ${p.purpose} (enforcement: ${p.enforcementFlavor}) \u2192 \`specs/${p.id}/<locator>/{spec.md,enforcement.md}\``
+    (p) => `- ${p.id}: ${p.purpose} (enforcement: ${p.enforcementFlavor}) \u2192 \`specs/${p.id}/<locator>/{spec.md,enforcement.yaml}\``
   );
   const planeIds = planes.map((p) => p.id);
+  const enforcementTypes = specModel.kind === 'governed'
+    ? specModel.enforcement?.types ?? DEFAULT_ENFORCEMENT_TYPES
+    : [];
+  const enforcementTypeLines = enforcementTypes.map(
+    (type) => `- ${type.id}: ${type.purpose} (strength: ${type.strength}; source: ${type.sourceKind})`
+  );
   // The shipped defaults are read from the one place that declares them, never
   // restated here: a roster literal in this module is exactly the frozen-roster
   // bug this guidance exists to avoid.
@@ -168,10 +174,10 @@ export function buildGovernedPrimer(specModel: SpecModel): string {
 agentic instruments (review panel, repo-specific skills, subagents, hooks), NOT
 guardrails on agent behavior — those ride on the plane whose subject they
 constrain. Each agents \`spec.md\` **describes** an agent-operational artifact
-(\`config.yaml\`, the lens set, a \`SKILL.md\`, a hook) and its \`enforcement.md\`
-binds a **conformance/drift check** to that artifact using the ordinary
-mechanisms (\`command\`, \`test\`) — no new mechanism, and the spec never generates
-the artifact (the runtime keeps the artifact as its source of truth). \`specbase
+(\`config.yaml\`, the lens set, a \`SKILL.md\`, a hook) and its \`enforcement.yaml\`
+binds a **conformance/drift source** to that artifact using a type from the
+resolved project roster — no agents-only type, and the spec never generates the
+artifact (the runtime keeps the artifact as its source of truth). \`specbase
 init\` may PLANT baseline agents specs (\`agents/spec-driven\`, \`agents/review-panel\`)
 directly as scaffolding — the one exception to the proposal→spec→archive flow;
 edit a planted baseline through a change, never by re-running init.`
@@ -192,7 +198,10 @@ This project uses the governed spec model (${planes.length} permanent truth plan
 never hardcode them. Durable truth lives in the declared planes:
 ${planeLines.join('\n')}
 
-Every governed \`spec.md\` is PAIRED with an \`enforcement.md\`. Stable identity is
+Every governed \`spec.md\` is PAIRED with an \`enforcement.yaml\`. Its binding values contain exactly \`type\`, requirement-level \`covers\`, and one \`source\`; the binding map key is its stable identity. Scenarios inherit coverage from their requirement. The resolved enforcement types are:
+${enforcementTypeLines.join('\n')}
+
+Stable identity is
 scoped narrowly: the frontmatter \`id\` (e.g. \`${firstPlane}.<locator>\`) is the only project-unique governed ID; requirement, scenario, and binding \`**ID:**\` slugs are unique only within their pair, and stay fixed when titles or locators move.
 
 **Plane classification:** match each proposed claim to the plane whose declared
@@ -203,8 +212,8 @@ purpose best fits the claim's nature. The shipped defaults are ${defaultsCovered
   JSON reports normalized slash-separated locators, filesystem access is native.
 - A directory that only GROUPS child pairs is a **namespace** and needs no pair of
   its own. Only a directory that contains \`spec.md\` must also contain
-  \`enforcement.md\`; ancestry provides navigation, never inherited requirements.
-- A change stores its \`spec.md\` and \`enforcement.md\` deltas under the SAME
+  \`enforcement.yaml\`; ancestry provides navigation, never inherited requirements.
+- A change stores its \`spec.md\` and \`enforcement.yaml\` deltas under the SAME
   plane-qualified locator as the target current pair, so both members move together.${agentsConventions}
 
 ${GOVERNED_MANIFESTO_RULES}`;
@@ -269,11 +278,12 @@ coverage quota. Aim for deliberate, honest evidence, not a wall of tests:
   scenario, and do NOT create one binding per scenario.
 - **Spend example tests on what bites:** the representative, edge, and risky
   cases - not every enumerated path.
-- **Match mechanism to plane:** architectural invariants -> lint /
-  static-analysis / conformance; behavioral claims -> tests / property tests;
-  subjective or UX claims -> an honest \`review\` binding with a real procedure;
-  genuinely unverifiable-today -> a \`manual\` binding stating its \`limitations\`.
-  Use review/manual openly and first-class rather than faking automation.`;
+- **Match a resolved type to the claim:** use the projected type roster rather
+  than a frozen mechanism list. File-backed types point to project sources;
+  lens-backed types point to configured lenses. Keep procedures, assertions,
+  harness details, and limitations in planning artifacts and the source itself,
+  never in the compact manifest. Use review/manual strength openly rather than
+  faking automation.`;
 
 /**
  * explore (spcb-explore-skill spec): staged behavior -> architecture ->
@@ -288,7 +298,7 @@ Open a governed explore session by consulting the aggregated coverage view:
 run \`specbase coverage --json\` and read the per-spec states and orphan
 classes. Mention any rot or gaps in the areas the idea touches - hanging
 claims, stale bindings, **degraded** specs (covered only by review/manual
-evidence), broken targets, or orphaned enforcement - and factor that health
+evidence), unresolved sources, or orphaned enforcement - and factor that health
 into the discussion. When the idea touches a spec whose state is hanging,
 stale, or degraded, surface that state and suggest addressing it or explicitly
 deferring it in the proposal.
@@ -308,13 +318,13 @@ partner - the stages order the discussion, they are not a rigid script:
    spec is in scope, not optional.
 3. **Enforcement approach - stay general; certainty is the proposal's job.**
    The requirements and scenarios do not exist yet, so do NOT enumerate bindings,
-   target files, \`covers\` lists, or evidence strengths here. Instead, name the
+   source files, \`covers\` lists, or evidence strengths here. Instead, name the
    FEW most important architectural invariants and behavioral outcomes the idea
    introduces, and for each sketch the *highest-leverage* way you would know it
    holds (a fitness function? a property test? honest review?). Flag anything that
    looks genuinely hard to verify (likely review or manual). Use the enforcement
    philosophy below as the lens for that approach, and reserve concrete bindings,
-   targets, and coverage decisions for the proposal - where the requirements will
+   sources, and coverage decisions for the proposal - where the requirements will
    exist to bind against.
 
 **Plane classifier:** explicitly classify which plane(s) the idea touches. For
@@ -352,13 +362,14 @@ belongs to - they are not interchangeable:
 | Package responsibility or dependency invariant that must stay true | Architectural spec pair (\`specs/architecture/...\`) |
 | Repo/ops selection or run-time invariant | Ops spec pair (\`specs/ops/...\`) |
 | Code smell, quality, or rule | Code-quality spec pair (\`specs/code-quality/...\`) |
-| How a claim is proven (test/lint/review mechanism) | Paired \`enforcement.md\` binding |
+| Durable claim-to-source link | Paired \`enforcement.yaml\` binding |
+| Intended proof, source contract, harness, and boundary | Proposal, design, tasks, and the source |
 | Why THIS change is being made a certain way | \`design.md\` / \`proposal.md\` (change design) |
 | Historical rationale for a past transition | The dated change archive |
 
 - When exploration establishes a package responsibility or dependency invariant
   that must remain true, name it as a possible **architectural requirement** and
-  consider how it could be **enforced** (which mechanism would protect it).
+  consider how it could be **enforced** (which resolved type and source would protect it).
 - When exploration only explains why one implementation approach was chosen for a
   particular change, its durable home is **design or proposal** (transitional
   rationale), NOT current architectural truth.
@@ -388,10 +399,6 @@ blind per-lens reviewers.
   fits, PROPOSE adding a new lens, or splitting a broad lens into a scoped one over
   a nested subtree (e.g. \`architecture/rings/boundaries\`), as a normal change.
   Growth is by proposal: the panel never adds or splits a lens on its own.
-- **Name the deterministic residue.** When sibling automated bindings already own
-  part of the territory, list them in the review binding's \`covered_by\` so the
-  lens reviews only the residue above the gate - the review surface shrinks as you
-  harden, with no lens edit.
 - **Coverage makes the pressure visible.** \`specbase coverage\` reports each lens's
   review-claim load, un-lensed review claims, and split candidates - use it to
   decide when to grow a lens, split one, or harden a claim to automated. The tool
@@ -425,7 +432,7 @@ discuss it:
    ambiguity is a question; a routine placement is an FYI.
 
 **Writing quality is never gated by that offer.** Apply the writing rules above
-to every \`spec.md\` and \`enforcement.md\` you author, whether or not the user
+to every \`spec.md\` and \`enforcement.yaml\` you author, whether or not the user
 engages with the structure discussion. The offer decides WHERE truth lives; the
 writing rules decide HOW it is stated, and they always apply.
 
@@ -442,15 +449,15 @@ writing rules decide HOW it is stated, and they always apply.
   \`spec.md\` frontmatter, and pair-local \`**ID:**\` slugs for each requirement,
   scenario, and enforcement binding.
 - **Pair every governed spec with enforcement:** each SHALL/MUST requirement needs
-  at least one binding in the paired \`enforcement.md\`; a binding may be
-  \`planned\` while planning but must become \`active\` before verify/archive. A
-  \`covers\` list references only IDs from its own pair.
+  at least one source binding in the paired \`enforcement.yaml\`. Each binding
+  value contains exactly \`type\`, requirement-level \`covers\`, and one \`source\`.
 - **Author bindings by the philosophy below - now the requirements exist, apply
-  it concretely:** for each requirement choose the *highest-leverage real check*
-  and name concrete \`targets\`; bind at the requirement level; and use honest
-  \`review\`/\`manual\` bindings where no automated check is meaningful. Do NOT
-  emit one binding per scenario or a hollow test to inflate coverage. "At least
-  one binding" is a floor for honest evidence, not a quota to maximize.
+  it concretely:** choose a type from the resolved roster and the
+  *highest-leverage real source* for each requirement. Use multiple bindings for
+  multiple sources and a real configured lens where automation is dishonest. Keep
+  assertions, procedures, harness details, and boundaries in the proposal,
+  design, tasks, and source. Do NOT emit one binding per scenario or a hollow
+  test to inflate coverage.
 
 ${GOVERNED_ENFORCEMENT_PHILOSOPHY}`;
 
@@ -459,14 +466,15 @@ export const GOVERNED_UPDATE_GUIDANCE = (specModel: SpecModel) => `${buildGovern
 
 ### Keeping pairs coherent on update (governed)
 
-Review each governed \`spec.md\` together with its paired \`enforcement.md\` - never
+Review each governed \`spec.md\` together with its paired \`enforcement.yaml\` - never
 update one member of a pair in isolation. When you add, modify, remove, or move a
 normative claim, check the paired bindings for the result:
 
-- **Removed requirement/scenario** whose stable ID a binding still \`covers\` ->
-  update or remove that now-**stale** binding, and report its no-longer-referenced
-  \`targets\` as **cleanup candidates** (do not delete them here - apply decides
-  safely).
+- **Removed requirement** whose stable ID a binding still \`covers\` -> update or
+  remove that now-**stale** binding, and report a no-longer-referenced file
+  \`source\` as a **cleanup candidate** (do not delete it here - apply decides
+  safely). Scenario edits inherit through the owning requirement and do not stale
+  a requirement-level binding.
 - **Added SHALL/MUST claim** with no covering binding -> a **hanging claim**; add a
   binding.
 - **Moved spec** (new locator, same meaning) -> keep the stable spec \`id\`
@@ -479,210 +487,45 @@ export const GOVERNED_SYNC_GUIDANCE = (specModel: SpecModel) => `${buildGoverned
 
 ### Reconciling governed pairs (governed)
 
-Governed sync reconciles complete \`spec.md\`/\`enforcement.md\` PAIRS together by
-stable scoped identity, never by title. Legacy header-identity merging above does
-NOT apply to governed pairs.
+- Discover complete delta pairs from CLI status and resolve current pairs by stable spec identity.
+- Merge requirements by pair-local requirement ID and compact bindings by their map keys.
+- Treat \`spec.md\` and \`enforcement.yaml\` as one coherent write; never promote one half.
+- Validate every compact binding's resolved type, requirement-level \`covers\`, and \`source\`.
+- Normalize every touched pair to \`enforcement.yaml\`; remove a legacy member only after successful promotion.
+- Report an unreferenced former file source as a cleanup candidate, but never delete project code.`;
 
-- **Discover every concrete delta from status, not the filesystem shape.** Run
-  \`specbase status --change "<name>" --json\` and read every nested specification
-  AND enforcement delta path it reports; do not assume the flat
-  \`specs/<capability>/spec.md\` layout.
-- **Resolve current pairs by stable identity.** For each delta, resolve the
-  corresponding current pair by its stable spec \`id\` and locator, then reconcile
-  the whole pair - \`spec.md\` and \`enforcement.md\` - together in one step.
-- **Reconcile normative content by pair-local ID.** Apply added, modified, removed,
-  or renamed requirements and scenarios by their pair-local \`**ID:**\` slug, and
-  preserve unaffected normative content. Titles and locators are mutable; the
-  scoped IDs are not.
-- **Reconcile bindings by pair-local ID.** Apply binding add/modify/remove/rename
-  by pair-local binding ID, and validate each binding's \`covers\` IDs against the
-  prepared paired spec.
-- **A moved spec keeps its identity.** When a delta retains an existing stable spec
-  \`id\` at a new locator, update the moved pair in place without changing its ID.
-- **Preserve pair coherence.** Never promote a spec-only or enforcement-only half:
-  a governed \`spec.md\` and its \`enforcement.md\` are synced together or not at all.
-- **Report retired targets as cleanup candidates.** When reconciliation removes a
-  binding or a normative ID it covered, report the binding's former \`targets\` as
-  **cleanup candidates**, and indicate whether any surviving binding still shares
-  those targets. Never auto-delete a test, rule, fixture, or review target here.
-- **Block on invalid pairs, do not half-write.** If a prepared pair has duplicate
-  scoped identity, stale coverage, a hanging mandatory claim, an unresolved binding
-  status, a missing target, or a missing pair member, leave that current pair
-  unchanged and report the actionable conflicts.
-- **Stay idempotent.** Use the governed sync CLI behavior; running again on an
-  already-synchronized change leaves the specification and enforcement files
-  unchanged and duplicates no requirement, scenario, or binding.`;
-
-/** verify (task 6.4 / Requirements: Completeness Verification, Correctness Verification). */
 export const GOVERNED_VERIFY_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
-### Verifying coverage and evidence (governed)
+### Verifying linkage, execution, and correspondence (governed)
 
-Governed verify checks whether declared enforcement actually protects the affected
-normative truth, then reports evidence STRENGTH honestly. Core validates
-declaration shape only; the WORKFLOW executes commands and review procedures with
-your process tools.
+Start with \`specbase coverage --json\`, the aggregated enforcement-coverage view backing this assessment.
 
-- **Assess enforcement COVERAGE first.** From \`specbase validate\` (or
-  \`specbase spec validate\`) plus \`specbase status --change "<name>" --json\`, load
-  every affected \`spec.md\`/\`enforcement.md\` PAIR and map each requirement and
-  scenario by its stable pair-local \`**ID:**\` to its covering bindings. Every
-  mandatory (SHALL/MUST) requirement needs at least one complete **active** binding.
-  Report separately: **hanging** mandatory claims (no covering binding), uncovered
-  scenarios, **stale** bindings (covering a removed ID), **broken** bindings
-  (missing target), and \`planned\` bindings. When a normative ID lacks complete
-  enforcement, or a binding \`covers\` an absent ID, raise a **CRITICAL** issue that
-  names the stable spec \`id\`, the pair-local normative ID, and the binding ID.
-- **EXECUTE each affected automated binding's declared command.** For a binding
-  whose mechanism is automated, read its declared \`run: {command, args, cwd}\`
-  vector, resolve the project-relative \`targets\` and working directory, and run
-  the declared executable with its exact argument vector using your process tools.
-  Associate each pass/fail with the binding's covered stable IDs. A target file
-  existing AND its command passing is **deterministic** evidence the check ran - but
-  it does NOT by itself prove the check verifies the intended claim. If a mandatory
-  automated command fails or cannot execute, raise a **CRITICAL** issue with the
-  command output and the covered stable IDs, and mark the change **not ready to
-  archive**.
-- **Perform structured REVIEW procedures.** For a binding whose mechanism is
-  \`review\`, follow its stated procedure using the required code and architecture
-  inputs, and report the conclusion labeled with **review** strength (weaker than
-  automated). Report \`manual\` evidence separately, together with its stated
-  limitations - never present it as automated proof.
-- **Assess SEMANTIC CORRESPONDENCE honestly.** For each changed automated binding
-  that resolves and passes, inspect whether its check plausibly proves the covered
-  claim. Report that judgment as a **REVIEW** conclusion, SEPARATE from the command
-  status: distinguish "command passed" from "the check verifies the intended
-  semantics". A plausible-correspondence conclusion is review evidence, not
-  deterministic automation - never upgrade it to automated strength.
-- **Report RETIRED enforcement targets.** Surface any former test, rule, fixture, or
-  review target that sync or archive flagged as a **cleanup candidate**, and state
-  whether any surviving binding still references it. Do NOT assume an unshared target
-  was deleted without checking project usage, and never delete a target here.
-- **Report evidence STRENGTH per binding and gate archive-readiness.** For every
-  affected binding, label its evidence as **automated**, **review**, **manual**, or
-  **unenforced**. Block archive-readiness while any affected binding is \`planned\`,
-  unenforced, unresolved, stale, broken, or missing its target.
-- **Consult \`specbase coverage\` (and \`specbase coverage --json\`) as the
-  aggregated enforcement-coverage view backing this assessment** - per-spec
-  states, strength mix, and orphaned enforcement in one health signal.
+1. **Structural linkage.** Resolve each binding type from the projected roster and resolve its source by source kind. A valid link means only that coverage is declared.
+2. **Native-harness execution.** For each affected file source, inspect the repository to identify its native test, lint, analysis, or procedure harness. Run it when available and record the exact result; otherwise report it as unexecuted. Never invent a command vector from the manifest.
+3. **Semantic correspondence.** Review whether each source plausibly exercises its covered requirement. A source that exists or passes can still be a mismatch.
+4. **Scenario inheritance.** Judge bindings at requirement level; scenario additions, renames, and removals do not stale a binding.
+5. **Review residue.** For a lens source, derive deterministic sibling evidence from automated bindings covering the same requirement. Do not use manual \`covered_by\` lists.
 
-### Run the review panel for review bindings (governed)
+Report linkage, execution, and correspondence separately. Never describe a resolvable source as a passing execution.`;
 
-The \`review\` procedure step is EXECUTED by the review panel, not a static
-read-through. For the affected \`review\`/\`manual\` bindings:
-
-- **Route each affected review binding to its lens** - the \`lens\` it declares,
-  or the most-specific default lens for its subtree (\`architectural\` for
-  \`architecture/**\`, \`behavioural\` for \`behavior/**\`, plus the cross-cutting
-  \`enforcement\` and \`code-quality\` lenses). Run the panel over the lenses whose
-  subtrees the change touches.
-- **Review only the residue above the gate.** Pass each lens the deterministic
-  bindings named in that review binding's \`covered_by\` as its blind list, so it
-  reports only what the automated layer does not already prove.
-- **Report findings as \`review\`-strength, attributed by lens and severity.**
-  Panel findings are weaker evidence by construction: they DO NOT by themselves
-  mark the change ready or not-ready, do NOT flip verification readiness, and
-  NEVER block archive or \`specbase coverage --strict\` - those gate on structural
-  rot only. High-severity findings are refute-verified before being reported.
-- **Flag un-lensed review claims.** When an affected \`review\`/\`manual\` binding
-  resolves to no defined lens, report it as an **un-lensed review** gap (the same
-  class \`specbase coverage\` surfaces) and suggest pointing it at an existing lens
-  or proposing a new/scoped one - never invent a lens on the fly.
-
-Legacy changes (\`specModel.kind == "legacy"\`) retain the heuristic requirement /
-scenario / design verification described above unchanged.`;
-
-/** archive (task 6.5 / Requirements: Artifact Completion Check, Spec Sync Prompt, Archive Process). */
 export const GOVERNED_ARCHIVE_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Archiving a governed change (governed)
 
-Governed archive promotes a change into durable truth only when its complete
-spec/enforcement PAIRS are verified, reconciled together, and free of unresolved
-enforcement. The legacy artifact/task/delta prompts above still apply; the
-governed gate below is ADDITIONAL and authoritative.
+Require complete pairs, valid requirement-level coverage, resolved types and sources, and recorded native-harness results before archive. Promote \`spec.md\` with compact \`enforcement.yaml\` as one unit. A validation bypass is explicit and unverified. Report retired unshared file sources as cleanup candidates without deleting them.`;
 
-- **Require governed readiness BEFORE archiving.** Do not archive until the
-  affected \`spec.md\`/\`enforcement.md\` PAIRS validate together (\`specbase
-  validate\` / \`specbase spec validate\`), coverage is satisfied (no **hanging**
-  mandatory SHALL/MUST claims, no **stale** or uncovered bindings), every active
-  binding's declared \`targets\` exist, and NO \`planned\`, unenforced, unresolved,
-  **broken**, or failing-mandatory bindings remain. Reuse the \`/spcb:verify\`
-  results as the readiness evidence; if verification has not been run or does not
-  pass, block ordinary archive readiness and direct the user to \`/spcb:verify\`
-  or the explicit validation-bypass command. Interactive confirmation is NOT
-  enforcement evidence - never treat a "proceed anyway" answer as proof the pair
-  is enforced.
-- **Treat governed deltas as an inseparable pair on sync.** When a governed change
-  has complete paired deltas, show ONE combined summary of the normative, binding,
-  and retired-target operations that archive will apply, then invoke **pair-aware
-  governed synchronization** (the governed archive CLI path) so \`spec.md\` and
-  \`enforcement.md\` reconcile together by stable identity. Never promote a
-  spec-only or enforcement-only half. If only ONE member of a governed delta pair
-  exists, report a blocking validation error rather than offering partial
-  synchronization.
-- **Archive through the schema-aware CLI path.** Run the archive via the governed
-  archive command so pair validation, current-state pair updates, archive-root
-  selection, and bypass reporting stay authoritative - do not hand-move governed
-  pair files. On success, report the dated archive location, the updated current
-  locators, the resulting enforcement status, and any cleanup candidates.
-- **Report retired-target CLEANUP candidates; never auto-delete project code.**
-  When reconciliation retires a binding or a normative ID it covered, surface the
-  binding's former \`targets\` (tests, rules, fixtures, review procedures) as
-  **cleanup candidates**. Before any manual removal, assess whether a surviving
-  binding still references each candidate; never delete a shared or intentionally
-  retained target, and never auto-delete project code from this workflow.
-- **Report an explicit BYPASS honestly.** If the user deliberately chooses the
-  supported validation bypass, invoke the CLI with its required confirmation flags
-  (e.g. \`--no-validate\`) and report the result as **unverified (validation
-  bypassed)** - state that the archive was NOT fully verified rather than claiming
-  governed readiness.`;
-
-/**
- * bulk archive (task 6.5). Reuses the single-change governed archive gate verbatim
- * so both projections stay identical, then adds per-change batch reporting.
- */
 export const GOVERNED_BULK_ARCHIVE_GUIDANCE = (specModel: SpecModel) => `${GOVERNED_ARCHIVE_GUIDANCE(specModel)}
 
-### Applying the governed gate across a batch (governed)
+Apply the readiness decision independently to every change and report each archived, blocked, or bypassed result.`;
 
-- **Apply the governed readiness gate PER change.** Evaluate every selected
-  governed change against the readiness gate above independently - one change's
-  passing pairs never satisfy another's. A change whose pairs are unverified,
-  hanging, stale, broken, or carry \`planned\`/unresolved bindings is **blocked**
-  for ordinary archive, not archived alongside ready changes.
-- **Report each change's outcome explicitly.** In the batch summary, state for
-  every selected change whether it was **archived** (verified), **blocked**
-  (readiness gate failed - name the failing pair and reason), or **bypassed**
-  (archived with the explicit validation bypass, reported as unverified). Never
-  fold a blocked or bypassed change into the archived count.`;
-
-/** apply (task 6.3 / Requirement: Apply resolves enforcement bindings). */
 export const GOVERNED_APPLY_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
-### Implementing truth and evidence (governed)
+### Delivering enforcement sources (governed)
 
-Apply implements BOTH the product/architecture change and its declared evidence:
+Use \`specbase coverage --json\` as the aggregated coverage health signal while applying.
 
-- **Resolve planned bindings.** As each binding's target and command land, move it
-  from \`status: planned\` to \`status: active\`. If implementation finishes but a
-  mandatory binding is still \`planned\` (or stale, hanging, broken, or missing its
-  target), report the unresolved evidence and do **not** mark that spec's related
-  work complete.
-- **New enforcement mechanism.** If an architectural requirement needs a new lint
-  rule or conformance check, implement the rule AND its checks, and make the
-  binding name concrete \`targets\` and a runnable command. Any user-visible
-  behavior of that tooling is itself behavioral truth - capture it in the
-  appropriate behavioral spec pair.
-- **Assess retired-target cleanup safely.** When reconciliation reports a retired
-  test, rule, fixture, or review target, check surviving bindings and project usage
-  before removing it. Never auto-delete a shared or intentionally retained target.
-- **Consult \`specbase coverage\` (and \`specbase coverage --json\`) for the
-  aggregated coverage health signal** while resolving bindings - the same view
-  exploration and verification consume.`;
+For every planned source: implement or update the source, link it with exactly \`type\`, requirement-level \`covers\`, and \`source\` in \`enforcement.yaml\`, execute it through its native project harness, and record the result. Do not copy commands, status, targets, procedures, or limitations into the compact manifest. Before cleaning up a retired file source, prove no surviving binding references it.`;
 
-/** onboard (task 6.6 / Requirements: Guided Artifact Creation, Guided
- * Implementation, Archive with Explanation). */
 export const GOVERNED_ONBOARD_GUIDANCE = (specModel: SpecModel) => `${buildGovernedPrimer(specModel)}
 
 ### Teaching the governed model while onboarding (governed)
@@ -710,20 +553,21 @@ ${buildOnboardPlaneLesson(specModel)}
   durable identity while titles and locators are mutable presentation - a moved
   spec keeps its \`id\`.
 - **Paired enforcement.** Explain that every \`spec.md\` is paired with an
-  \`enforcement.md\`; assign pair-local **binding IDs**; describe **automated**,
-  **review**, **manual**, and **planned** evidence honestly (a passing command is
-  not proof of semantic correspondence); and demonstrate how stable IDs expose
-  **stale** bindings (covering a removed ID) and **hanging** claims (a mandatory
-  requirement with no covering binding), which \`specbase list\` and
-  \`specbase validate\` surface.
-- **Tasks.** Include implementation, **enforcement resolution** (planned ->
-  active), **targeted verification**, and **retired-target assessment** as explicit
-  task items.
-- **Guided implementation.** Identify the affected stable spec \`id\` and pair-local
-  normative IDs, implement or update the declared enforcement, and resolve the
-  actual \`targets\` before marking related work complete. When implementation
-  removes a requirement or scenario, update its binding and assess the former
-  \`targets\` for safe cleanup (never auto-delete). When all tasks are complete, run
+  \`enforcement.yaml\`; assign pair-local **binding IDs** and show the exact
+  \`type\`/requirement-level \`covers\`/\`source\` value. Separate structural
+  linkage, native-harness execution, and semantic correspondence; demonstrate
+  how stable IDs expose **stale** bindings (covering a removed requirement) and
+  **hanging** claims (a mandatory requirement with no binding), which
+  \`specbase list\` and \`specbase validate\` surface.
+- **Tasks.** Include source implementation, compact manifest linkage,
+  native-harness execution with a recorded result, and retired-source assessment
+  as explicit task items.
+- **Guided implementation.** Identify the affected stable spec \`id\` and
+  pair-local normative IDs, implement or update each declared source, resolve it,
+  and execute file sources through their native harness before marking related
+  work complete. When implementation removes a requirement, update its binding
+  and assess an unshared former file source for safe cleanup (never auto-delete).
+  When all tasks are complete, run
   governed verification (\`/spcb:verify\`) BEFORE transitioning to archive.
 - **Archive with explanation.** Explain that specification and enforcement deltas
   update each affected pair TOGETHER, run the schema-aware governed archive, and

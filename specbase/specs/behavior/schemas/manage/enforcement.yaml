@@ -1,0 +1,39 @@
+bindings:
+  schema-structure-and-graph-tests:
+    type: test
+    covers:
+      - validate-schema-structure
+      - validate-dependency-graph
+    source: test/core/artifact-graph/schema.test.ts
+  schema-resolution-listing-tests:
+    type: test
+    covers:
+      - listing-shows-source
+      - validate-schema-structure
+    source: test/core/artifact-graph/resolver.test.ts
+  fork-command-review:
+    type: review
+    covers:
+      - fork-copies-schema
+      - fork-overwrite-guard
+      - fork-preserves-files
+    source: behavioural
+  init-command-review:
+    type: review
+    covers:
+      - init-creates-schema
+      - init-sets-default
+    source: behavioural
+  validate-command-review:
+    type: review
+    covers:
+      - validate-schema-structure
+      - validate-template-existence
+      - validate-verbose
+    source: behavioural
+  which-command-review:
+    type: review
+    covers:
+      - which-reports-resolution
+      - which-list-mode
+    source: behavioural

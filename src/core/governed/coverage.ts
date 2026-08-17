@@ -1,9 +1,9 @@
 import type {
   Binding,
-  BindingMechanism,
   BindingStatus,
   BindingStrength,
 } from '../schemas/governed-spec.schema.js';
+import { DEFAULT_ENFORCEMENT_TYPES, type EnforcementType } from '../artifact-graph/types.js';
 import type { ParsedGovernedSpec } from './spec-parser.js';
 import type { ParsedEnforcement } from './enforcement-parser.js';
 
@@ -59,7 +59,9 @@ export type BindingDriftState =
 
 export interface BindingDrift {
   id: string;
-  mechanism: BindingMechanism;
+  mechanism: string;
+  type: string;
+  source: string;
   strength: BindingStrength;
   status: BindingStatus;
   covers: string[];
@@ -86,6 +88,8 @@ export interface CoverageInput {
    * counts as complete coverage for its IDs. Absent means none escape.
    */
   escapingBindingIds?: ReadonlySet<string>;
+  /** Resolved project roster. Omission uses shipped defaults plus legacy fields. */
+  enforcementTypes?: readonly EnforcementType[];
 }
 
 export interface CoverageReport {
@@ -114,7 +118,8 @@ export interface CoverageReport {
  * procedure; manual bindings need a procedure and rationale. Unenforced bindings
  * never satisfy this.
  */
-function hasRequiredEvidence(binding: Binding): boolean {
+function hasRequiredEvidence(binding: Binding, compact: boolean): boolean {
+  if (compact) return Boolean(binding.source);
   switch (binding.strength) {
     case 'automated':
       return Boolean(binding.run && binding.run.command) && binding.targets.length > 0;
@@ -140,6 +145,9 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const { spec, enforcement } = input;
   const missingByBinding = input.missingTargetsByBinding ?? new Map();
   const escapingBindingIds = input.escapingBindingIds ?? new Set<string>();
+  const compact = enforcement.format === 'yaml';
+  const typeRoster = input.enforcementTypes ?? DEFAULT_ENFORCEMENT_TYPES;
+  const typesById = new Map(typeRoster.map((type) => [type.id, type]));
 
   // Normative identity present in the current spec.
   const requirementIds = new Set<string>();
@@ -152,8 +160,9 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
       }
     }
   }
-  const scenarioIds = new Set(scenarioOwner.keys());
-  const normativeIds = new Set<string>([...requirementIds, ...scenarioIds]);
+  // Bindings are intentionally requirement-level. Scenario IDs never form a
+  // binding boundary; scenarios inherit only from their owning requirement.
+  const normativeIds = requirementIds;
 
   // Per-binding drift, and the map of which complete bindings cover each ID.
   const bindings: BindingDrift[] = [];
@@ -166,15 +175,18 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     const staleCoveredIds = sortedUnique(
       binding.covers.filter((id) => !normativeIds.has(id))
     );
+    const typeId = binding.type ?? binding.mechanism;
+    const resolvedType = compact ? typesById.get(typeId) : undefined;
+    const strength = compact ? resolvedType?.strength ?? 'unenforced' : binding.strength;
     const planned = binding.status === 'planned';
-    const unenforced = binding.strength === 'unenforced';
+    const unenforced = strength === 'unenforced';
     const escaping = escapingBindingIds.has(binding.id);
     const broken =
       binding.status === 'active' && (missingTargets.length > 0 || escaping);
-    const declaredEvidence = hasRequiredEvidence(binding);
+    const declaredEvidence = hasRequiredEvidence(binding, compact);
     // Incomplete: active + enforced, but the required evidence is not declared.
     const incomplete =
-      binding.status === 'active' && !unenforced && !declaredEvidence;
+      binding.status === 'active' && (compact && !resolvedType || !unenforced && !declaredEvidence);
 
     const complete =
       binding.status === 'active' &&
@@ -200,8 +212,10 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
 
     bindings.push({
       id: binding.id,
-      mechanism: binding.mechanism,
-      strength: binding.strength,
+      mechanism: typeId,
+      type: typeId,
+      source: binding.source ?? binding.targets[0] ?? '',
+      strength,
       status: binding.status,
       covers: [...binding.covers],
       state,
@@ -229,17 +243,14 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
       };
     });
 
-  // Scenario coverage: directly by a binding covering the scenario ID, or by a
-  // requirement-level binding covering its owning requirement (full coverage).
+  // Scenario coverage derives only from its owning requirement.
   const scenarios: NormativeCoverage[] = [];
   for (const requirement of spec.requirements) {
     if (!requirement.id) continue;
     const requirementCovered = completeCoverers.has(requirement.id);
     for (const scenario of requirement.scenarios) {
       if (!scenario.id) continue;
-      const direct = coveredBy(scenario.id);
-      const inherited = requirementCovered ? coveredBy(requirement.id) : [];
-      const by = sortedUnique([...direct, ...inherited]);
+      const by = requirementCovered ? coveredBy(requirement.id) : [];
       scenarios.push({
         kind: 'scenario',
         id: scenario.id,

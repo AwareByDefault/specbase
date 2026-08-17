@@ -1,0 +1,11 @@
+bindings:
+  lens-conformance:
+    type: test
+    covers:
+      - panel-covers-planes
+      - panel-reviews-implemented-specs
+    source: test/core/templates/review-panel-projection.conformance.test.ts
+  lens-questions-are-right:
+    type: review
+    covers: panel-covers-planes
+    source: enforcement

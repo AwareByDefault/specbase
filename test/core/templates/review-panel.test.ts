@@ -96,12 +96,10 @@ describe('review-panel registration — every model', () => {
 
 describe('verify guidance — review panel (governed vs legacy)', () => {
   const VERIFY_MARKERS = [
-    'Run the review panel for review bindings (governed)',
-    'Route each affected review binding to its lens',
-    'Review only the residue above the gate',
-    'bindings named in that review binding\'s `covered_by`',
-    'Flag un-lensed review claims',
-    'NEVER block archive or `specbase coverage --strict`',
+    'Review residue',
+    'For a lens source',
+    'derive deterministic sibling evidence from automated bindings covering the same requirement',
+    'Do not use manual `covered_by` lists',
   ];
 
   for (const marker of VERIFY_MARKERS) {
@@ -121,7 +119,7 @@ describe('explore guidance — lens growth (governed vs legacy)', () => {
     'Non-deterministic claims: point at a lens or propose one (governed)',
     'Point the claim at an existing lens',
     'Or propose a new/scoped lens - never auto-create one',
-    'Name the deterministic residue',
+    'Coverage makes the pressure visible',
     'Growth is by proposal',
   ];
 

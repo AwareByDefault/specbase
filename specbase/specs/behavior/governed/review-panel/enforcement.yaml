@@ -1,0 +1,23 @@
+bindings:
+  panel-orchestration-tests:
+    type: test
+    covers:
+      - blind-lens-panel
+      - residue-above-gate
+      - findings-non-gating
+      - policy-read-at-review-time
+    source: test/core/templates/review-panel.test.ts
+  lens-scope-tests:
+    type: test
+    covers: lens-scope-routing
+    source: test/core/governed/lenses.test.ts
+  lens-scope-tests-coverage-lenses-test:
+    type: test
+    covers: lens-scope-routing
+    source: test/commands/coverage.lenses.test.ts
+  panel-runtime-review:
+    type: review
+    covers:
+      - lens-scope-routing
+      - residue-above-gate
+    source: behavioural

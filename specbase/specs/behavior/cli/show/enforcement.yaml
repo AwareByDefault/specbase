@@ -1,0 +1,27 @@
+bindings:
+  show-resolution-tests:
+    type: test
+    covers: &a1
+      - show-resolution
+      - flag-delegation
+    source: test/commands/show.test.ts
+  show-resolution-tests-change-command-show-validate-test:
+    type: test
+    covers: *a1
+    source: test/core/commands/change-command.show-validate.test.ts
+  show-governed-tests:
+    type: test
+    covers: &a2
+      - show-resolution
+      - governed-pair-display
+    source: test/commands/show.governed.test.ts
+  show-governed-tests-spec-governed-test:
+    type: test
+    covers: *a2
+    source: test/commands/spec.governed.test.ts
+  show-prompt-and-warning-review:
+    type: review
+    covers:
+      - kind-prompt
+      - flag-delegation
+    source: behavioural

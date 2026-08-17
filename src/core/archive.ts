@@ -747,7 +747,7 @@ export class ArchiveCommand {
         throw new ArchiveBlockedError(
           'archive_governed_incomplete_pair',
           `Incomplete governed delta pair(s) in change '${changeName}': ${detail}.`,
-          'Author both spec.md and enforcement.md for each affected pair, then rerun.'
+          'Author both spec.md and enforcement.yaml for each affected pair, then rerun.'
         );
       }
       console.log(chalk.red(`\nIncomplete governed delta pair(s) (aborting before any spec write):`));
