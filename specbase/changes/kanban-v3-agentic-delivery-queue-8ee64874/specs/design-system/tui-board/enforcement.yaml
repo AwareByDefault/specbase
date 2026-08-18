@@ -1,0 +1,15 @@
+bindings:
+  tui-board-queue-presentation:
+    type: test
+    covers:
+      - board-hierarchy
+      - focus-and-controls
+      - narrow-layout
+    source: test/tui/view-queue.test.ts
+  tui-board-queue-design-review:
+    type: review
+    covers:
+      - board-hierarchy
+      - focus-and-controls
+      - narrow-layout
+    source: design

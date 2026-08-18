@@ -254,14 +254,17 @@ program
 
 program
   .command('view')
-  .description('Display an interactive dashboard of specs and changes')
-  .action(async () => {
+  .description('Inspect ideas, changes, archives, and specs in a viewer-only board')
+  .option('--plain', 'Force deterministic non-interactive text output')
+  .option('--json', 'Output the versioned board model as JSON')
+  .action(async (options: { plain?: boolean; json?: boolean }) => {
     try {
       const viewCommand = new ViewCommand();
-      await viewCommand.execute('.');
+      const code = await viewCommand.execute('.', options);
+      if (code !== 0) process.exitCode = code;
     } catch (error) {
       failWithError(error);
-      process.exit(1);
+      process.exitCode = 1;
     }
   });
 

@@ -1,0 +1,14 @@
+bindings:
+  tui-runtime-contract-tests:
+    type: test
+    covers:
+      - contained-bun-lane
+      - exact-opentui-core
+      - native-artifact-support
+    source: test/ops/tui-runtime.test.ts
+  tui-packed-runtime-smoke:
+    type: test
+    covers:
+      - exact-opentui-core
+      - native-artifact-support
+    source: test/ops/tui-packed-runtime.test.ts

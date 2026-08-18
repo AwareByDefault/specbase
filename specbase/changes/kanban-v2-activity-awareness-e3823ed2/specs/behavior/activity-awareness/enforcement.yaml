@@ -1,0 +1,9 @@
+bindings:
+  activity-model-tests:
+    type: test
+    covers:
+      - activity-observation
+      - activity-is-advisory
+      - activity-privacy-boundary
+      - activity-failure-is-unknown
+    source: test/core/activity-awareness.test.ts

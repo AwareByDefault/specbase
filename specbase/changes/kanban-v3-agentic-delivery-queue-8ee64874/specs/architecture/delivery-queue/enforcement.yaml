@@ -1,0 +1,19 @@
+bindings:
+  delivery-queue-state-architecture:
+    type: test
+    covers:
+      - immutable-queue-identity
+      - durable-state-machine
+      - typed-readiness-adapter
+      - uncertain-outcome-boundary
+    source: test/core/delivery-queue/state.test.ts
+  delivery-queue-concurrency-architecture:
+    type: test
+    covers:
+      - atomic-lease-ownership
+      - layered-idempotency
+    source: test/core/delivery-queue/concurrency.test.ts
+  delivery-queue-approval-architecture:
+    type: test
+    covers: approval-policy-boundary
+    source: test/core/delivery-queue/approval.test.ts

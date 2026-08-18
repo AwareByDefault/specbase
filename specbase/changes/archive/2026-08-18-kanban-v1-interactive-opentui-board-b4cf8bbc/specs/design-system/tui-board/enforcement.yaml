@@ -1,0 +1,17 @@
+bindings:
+  tui-board-headless-presentation:
+    type: test
+    covers:
+      - board-hierarchy
+      - focus-and-controls
+      - status-language
+      - narrow-layout
+    source: test/tui/view-board.test.ts
+  tui-board-design-review:
+    type: review
+    covers:
+      - board-hierarchy
+      - focus-and-controls
+      - status-language
+      - narrow-layout
+    source: design

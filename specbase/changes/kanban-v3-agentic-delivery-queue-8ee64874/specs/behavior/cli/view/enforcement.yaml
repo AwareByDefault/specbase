@@ -1,0 +1,11 @@
+bindings:
+  view-queue-projection-tests:
+    type: test
+    covers:
+      - dashboard-sections
+      - plain-and-json-projections
+    source: test/commands/view.queue.test.ts
+  view-queue-headless-tests:
+    type: test
+    covers: dashboard-sections
+    source: test/tui/view-queue.test.ts

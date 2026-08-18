@@ -36,6 +36,8 @@
                 ./bin
                 ./schemas
                 ./scripts
+                ./docs/clean-spec.md
+                ./docs/clean-specbase.md
                 ./test
                 ./package.json
                 ./pnpm-lock.yaml
@@ -51,11 +53,12 @@
               inherit (finalAttrs) pname version src;
               pnpm = pkgs.pnpm_9;
               fetcherVersion = 3;
-              hash = "sha256-cFY6phUPK4IOthG/aOtMenyQlLYCCilcOIG+G+v/q04=";
+              hash = "sha256-2EdUzdD6iO4VsSx2LXWrFVyREZ64mbEStYKTQQ2NYPw=";
             };
 
             nativeBuildInputs = with pkgs; [
               nodejs_20
+              bun
               npmHooks.npmInstallHook
               pnpmConfigHook
               pnpm_9
@@ -98,6 +101,7 @@
           default = pkgs.mkShell {
             buildInputs = with pkgs; [
               nodejs_20
+              bun
               pnpm_9
             ];
 

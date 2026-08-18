@@ -1,0 +1,14 @@
+bindings:
+  view-activity-cli-tests:
+    type: test
+    covers:
+      - dashboard-sections
+      - viewer-detail-navigation
+      - plain-and-json-projections
+    source: test/commands/view.activity.test.ts
+  view-activity-headless-tests:
+    type: test
+    covers:
+      - dashboard-sections
+      - viewer-detail-navigation
+    source: test/tui/view-activity.test.ts

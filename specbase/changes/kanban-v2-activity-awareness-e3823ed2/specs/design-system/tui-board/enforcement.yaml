@@ -1,0 +1,9 @@
+bindings:
+  tui-board-activity-presentation:
+    type: test
+    covers: status-language
+    source: test/tui/view-activity.test.ts
+  tui-board-activity-design-review:
+    type: review
+    covers: status-language
+    source: design

@@ -62,8 +62,14 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
   },
   {
     name: 'view',
-    description: 'Display an interactive dashboard of specs and changes',
-    flags: [],
+    description: 'Inspect ideas, changes, archives, and specs in a viewer-only board',
+    flags: [
+      {
+        name: 'plain',
+        description: 'Force deterministic non-interactive text output',
+      },
+      COMMON_FLAGS.json,
+    ],
   },
   {
     name: 'validate',
