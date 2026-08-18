@@ -201,7 +201,10 @@ compdef _specbase specbase
 
     // Add value completion if flag takes a value
     if (flag.takesValue) {
-      if (flag.values && flag.values.length > 0) {
+      const dynamic = flag.valueType ? this.dynamicFlagCompleter(flag.valueType) : null;
+      if (dynamic) {
+        parts.push(`:value:${dynamic}`);
+      } else if (flag.values && flag.values.length > 0) {
         // Provide specific value completions
         const valueList = flag.values.map(v => this.escapeValue(v)).join(' ');
         parts.push(`:value:(${valueList})`);
@@ -217,6 +220,19 @@ compdef _specbase specbase
     return parts.join('');
   }
 
+  private dynamicFlagCompleter(type: string): string | null {
+    switch (type) {
+      case 'change-id': return '_specbase_complete_changes';
+      case 'spec-id': return '_specbase_complete_specs';
+      case 'change-or-spec-id': return '_specbase_complete_items';
+      case 'stack-id': return '_specbase_complete_stacks';
+      case 'idea-id': return '_specbase_complete_ideas';
+      case 'work-item-id': return '_specbase_complete_work_items';
+      case 'schema-name': return '_specbase_complete_schemas';
+      default: return null;
+    }
+  }
+
   /**
    * Generate positional argument specification
    */
@@ -228,6 +244,12 @@ compdef _specbase specbase
         return "'*: :_specbase_complete_specs'";
       case 'change-or-spec-id':
         return "'*: :_specbase_complete_items'";
+      case 'stack-id':
+        return "'*: :_specbase_complete_stacks'";
+      case 'idea-id':
+        return "'*: :_specbase_complete_ideas'";
+      case 'work-item-id':
+        return "'*: :_specbase_complete_work_items'";
       case 'schema-name':
         return "'*: :_specbase_complete_schemas'";
       case 'path':
@@ -283,6 +305,12 @@ compdef _specbase specbase
         return `'${index}${separator}${name}:_specbase_complete_specs'`;
       case 'change-or-spec-id':
         return `'${index}${separator}${name}:_specbase_complete_items'`;
+      case 'stack-id':
+        return `'${index}${separator}${name}:_specbase_complete_stacks'`;
+      case 'idea-id':
+        return `'${index}${separator}${name}:_specbase_complete_ideas'`;
+      case 'work-item-id':
+        return `'${index}${separator}${name}:_specbase_complete_work_items'`;
       case 'schema-name':
         return `'${index}${separator}${name}:_specbase_complete_schemas'`;
       case 'path':

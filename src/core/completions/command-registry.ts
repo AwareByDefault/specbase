@@ -293,6 +293,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
             name: 'from-idea',
             description: 'Move an open idea into a change (graduation by move)',
             takesValue: true,
+            valueType: 'idea-id',
           },
           COMMON_FLAGS.json,
           COMMON_FLAGS.store,
@@ -488,6 +489,30 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
     ],
   },
   {
+    name: 'stack',
+    description: 'Create and inspect finite linear delivery stacks',
+    flags: [],
+    subcommands: [
+      {
+        name: 'create',
+        description: 'Create a stack from ordinary work-item IDs in delivery order',
+        acceptsPositional: true,
+        positionals: [{ name: 'id', type: 'stack-id', optional: true }],
+        flags: [
+          { name: 'summary', description: 'Stack summary', takesValue: true },
+          { name: 'member', description: 'Ordered member ID (repeat at least twice)', takesValue: true, valueType: 'work-item-id' },
+          { name: 'from-idea', description: 'Move an umbrella idea scratchpad into the stack', takesValue: true, valueType: 'idea-id' },
+          COMMON_FLAGS.json,
+          COMMON_FLAGS.store,
+        ],
+      },
+      { name: 'list', description: 'List stacks and their next unfinished member', flags: [COMMON_FLAGS.json, COMMON_FLAGS.store] },
+      { name: 'ls', description: 'List stacks and their next unfinished member', flags: [COMMON_FLAGS.json, COMMON_FLAGS.store] },
+      { name: 'show', description: 'Show members and derived lifecycle progress', acceptsPositional: true, positionalType: 'stack-id', positionals: [{ name: 'id', type: 'stack-id' }], flags: [COMMON_FLAGS.json, COMMON_FLAGS.store] },
+      { name: 'validate', description: 'Validate membership and every projected prefix', acceptsPositional: true, positionalType: 'stack-id', positionals: [{ name: 'id', type: 'stack-id' }], flags: [COMMON_FLAGS.json, COMMON_FLAGS.store] },
+    ],
+  },
+  {
     name: 'ideas',
     description: 'Capture and manage ideas - ungoverned scratchpad catalogue entries',
     flags: [],
@@ -507,6 +532,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
             takesValue: true,
           },
           COMMON_FLAGS.json,
+          COMMON_FLAGS.store,
         ],
       },
       {
@@ -518,6 +544,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
             description: 'Include all ideas (reserved; currently the same set)',
           },
           COMMON_FLAGS.json,
+          COMMON_FLAGS.store,
         ],
       },
       {
@@ -529,6 +556,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
             description: 'Include all ideas (reserved; currently the same set)',
           },
           COMMON_FLAGS.json,
+          COMMON_FLAGS.store,
         ],
       },
       {
@@ -536,7 +564,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
         description: 'Show an idea: metadata, member files, and notes',
         acceptsPositional: true,
         positionals: [{ name: 'id' }],
-        flags: [COMMON_FLAGS.json],
+        flags: [COMMON_FLAGS.json, COMMON_FLAGS.store],
       },
       {
         name: 'delete',
@@ -549,6 +577,7 @@ export const COMMAND_REGISTRY: CommandDefinition[] = [
             description: 'Confirm deletion non-interactively',
           },
           COMMON_FLAGS.json,
+          COMMON_FLAGS.store,
         ],
       },
     ],

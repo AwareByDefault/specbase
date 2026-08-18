@@ -26,6 +26,7 @@ import { registerDoctorCommand } from '../commands/doctor.js';
 import { registerContextCommand } from '../commands/context.js';
 import { registerWorksetCommand } from '../commands/workset.js';
 import { registerIdeasCommand } from '../commands/ideas.js';
+import { registerStackCommand } from '../commands/stack.js';
 import {
   statusCommand,
   instructionsCommand,
@@ -353,6 +354,7 @@ registerDoctorCommand(program);
 registerContextCommand(program);
 registerWorksetCommand(program);
 registerIdeasCommand(program);
+registerStackCommand(program);
 
 // Top-level validate command
 program

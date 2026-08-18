@@ -286,6 +286,21 @@ export class CompletionCommand {
           }
           break;
         }
+        case 'stacks': {
+          const stackIds = await this.completionProvider.getStackIds();
+          for (const id of stackIds) console.log(`${id}\tchange stack`);
+          break;
+        }
+        case 'ideas': {
+          const ids = await this.completionProvider.getIdeaIds();
+          for (const id of ids) console.log(`${id}\topen idea`);
+          break;
+        }
+        case 'work-items': {
+          const ids = await this.completionProvider.getWorkItemIds();
+          for (const id of ids) console.log(`${id}\tstack member`);
+          break;
+        }
         case 'archived-changes': {
           const archivedIds = await getArchivedChangeIds();
           for (const id of archivedIds) {

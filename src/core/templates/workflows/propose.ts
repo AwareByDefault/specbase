@@ -39,11 +39,16 @@ ${STORE_SELECTION_GUIDANCE}
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Create or graduate the change directory**
+   Run \`specbase stack list --json\` and use its CLI-reported members. If \`<name>\` is a planned stack-member idea, preserve its stable identity:
+   \`\`\`bash
+   specbase new change --from-idea "<name>"
+   \`\`\`
+   Otherwise create an ordinary change:
    \`\`\`bash
    specbase new change "<name>"
    \`\`\`
-   This creates a scaffolded change in the planning home resolved by the CLI with \`.openspec.yaml\`.
+   Never create a duplicate active change beside a planned member idea. Both paths create \`.openspec.yaml\`.
 
 3. **Get the artifact build order**
    \`\`\`bash
@@ -53,6 +58,7 @@ ${STORE_SELECTION_GUIDANCE}
    - \`applyRequires\`: array of artifact IDs needed before implementation (e.g., \`["tasks"]\`)
    - \`artifacts\`: list of all artifacts with their status and dependencies
    - \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`actionContext\`: path and scope context. Use these instead of assuming repo-local paths.
+   - Optional \`stack\`: use CLI-resolved predecessor status and projected base paths/results; never parse manifests or guess Git safety.
 
 4. **Create artifacts in sequence until apply-ready**
 
@@ -153,11 +159,16 @@ ${STORE_SELECTION_GUIDANCE}
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Create or graduate the change directory**
+   Run \`specbase stack list --json\` and use its CLI-reported members. If \`<name>\` is a planned stack-member idea, preserve its stable identity:
+   \`\`\`bash
+   specbase new change --from-idea "<name>"
+   \`\`\`
+   Otherwise create an ordinary change:
    \`\`\`bash
    specbase new change "<name>"
    \`\`\`
-   This creates a scaffolded change in the planning home resolved by the CLI with \`.openspec.yaml\`.
+   Never create a duplicate active change beside a planned member idea. Both paths create \`.openspec.yaml\`.
 
 3. **Get the artifact build order**
    \`\`\`bash
@@ -167,6 +178,7 @@ ${STORE_SELECTION_GUIDANCE}
    - \`applyRequires\`: array of artifact IDs needed before implementation (e.g., \`["tasks"]\`)
    - \`artifacts\`: list of all artifacts with their status and dependencies
    - \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`actionContext\`: path and scope context. Use these instead of assuming repo-local paths.
+   - Optional \`stack\`: use CLI-resolved predecessor status and projected base paths/results; never parse manifests or guess Git safety.
 
 4. **Create artifacts in sequence until apply-ready**
 

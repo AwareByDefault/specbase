@@ -39,6 +39,24 @@ function __fish_specbase_items
     __fish_specbase_specs
 end
 
+function __fish_specbase_stacks
+    specbase __complete stacks 2>/dev/null | while read -l id desc
+        printf '%s\\t%s\\n' "$id" "$desc"
+    end
+end
+
+function __fish_specbase_ideas
+    specbase __complete ideas 2>/dev/null | while read -l id desc
+        printf '%s\\t%s\\n' "$id" "$desc"
+    end
+end
+
+function __fish_specbase_work_items
+    specbase __complete work-items 2>/dev/null | while read -l id desc
+        printf '%s\\t%s\\n' "$id" "$desc"
+    end
+end
+
 function __fish_specbase_schemas
     specbase __complete schemas 2>/dev/null | while read -l id desc
         printf '%s\\t%s\\n' "$id" "$desc"

@@ -107,7 +107,14 @@ ${commandCompletions}`;
     const longFlag = `--${flag.name}`;
     const shortFlag = flag.short ? `-${flag.short}` : undefined;
 
-    if (flag.takesValue && flag.values) {
+    const dynamicAction = flag.valueType ? this.dynamicFlagAction(flag.valueType) : null;
+    if (flag.takesValue && dynamicAction) {
+      if (shortFlag) {
+        lines.push(`complete -c specbase -n '${condition}' -s ${flag.short} -l ${flag.name} -r -a '${dynamicAction}' -f -d '${this.escapeDescription(flag.description)}'`);
+      } else {
+        lines.push(`complete -c specbase -n '${condition}' -l ${flag.name} -r -a '${dynamicAction}' -f -d '${this.escapeDescription(flag.description)}'`);
+      }
+    } else if (flag.takesValue && flag.values) {
       // Flag with enum values
       for (const value of flag.values) {
         if (shortFlag) {
@@ -147,6 +154,19 @@ ${commandCompletions}`;
     return lines;
   }
 
+  private dynamicFlagAction(type: string): string | null {
+    switch (type) {
+      case 'change-id': return '(__fish_specbase_changes)';
+      case 'spec-id': return '(__fish_specbase_specs)';
+      case 'change-or-spec-id': return '(__fish_specbase_items)';
+      case 'stack-id': return '(__fish_specbase_stacks)';
+      case 'idea-id': return '(__fish_specbase_ideas)';
+      case 'work-item-id': return '(__fish_specbase_work_items)';
+      case 'schema-name': return '(__fish_specbase_schemas)';
+      default: return null;
+    }
+  }
+
   /**
    * Generate positional argument completion
    */
@@ -162,6 +182,15 @@ ${commandCompletions}`;
         break;
       case 'change-or-spec-id':
         lines.push(`complete -c specbase -n '${condition}' -a '(__fish_specbase_items)' -f`);
+        break;
+      case 'stack-id':
+        lines.push(`complete -c specbase -n '${condition}' -a '(__fish_specbase_stacks)' -f`);
+        break;
+      case 'idea-id':
+        lines.push(`complete -c specbase -n '${condition}' -a '(__fish_specbase_ideas)' -f`);
+        break;
+      case 'work-item-id':
+        lines.push(`complete -c specbase -n '${condition}' -a '(__fish_specbase_work_items)' -f`);
         break;
       case 'schema-name':
         lines.push(`complete -c specbase -n '${condition}' -a '(__fish_specbase_schemas)' -f`);

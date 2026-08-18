@@ -20,6 +20,7 @@ import type { PlanningHome } from '../planning-home.js';
 import type { ChangeMetadata } from '../change-metadata/index.js';
 import type { Artifact, CompletedSet, SpecModel } from './types.js';
 import type { GovernedWorkflowContext } from './governed-context.js';
+import type { ChangeStackContext } from '../change-stacks/context.js';
 
 // Session-level cache for validation warnings (avoid repeating same warnings)
 const shownWarnings = new Set<string>();
@@ -111,6 +112,7 @@ export interface ArtifactInstructions {
    * current pairs). Governed-only additive field; omitted for legacy schemas.
    */
   governed?: GovernedWorkflowContext;
+  stack?: ChangeStackContext;
 }
 
 /**
@@ -177,6 +179,7 @@ export interface ChangeStatus {
    * current pairs). Governed-only additive field; omitted for legacy schemas.
    */
   governed?: GovernedWorkflowContext;
+  stack?: ChangeStackContext;
 }
 
 export interface ArtifactPathSummary {

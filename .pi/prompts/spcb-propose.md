@@ -13,7 +13,7 @@ When ready to implement, run /spcb-apply
 
 ---
 
-**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
+**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `ideas add`, `ideas list`, `ideas show`, `ideas delete`, `stack create`, `stack list`, `stack show`, `stack validate`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
 
 **Input**: The argument after `/spcb-propose` is the change name (kebab-case), OR a description of what the user wants to build.
 **Provided arguments**: $@
@@ -29,11 +29,16 @@ When ready to implement, run /spcb-apply
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Create or graduate the change directory**
+   Run `specbase stack list --json` and use its CLI-reported members. If `<name>` is a planned stack-member idea, preserve its stable identity:
+   ```bash
+   specbase new change --from-idea "<name>"
+   ```
+   Otherwise create an ordinary change:
    ```bash
    specbase new change "<name>"
    ```
-   This creates a scaffolded change in the planning home resolved by the CLI with `.openspec.yaml`.
+   Never create a duplicate active change beside a planned member idea. Both paths create `.openspec.yaml`.
 
 3. **Get the artifact build order**
    ```bash
@@ -43,6 +48,7 @@ When ready to implement, run /spcb-apply
    - `applyRequires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
    - `artifacts`: list of all artifacts with their status and dependencies
    - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
+   - Optional `stack`: use CLI-resolved predecessor status and projected base paths/results; never parse manifests or guess Git safety.
 
 4. **Create artifacts in sequence until apply-ready**
 

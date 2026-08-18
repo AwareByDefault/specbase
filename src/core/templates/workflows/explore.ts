@@ -9,6 +9,25 @@ import { STORE_SELECTION_GUIDANCE } from './store-selection.js';
 import type { SpecModel } from '../../artifact-graph/types.js';
 import { withGovernedGuidance, GOVERNED_EXPLORE_GUIDANCE } from './governed-guidance.js';
 
+const IDEA_RESUMPTION_GUIDANCE = `### When the user brings an idea from the catalogue
+
+An idea ID is a first-class input alongside a change ID. Resume it rather than restarting:
+
+1. Run \`specbase ideas show "<idea-id>" --json\` using the resolved store flag when applicable.
+2. Read the reported notes, including every prior \`## Session\` section, and supporting members before exploring.
+3. Build on settled thinking and call out only the questions that remain open.
+4. When the session produces durable thinking the user wants kept, offer the save-idea skill so it appends a new session instead of overwriting history.
+5. When the idea is proposal-ready, hand off to propose with \`--from-idea\`; graduation moves the same stable identity into changes rather than creating a duplicate.
+
+Example:
+\`\`\`
+User: Explore idea dark-mode-x7k2p9f3a
+
+You: [reads the CLI-resolved idea notes first]
+     Building on the prior sessions: palette direction is settled and
+     contrast remains open. Where do you want to focus next?
+\`\`\``;
+
 export function getExploreSkillTemplate(specModel?: SpecModel): SkillTemplate {
   return {
     name: 'specbase-explore',
@@ -96,6 +115,8 @@ This tells you:
 - If there are active changes
 - Their names, schemas, and status
 - What the user might be working on
+
+${IDEA_RESUMPTION_GUIDANCE}
 
 ### When no change exists
 
@@ -393,6 +414,8 @@ This tells you:
 - If there are active changes
 - Their names, schemas, and status
 - What the user might be working on
+
+${IDEA_RESUMPTION_GUIDANCE}
 
 If the user mentioned a specific change name, read its artifacts for context.
 

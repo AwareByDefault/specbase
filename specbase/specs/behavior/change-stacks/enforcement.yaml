@@ -1,0 +1,34 @@
+bindings:
+  stack-command-tests:
+    type: test
+    covers:
+      - stack-create
+      - idea-to-stack
+      - stack-inspection
+    source: test/commands/change-stacks.test.ts
+  stack-projection-workflow-tests:
+    type: test
+    covers: stack-aware-validation
+    source: test/workflow/change-stack-projection.test.ts
+  stack-archive-tests:
+    type: test
+    covers:
+      - ordered-archive
+      - unstacked-compatibility
+    source: test/core/archive.change-stacks.test.ts
+  unstacked-idea-regression-tests:
+    type: test
+    covers: unstacked-compatibility
+    source: test/commands/ideas.test.ts
+  unstacked-change-apply-regression-tests:
+    type: test
+    covers: unstacked-compatibility
+    source: test/commands/artifact-workflow.test.ts
+  unstacked-validation-regression-tests:
+    type: test
+    covers: unstacked-compatibility
+    source: test/commands/validate.test.ts
+  unstacked-archive-regression-tests:
+    type: test
+    covers: unstacked-compatibility
+    source: test/core/archive.test.ts

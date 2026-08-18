@@ -1,0 +1,9 @@
+bindings:
+  stack-skill-conformance:
+    type: command
+    covers: stack-slicing-workflow
+    source: .pi/skills/specbase-stack/SKILL.md
+  stack-workflow-parity-tests:
+    type: test
+    covers: workflows-read-stack-context
+    source: test/core/templates/skill-templates-parity.test.ts

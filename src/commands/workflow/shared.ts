@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import { getSchemaDir, listSchemas } from '../../core/artifact-graph/index.js';
 import type { GovernedWorkflowContext } from '../../core/artifact-graph/index.js';
 import type { ReferenceIndexEntry } from '../../core/references.js';
+import type { ChangeStackContext } from '../../core/change-stacks/context.js';
 import { isRootSelectionError } from '../../core/root-selection.js';
 import { validateChangeName } from '../../utils/change-utils.js';
 import { planningDir } from '../../core/config.js';
@@ -54,6 +55,7 @@ export interface ApplyInstructions {
    * current pairs). Governed-only additive field; omitted for legacy schemas.
    */
   governed?: GovernedWorkflowContext;
+  stack?: ChangeStackContext;
 }
 
 // -----------------------------------------------------------------------------

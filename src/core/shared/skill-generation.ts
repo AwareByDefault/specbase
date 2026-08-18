@@ -17,6 +17,7 @@ import {
   getVerifyChangeSkillTemplate,
   getOnboardSkillTemplate,
   getSpcbProposeSkillTemplate,
+  getStackSkillTemplate,
   getReviewPanelSkillTemplate,
   getSteWritingSkillTemplate,
   getReviewPanelCommandTemplate,
@@ -32,6 +33,7 @@ import {
   getSpcbVerifyCommandTemplate,
   getSpcbOnboardCommandTemplate,
   getSpcbProposeCommandTemplate,
+  getSpcbStackCommandTemplate,
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
@@ -257,6 +259,7 @@ export function getSkillTemplates(
     { template: getVerifyChangeSkillTemplate(specModel), dirName: 'specbase-verify-change', workflowId: 'verify' },
     { template: getOnboardSkillTemplate(specModel), dirName: 'specbase-onboard', workflowId: 'onboard' },
     { template: getSpcbProposeSkillTemplate(specModel), dirName: 'specbase-propose', workflowId: 'propose' },
+    { template: getStackSkillTemplate(specModel), dirName: 'specbase-stack', workflowId: 'stack' },
   ];
 
   const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;
@@ -317,6 +320,7 @@ export function getCommandTemplates(
     { template: getSpcbVerifyCommandTemplate(specModel), id: 'verify' },
     { template: getSpcbOnboardCommandTemplate(specModel), id: 'onboard' },
     { template: getSpcbProposeCommandTemplate(specModel), id: 'propose' },
+    { template: getSpcbStackCommandTemplate(specModel), id: 'stack' },
   ];
 
   const filterSet = workflowFilter ? new Set(workflowFilter) : undefined;

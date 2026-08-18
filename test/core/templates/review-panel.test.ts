@@ -86,11 +86,11 @@ describe('review-panel registration — every model', () => {
   });
 
   it('adds one skill (flat) and one more (governed, +ste-writing)', () => {
-    // 12 lifecycle workflows + the every-model review-panel.
-    expect(getSkillTemplates()).toHaveLength(13);
-    expect(getCommandContents()).toHaveLength(13);
+    // 13 lifecycle workflows + the every-model review-panel.
+    expect(getSkillTemplates()).toHaveLength(14);
+    expect(getCommandContents()).toHaveLength(14);
     // Governed additionally ships the governed-only STE writing skill.
-    expect(getSkillTemplates(undefined, GOVERNED).length).toBe(14);
+    expect(getSkillTemplates(undefined, GOVERNED).length).toBe(15);
   });
 });
 

@@ -11,3 +11,7 @@ bindings:
     type: review
     covers: openspec-old-inert
     source: ops
+  stack-layout-tests:
+    type: test
+    covers: specbase-is-planning-root
+    source: test/core/init.change-stacks.test.ts

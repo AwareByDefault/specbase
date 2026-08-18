@@ -23,6 +23,21 @@ function Get-SpecbaseSpecs {
     }
 }
 
+function Get-SpecbaseStacks {
+    $output = specbase __complete stacks 2>$null
+    if ($output) { $output | ForEach-Object { ($_ -split "\\t")[0] } }
+}
+
+function Get-SpecbaseIdeas {
+    $output = specbase __complete ideas 2>$null
+    if ($output) { $output | ForEach-Object { ($_ -split "\\t")[0] } }
+}
+
+function Get-SpecbaseWorkItems {
+    $output = specbase __complete work-items 2>$null
+    if ($output) { $output | ForEach-Object { ($_ -split "\\t")[0] } }
+}
+
 function Get-SpecbaseSchemas {
     $output = specbase __complete schemas 2>$null
     if ($output) {

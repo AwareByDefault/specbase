@@ -24,6 +24,7 @@ import { resolveSpecModel, LEGACY_SPEC_MODEL, type SpecModel } from './artifact-
 import { mergeProjectPlanes } from './shared/skill-generation.js';
 import { readProjectConfig } from './project-config.js';
 import { renderDiagnostics } from './governed/index.js';
+import { getChangeStackContext, resolveSelectedChangeId } from './change-stacks/context.js';
 import {
   prepareGovernedArchive,
   writeGovernedArchivePairs,
@@ -129,40 +130,44 @@ function toArchiveDiagnostic(error: unknown): ArchiveDiagnostic {
 }
 
 /**
- * Recursively copy a directory. Used when fs.rename fails (e.g. EPERM on Windows).
+ * Atomically reserve the final archive directory and stage a complete,
+ * non-destructive copy of the active change inside it. The directory itself is
+ * the reservation, so no marker filename can collide with user content.
  */
-async function copyDirRecursive(src: string, dest: string): Promise<void> {
-  await fs.mkdir(dest, { recursive: true });
-  const entries = await fs.readdir(src, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      await copyDirRecursive(srcPath, destPath);
-    } else {
-      await fs.copyFile(srcPath, destPath);
+async function reserveAndStageArchiveDestination(
+  archiveDir: string,
+  archivePath: string,
+  archiveName: string,
+  sourceDir: string
+): Promise<void> {
+  await fs.mkdir(archiveDir, { recursive: true });
+  try {
+    await fs.mkdir(archivePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+      throw new ArchiveBlockedError('archive_target_exists', `Archive '${archiveName}' already exists.`);
     }
+    throw error;
+  }
+
+  try {
+    const entries = await fs.readdir(sourceDir, { withFileTypes: true });
+    for (const entry of entries) {
+      await fs.cp(path.join(sourceDir, entry.name), path.join(archivePath, entry.name), {
+        recursive: true,
+        force: false,
+        errorOnExist: true,
+        verbatimSymlinks: true,
+      });
+    }
+  } catch (error) {
+    await fs.rm(archivePath, { recursive: true, force: true });
+    throw error;
   }
 }
 
-/**
- * Move a directory from src to dest. On Windows, fs.rename() often fails with
- * EPERM when the directory is non-empty or another process has it open (IDE,
- * file watcher, antivirus). Fall back to copy-then-remove when rename fails
- * with EPERM or EXDEV.
- */
-async function moveDirectory(src: string, dest: string): Promise<void> {
-  try {
-    await fs.rename(src, dest);
-  } catch (err: any) {
-    const code = err?.code;
-    if (code === 'EPERM' || code === 'EXDEV') {
-      await copyDirRecursive(src, dest);
-      await fs.rm(src, { recursive: true, force: true });
-    } else {
-      throw err;
-    }
-  }
+async function removeArchivedSource(sourceDir: string): Promise<void> {
+  await fs.rm(sourceDir, { recursive: true, force: true });
 }
 
 export class ArchiveCommand {
@@ -265,6 +270,26 @@ export class ArchiveCommand {
       );
     }
 
+    const stableChangeId = await resolveSelectedChangeId(changeDir, changeName);
+    const stackContext = await getChangeStackContext(root.path, stableChangeId);
+    if (stackContext && !stackContext.archiveEligible) {
+      throw new ArchiveBlockedError(
+        'archive_stack_predecessor_required',
+        `Change '${changeName}' cannot archive before predecessor '${stackContext.requiredPredecessor}'.`,
+        `Archive '${stackContext.requiredPredecessor}' first, then retry.`
+      );
+    }
+
+    // Preflight a deterministic destination collision before any accepted-spec write.
+    const archiveName = `${this.getArchiveDate()}-${changeName}`;
+    const archivePath = path.join(archiveDir, archiveName);
+    try {
+      await fs.access(archivePath);
+      throw new ArchiveBlockedError('archive_target_exists', `Archive '${archiveName}' already exists.`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+
     const skipValidation = options.validate === false || options.noValidate === true;
 
     // Governed spec model routes through pair-aware preparation; the legacy flat
@@ -272,7 +297,16 @@ export class ArchiveCommand {
     // positively resolve a governed model falls back to the legacy path.
     const specModel = this.resolveSpecModelForChange(root.path, changeName, changeDir);
     if (specModel.kind === 'governed') {
-      return await this.runGoverned(changeName, changeDir, options, root, json, skipValidation);
+      return await this.runGoverned(changeName, stableChangeId, changeDir, options, root, json, skipValidation, stackContext !== null);
+    }
+
+    const legacySpecUpdates = await findSpecUpdates(changeDir, mainSpecsDir);
+    if (stackContext && legacySpecUpdates.length > 0 && options.skipSpecs) {
+      throw new ArchiveBlockedError(
+        'archive_stack_delta_required',
+        `Stacked change '${stableChangeId}' has deltas that downstream members depend on; --skip-specs is not allowed.`,
+        'Archive with spec updates applied.'
+      );
     }
 
     // Validate specs and change before archiving
@@ -410,6 +444,11 @@ export class ArchiveCommand {
       }
     }
 
+    // Atomically claim and stage the final archive before accepted truth can change.
+    // A concurrent creator that wins during preparation is detected here.
+    await reserveAndStageArchiveDestination(archiveDir, archivePath, archiveName, changeDir);
+    let archiveCommitted = false;
+    try {
     // Handle spec updates unless skipSpecs flag is set
     let specsUpdated = false;
     let totals: ArchiveResult['totals'];
@@ -419,7 +458,7 @@ export class ArchiveCommand {
       }
     } else {
       // Find specs to update
-      const specUpdates = await findSpecUpdates(changeDir, mainSpecsDir);
+      const specUpdates = legacySpecUpdates;
 
       if (specUpdates.length > 0) {
         if (!json) {
@@ -446,6 +485,11 @@ export class ArchiveCommand {
             default: true
           });
           if (!shouldUpdateSpecs) {
+            if (stackContext) {
+              console.log(chalk.red('Stacked changes with deltas must apply those deltas before advancing.'));
+              process.exitCode = 1;
+              return null;
+            }
             console.log('Skipping spec updates. Proceeding with archive.');
           }
         }
@@ -455,7 +499,7 @@ export class ArchiveCommand {
           const prepared: Array<{ update: SpecUpdate; rebuilt: string; counts: { added: number; modified: number; removed: number; renamed: number } }> = [];
           try {
             for (const update of specUpdates) {
-              const built = await buildUpdatedSpec(update, changeName!, { silent: json });
+              const built = await buildUpdatedSpec(update, stableChangeId, { silent: json });
               prepared.push({ update, rebuilt: built.rebuilt, counts: built.counts });
             }
           } catch (err: any) {
@@ -523,29 +567,10 @@ export class ArchiveCommand {
       }
     }
 
-    // Create archive directory with date prefix
-    const archiveName = `${this.getArchiveDate()}-${changeName}`;
-    const archivePath = path.join(archiveDir, archiveName);
-
-    // Check if archive already exists
-    let archiveExists = false;
-    try {
-      await fs.access(archivePath);
-      archiveExists = true;
-    } catch (error: any) {
-      if (error.code !== 'ENOENT') {
-        throw error;
-      }
-    }
-    if (archiveExists) {
-      throw new ArchiveBlockedError('archive_target_exists', `Archive '${archiveName}' already exists.`);
-    }
-
-    // Create archive directory if needed
-    await fs.mkdir(archiveDir, { recursive: true });
-
-    // Move change to archive (uses copy+remove on EPERM/EXDEV, e.g. Windows)
-    await moveDirectory(changeDir, archivePath);
+    // Accepted truth has committed. Preserve the staged archive even if source
+    // cleanup is interrupted; the complete source copy was validated first.
+    archiveCommitted = true;
+    await removeArchivedSource(changeDir);
 
     if (!json) {
       console.log(`Change '${changeName}' archived as '${archiveName}'.`);
@@ -558,6 +583,9 @@ export class ArchiveCommand {
       specsUpdated,
       ...(totals ? { totals } : {}),
     };
+    } finally {
+      if (!archiveCommitted) await fs.rm(archivePath, { recursive: true, force: true });
+    }
   }
 
   /**
@@ -590,11 +618,13 @@ export class ArchiveCommand {
    */
   private async runGoverned(
     changeName: string,
+    stableChangeId: string,
     changeDir: string,
     options: ArchiveOptions,
     root: ResolvedSpecbaseRoot,
     json: boolean,
-    skipValidation: boolean
+    skipValidation: boolean,
+    stacked: boolean
   ): Promise<ArchiveResult | null> {
     const changesDir = root.changesDir;
     const archiveDir = root.archiveDir;
@@ -631,8 +661,24 @@ export class ArchiveCommand {
       }
     }
 
+    const archiveName = `${this.getArchiveDate()}-${changeName}`;
+    const archivePath = path.join(archiveDir, archiveName);
+    try {
+      await fs.access(archivePath);
+      throw new ArchiveBlockedError('archive_target_exists', `Archive '${archiveName}' already exists.`);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    }
+
     // Prepare the governed archive plan (no writes) BEFORE any current-spec write.
     const plan = await prepareGovernedArchive({ changeDir, specbaseRoot, projectRoot });
+    if (stacked && plan.hasGovernedDeltas && options.skipSpecs) {
+      throw new ArchiveBlockedError(
+        'archive_stack_delta_required',
+        `Stacked change '${stableChangeId}' has deltas that downstream members depend on; --skip-specs is not allowed.`,
+        'Archive with spec updates applied.'
+      );
+    }
 
     // Block on structural + semantic problems unless validation is bypassed.
     if (!skipValidation) {
@@ -644,6 +690,12 @@ export class ArchiveCommand {
     const proceed = await this.checkTaskProgress(changesDir, changeName, options, json);
     if (!proceed) return null;
 
+    // Reserve and stage after the potentially expensive plan/readiness pass and
+    // before accepted truth writes. If a concurrent archive won during
+    // preparation, this fails atomically while truth and the active change are untouched.
+    await reserveAndStageArchiveDestination(archiveDir, archivePath, archiveName, changeDir);
+    let archiveCommitted = false;
+    try {
     // Write each validated pair coherently unless --skip-specs is set.
     let appliedPairs: PreparedGovernedPair[] = [];
     if (options.skipSpecs) {
@@ -669,6 +721,11 @@ export class ArchiveCommand {
         const { confirm } = await import('@inquirer/prompts');
         shouldWrite = await confirm({ message: 'Proceed with governed pair updates?', default: true });
         if (!shouldWrite) {
+          if (stacked && plan.hasGovernedDeltas) {
+            console.log(chalk.red('Stacked changes with deltas must apply those deltas before advancing.'));
+            process.exitCode = 1;
+            return null;
+          }
           console.log('Skipping spec updates. Proceeding with archive.');
         }
       }
@@ -680,21 +737,10 @@ export class ArchiveCommand {
       }
     }
 
-    // Move the change to archive only after every pair update succeeds.
-    const archiveName = `${this.getArchiveDate()}-${changeName}`;
-    const archivePath = path.join(archiveDir, archiveName);
-    let archiveExists = false;
-    try {
-      await fs.access(archivePath);
-      archiveExists = true;
-    } catch (error: any) {
-      if (error.code !== 'ENOENT') throw error;
-    }
-    if (archiveExists) {
-      throw new ArchiveBlockedError('archive_target_exists', `Archive '${archiveName}' already exists.`);
-    }
-    await fs.mkdir(archiveDir, { recursive: true });
-    await moveDirectory(changeDir, archivePath);
+    // Accepted truth has committed. Preserve the staged archive even if source
+    // cleanup is interrupted; the complete source copy was validated first.
+    archiveCommitted = true;
+    await removeArchivedSource(changeDir);
 
     const verification: GovernedArchiveReport['verification'] = skipValidation
       ? 'unverified-bypass'
@@ -725,6 +771,9 @@ export class ArchiveCommand {
         })),
       },
     };
+    } finally {
+      if (!archiveCommitted) await fs.rm(archivePath, { recursive: true, force: true });
+    }
   }
 
   /**

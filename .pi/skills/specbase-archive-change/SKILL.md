@@ -12,7 +12,7 @@ metadata:
 
 Archive a completed change in the experimental workflow.
 
-**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
+**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `ideas add`, `ideas list`, `ideas show`, `ideas delete`, `stack create`, `stack list`, `stack show`, `stack validate`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
@@ -34,6 +34,7 @@ Archive a completed change in the experimental workflow.
    Parse the JSON to understand:
    - `schemaName`: The workflow being used
    - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context
+   - Optional `stack.archiveEligible` and `stack.requiredPredecessor`: obey the CLI gate, name the predecessor, and never parse manifests or invent Git safety
    - `artifacts`: List of artifacts with their status (`done` or other)
 
    **If any artifacts are not `done`:**

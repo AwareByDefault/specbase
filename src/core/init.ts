@@ -100,6 +100,7 @@ const PROGRESS_SPINNER = {
 
 const WORKFLOW_TO_SKILL_DIR: Record<string, string> = {
   'explore': 'specbase-explore',
+  'stack': 'specbase-stack',
   'new': 'specbase-new-change',
   'continue': 'specbase-continue-change',
   'apply': 'specbase-apply-change',
@@ -562,6 +563,7 @@ export class InitCommand {
         path.join(specbasePath, 'changes'),
         path.join(specbasePath, 'changes', 'archive'),
         path.join(specbasePath, 'ideas'),
+        path.join(specbasePath, 'stacks'),
       ];
 
       for (const dir of directories) {
@@ -580,6 +582,8 @@ export class InitCommand {
       // The idea catalogue: an ungoverned scratchpad surface that feeds
       // the pipeline. Planted empty here so ideas/ has a first-class home.
       path.join(specbasePath, 'ideas'),
+      // Repo-local linear delivery context; ungoverned like ideas/.
+      path.join(specbasePath, 'stacks'),
     ];
 
     for (const dir of directories) {
