@@ -1,0 +1,14 @@
+bindings:
+  enforcement-phase-split-tests:
+    type: test
+    covers:
+      - enforcement-own-phase
+      - explore-enforce-skill
+      - verifiability-feedback
+    source: test/agents/workflow-enforcement-split.test.ts
+  enforcement-judgment-review:
+    type: review
+    covers:
+      - enforcement-own-phase
+      - verifiability-feedback
+    source: enforcement
