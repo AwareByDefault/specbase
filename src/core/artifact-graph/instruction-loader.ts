@@ -20,6 +20,11 @@ import type { PlanningHome } from '../planning-home.js';
 import type { ChangeMetadata } from '../change-metadata/index.js';
 import type { Artifact, CompletedSet, SpecModel } from './types.js';
 import type { GovernedWorkflowContext } from './governed-context.js';
+import {
+  deriveLifecycleState,
+  gatherLifecycleInput,
+  type LifecycleState,
+} from '../work-item-lifecycle.js';
 
 // Session-level cache for validation warnings (avoid repeating same warnings)
 const shownWarnings = new Set<string>();
@@ -177,6 +182,12 @@ export interface ChangeStatus {
    * current pairs). Governed-only additive field; omitted for legacy schemas.
    */
   governed?: GovernedWorkflowContext;
+  /**
+   * Derived lifecycle position (proposed/enforcement/ready-to-apply/implementing/reviewing/archived),
+   * computed on read from artifacts, tasks, review footprint, and archive location.
+   * Never read from a stored state field. Additive; the legacy per-artifact view is unchanged.
+   */
+  lifecycle?: LifecycleState;
 }
 
 export interface ArtifactPathSummary {
@@ -456,6 +467,19 @@ export function formatChangeStatus(
   const isComplete = context.graph.isComplete(context.completed);
   const artifactIds = artifactStatuses.map((artifact) => artifact.id);
 
+  const lifecycle = deriveLifecycleState(
+    gatherLifecycleInput({
+      changeDir: context.changeDir,
+      changesDir: context.planningHome?.changesDir,
+      tracksFile: schema.apply?.tracks ?? null,
+      metadata: context.metadata ?? null,
+      artifactDispositions: Object.fromEntries(
+        artifactStatuses.map((a) => [a.id, a.status])
+      ),
+      applyRequires,
+    })
+  );
+
   return {
     changeName: context.changeName,
     schemaName: context.schemaName,
@@ -475,5 +499,6 @@ export function formatChangeStatus(
       artifactIds,
     }),
     artifacts: artifactStatuses,
+    lifecycle,
   };
 }
