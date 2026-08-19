@@ -40,6 +40,16 @@ export const ChangeMetadataSchema = z.object({
   goal: z.string().min(1).optional(),
   affected_areas: z.array(z.string().min(1)).optional(),
   initiative: InitiativeLinkSchema.optional(),
+  /// Review-completion footprint written by the review panel run (ISO timestamp).
+  /// Presence derives the `reviewing` lifecycle state; absent means not yet reviewed.
+  /// It records that the panel RAN, never that it approved (the panel never gates).
+  lastReviewedAt: z.string().datetime({ offset: true }).optional(),
+  /// Originating idea id (`<slug>-<short-uuid>`) when a change grew from an idea.
+  /// Used by archive to carry the idea's preserved thinking into the archived change.
+  ideaId: z
+    .string()
+    .min(1)
+    .optional(),
 });
 
 export type ChangeMetadata = z.infer<typeof ChangeMetadataSchema>;

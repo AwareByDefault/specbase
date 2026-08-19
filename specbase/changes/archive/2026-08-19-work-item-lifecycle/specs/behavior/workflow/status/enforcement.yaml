@@ -1,0 +1,9 @@
+bindings:
+  lifecycle-state-reporting-tests:
+    type: test
+    covers: lifecycle-state-reporting
+    source: test/commands/work-item-lifecycle.test.ts
+  lifecycle-state-review:
+    type: review
+    covers: lifecycle-state-reporting
+    source: behavioural

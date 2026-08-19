@@ -136,6 +136,9 @@ export function printStatusText(status: ChangeStatus): void {
 
   console.log(`Change: ${status.changeName}`);
   console.log(`Schema: ${status.schemaName}`);
+  if (status.lifecycle) {
+    console.log(`Lifecycle: ${status.lifecycle}`);
+  }
   if (status.changeRoot) {
     console.log(`Change root: ${status.changeRoot}`);
   }

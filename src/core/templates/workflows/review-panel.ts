@@ -206,8 +206,29 @@ status (or a "no gate — flat project" note), then findings grouped
 plus a Coverage section (completeness-critic gaps and un-lensed review claims).
 Record every finding as **\`review\`-strength**.
 
-State explicitly that the panel is read-only: **it changes no code, and its
-verdicts do not gate archive, verification readiness, or \`--strict\`.**
+State explicitly that the panel is read-only: **it changes no code or spec, and
+its verdicts do not gate archive, verification readiness, or \`--strict\`.**
+
+## Step 7 — Record the review-completion footprint
+
+After emitting the report, record a **review-completion footprint** — this is
+the panel's ONE allowed write, and it is required so status can derive the
+\`reviewing\` lifecycle state (the only state pure artifact/task reads cannot
+see). It records that the panel RAN, **never that it approved** — the panel is
+not a gate. Write a \`lastReviewedAt: <ISO-8601 now>\` field into the change's
+\`.openspec.yaml\`, preserving every existing field unchanged:
+
+\`\`\`
+schema: spec-driven-governed
+created: <existing>
+id: <existing>
+lastReviewedAt: 2026-08-19T12:34:56.789Z
+\`\`\`
+
+If the change has no \`.openspec.yaml\`, skip the stamp. Do not create a
+lifecycle \`state\` field — the footprint is a completion marker, not a
+tracked state. Do not touch anything else (no code, no spec, no other
+metadata).
 
 ---
 
@@ -232,9 +253,10 @@ automated): the tool shows the case, the person decides.
 ---
 
 **Panel scope (read-only).** The panel cannot be asked to change code; it can
-only apply these lens review runs in parallel and report. It never makes a
-code edit, never touches archive readiness, and its verdicts do not enter the
-diff.`;
+only apply these lens review runs in parallel and report. The sole write it
+makes is the review-completion \`lastReviewedAt\` footprint (Step 7) so status
+can derive the \`reviewing\` state; its verdicts do not enter the diff and never
+influence archive, verification readiness, or \`--strict\`.`;
 }
 
 /**

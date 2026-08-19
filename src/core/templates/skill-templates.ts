@@ -19,6 +19,8 @@ export { getVerifyChangeSkillTemplate, getSpcbVerifyCommandTemplate } from './wo
 export { getOnboardSkillTemplate, getSpcbOnboardCommandTemplate } from './workflows/onboard.js';
 export { getSpcbProposeSkillTemplate, getSpcbProposeCommandTemplate } from './workflows/propose.js';
 export { getStackSkillTemplate, getSpcbStackCommandTemplate } from './workflows/stack.js';
+export { getExploreEnforceSkillTemplate, getExploreEnforceCommandTemplate } from './workflows/explore-enforce.js';
+export { getProposeEnforceSkillTemplate, getProposeEnforceCommandTemplate } from './workflows/propose-enforce.js';
 export { getReviewPanelSkillTemplate, getReviewPanelCommandTemplate } from './workflows/review-panel.js';
 export { getSteWritingSkillTemplate } from './workflows/ste-writing.js';
 export { getFeedbackSkillTemplate } from './workflows/feedback.js';

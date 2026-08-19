@@ -1,6 +1,6 @@
 ---
 name: specbase-propose
-description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
+description: Propose the FEATURE of a new change: proposal, spec deltas, and design in one step. Enforcement is a separate phase (run /spcb:propose-enforce to complete it). Use when the user wants to describe what they want to build and get the feature artifacts.
 allowed-tools: Bash(specbase:*)
 license: MIT
 compatibility: Requires specbase CLI.
@@ -10,14 +10,18 @@ metadata:
   generatedBy: "1.6.0"
 ---
 
-Propose a new change - create the change and generate all artifacts in one step.
+Propose the FEATURE of a new change - create the change and generate the
+feature artifacts (proposal, spec deltas, design) in one step. Enforcement is a
+separate phase, completed after.
 
-I'll create a change with artifacts:
+I'll create the feature artifacts:
 - proposal.md (what & why)
+- specs deltas (what must remain true)
 - design.md (how)
-- tasks.md (implementation steps)
 
-When ready to implement, run /spcb-apply
+Enforcement (enforcement.yaml + testing sections + evidence tasks) is completed
+separately by /spcb-propose-enforce after /spcb-explore-enforce. When ready to
+run that phase, invoke one of those skills.
 
 ---
 
@@ -57,11 +61,12 @@ When ready to implement, run /spcb-apply
    - `planningHome`, `changeRoot`, `artifactPaths`, and `actionContext`: path and scope context. Use these instead of assuming repo-local paths.
    - Optional `stack`: use CLI-resolved predecessor status and projected base paths/results; never parse manifests or guess Git safety.
 
-4. **Create artifacts in sequence until apply-ready**
+4. **Create the feature artifacts in sequence**
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
-   Loop through artifacts in dependency order (artifacts with no pending dependencies first):
+   Loop through artifacts in dependency order (artifacts with no pending
+   dependencies first), stopping once the FEATURE artifacts exist:
 
    a. **For each artifact that is `ready` (dependencies satisfied)**:
       - Get instructions:
@@ -80,44 +85,46 @@ When ready to implement, run /spcb-apply
       - Apply `context` and `rules` as constraints - but do NOT copy them into the file
       - Show brief progress: "Created <artifact-id>"
 
-   b. **Continue until all `applyRequires` artifacts are complete**
-      - After creating each artifact, re-run `specbase status --change "<name>" --json`
-      - Check if every artifact ID in `applyRequires` has `status: "done"` in the artifacts array
-      - Stop when all `applyRequires` artifacts are done
+   b. **Produce the FEATURE artifacts only**: `proposal`, the `specs`
+      deltas, and `design`. Leave the proposal's `Enforcement intent` and the
+      design's `Enforcement design` sections as explicit **TO-BE-FILLED**
+      placeholders. **Do NOT write `enforcement.yaml`.** Do not create the
+      enforcement or evidence tasks yet.
 
    c. **If an artifact requires user input** (unclear context):
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Show final status**
+5. **Show the resting state**
    ```bash
    specbase status --change "<name>"
    ```
 
+   The change now rests between phases: features drafted, enforcement pending.
+   Enforcement is a separate, deliberate phase - run `/spcb-explore-enforce`
+   then `/spcb-propose-enforce` on the same change to complete it.
+
 **Output**
 
-After completing all artifacts, summarize:
+After producing the feature artifacts, summarize:
 - Change name and location
-- List of artifacts created with brief descriptions
-- What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `/spcb-apply` or ask me to implement to start working on the tasks."
+- List of feature artifacts created (proposal, specs, design)
+- What's next: "Feature artifacts created. Enforcement is a separate phase:
+  run /spcb-explore-enforce then /spcb-propose-enforce."
 
-**Artifact Creation Guidelines**
+**Feature-Phase Guardrails**
+- Produce proposal, spec deltas, and design only. Do NOT create
+  `enforcement.yaml` or fill the enforcement/testing sections in this phase.
+- Always read dependency artifacts before creating a new one.
+- If context is critically unclear, ask the user - but prefer making reasonable
+  decisions to keep momentum.
+- If a change with that name already exists, ask if user wants to continue it or
+  create a new one.
+- Verify each artifact file exists after writing before proceeding to next.
 
-- Follow the `instruction` field from `specbase instructions` for each artifact type
-- The schema defines what each artifact should contain - follow it
-- Read dependency artifacts for context before creating new ones
-- Use `template` as the structure for your output file - fill in its sections
-- **IMPORTANT**: `context` and `rules` are constraints for YOU, not content for the file
-  - Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into the artifact
-  - These guide what you write, but should never appear in the output
-
-**Guardrails**
-- Create ALL artifacts needed for implementation (as defined by schema's `apply.requires`)
-- Always read dependency artifacts before creating a new one
-- If context is critically unclear, ask the user - but prefer making reasonable decisions to keep momentum
-- If a change with that name already exists, ask if user wants to continue it or create a new one
-- Verify each artifact file exists after writing before proceeding to next
+The enforcement-quality stance is deliberate: the enforcement judgment happens in
+its own phase, after the feature is fixed, so bindings are decided rather than
+invented alongside four other artifacts.
 
 ## Governed spec model
 
@@ -227,6 +234,11 @@ Writing one governed spec pair (`spec.md` + `enforcement.yaml`):
 
 - State only current, verifiable truth. Write WHAT the system promises, never
   HOW the code delivers it. Delete mechanism narration.
+- Open every governed spec with a `## Purpose` section stating why the spec
+  exists and a gist of what its requirements deliver, written in the present
+  tense. The purpose is not a restatement of the requirement headings and not
+  a narration of history — it supplies the "why" that the headings' "what"
+  cannot convey.
 - Give every candidate requirement a verdict: keep durable truth, promote a real
   structural invariant to the architecture plane, demote code narration to
   design docs, drop what is superseded.

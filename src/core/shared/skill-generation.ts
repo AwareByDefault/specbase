@@ -20,6 +20,8 @@ import {
   getStackSkillTemplate,
   getReviewPanelSkillTemplate,
   getSteWritingSkillTemplate,
+  getExploreEnforceSkillTemplate,
+  getProposeEnforceSkillTemplate,
   getReviewPanelCommandTemplate,
   getSpcbExploreCommandTemplate,
   getSpcbNewCommandTemplate,
@@ -34,6 +36,8 @@ import {
   getSpcbOnboardCommandTemplate,
   getSpcbProposeCommandTemplate,
   getSpcbStackCommandTemplate,
+  getExploreEnforceCommandTemplate,
+  getProposeEnforceCommandTemplate,
   type SkillTemplate,
 } from '../templates/skill-templates.js';
 import type { CommandContent } from '../command-generation/index.js';
@@ -293,6 +297,16 @@ export function getSkillTemplates(
       dirName: 'specbase-ste-writing',
       workflowId: 'ste-writing',
     });
+    selected.push({
+      template: getExploreEnforceSkillTemplate(specModel),
+      dirName: 'specbase-explore-enforce',
+      workflowId: 'explore-enforce',
+    });
+    selected.push({
+      template: getProposeEnforceSkillTemplate(specModel),
+      dirName: 'specbase-propose-enforce',
+      workflowId: 'propose-enforce',
+    });
   }
 
   return selected;
@@ -329,6 +343,13 @@ export function getCommandTemplates(
   // Every-model registration, matching the skill projection (parity: skill ==
   // command). See getSkillTemplates for why it bypasses the profile filter.
   selected.push({ template: getReviewPanelCommandTemplate(specModel), id: 'review-panel' });
+
+  // Enforcement-phase commands, governed-only (same rationale as examine the
+  // skill projection; see getSkillTemplates).
+  if (isGovernedModel(specModel)) {
+    selected.push({ template: getExploreEnforceCommandTemplate(specModel), id: 'explore-enforce' });
+    selected.push({ template: getProposeEnforceCommandTemplate(specModel), id: 'propose-enforce' });
+  }
 
   return selected;
 }

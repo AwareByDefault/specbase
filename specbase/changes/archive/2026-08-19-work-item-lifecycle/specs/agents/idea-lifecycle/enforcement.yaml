@@ -1,0 +1,9 @@
+bindings:
+  idea-lifecycle-instrument-conformance:
+    type: command
+    covers: idea-elevation-instrument
+    source: .pi/skills/save-idea/SKILL.md
+  idea-lifecycle-explore-conformance:
+    type: command
+    covers: idea-elevation-instrument
+    source: .pi/skills/specbase-explore/SKILL.md
