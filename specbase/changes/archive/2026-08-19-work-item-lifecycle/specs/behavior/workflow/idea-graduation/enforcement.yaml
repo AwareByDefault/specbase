@@ -1,0 +1,5 @@
+bindings:
+  idea-archive-carries-thinking:
+    type: test
+    covers: idea-thinking-archives
+    source: test/workflow/idea-archive.test.ts

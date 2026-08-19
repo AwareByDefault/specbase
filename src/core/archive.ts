@@ -24,6 +24,8 @@ import { resolveSpecModel, LEGACY_SPEC_MODEL, type SpecModel } from './artifact-
 import { mergeProjectPlanes } from './shared/skill-generation.js';
 import { readProjectConfig } from './project-config.js';
 import { renderDiagnostics } from './governed/index.js';
+import { carryIdeaNotesIntoArchive } from './work-item-lifecycle.js';
+import { readChangeMetadata } from '../utils/change-metadata.js';
 import {
   prepareGovernedArchive,
   writeGovernedArchivePairs,
@@ -546,6 +548,24 @@ export class ArchiveCommand {
 
     // Move change to archive (uses copy+remove on EPERM/EXDEV, e.g. Windows)
     await moveDirectory(changeDir, archivePath);
+
+    // Carry an originating idea's preserved thinking into the archived change
+    // (best-effort: a metadata/read failure must never block archiving).
+    // By-move graduation already carried the idea dir into the change, so its
+    // notes are present after the move and this is a no-op; the by-id case
+    // copies the scratchpad from `ideas/<id>/` so no idea is orphaned.
+    try {
+      const archivedMeta = readChangeMetadata(archivePath, projectRoot);
+      if (archivedMeta?.ideaId) {
+        carryIdeaNotesIntoArchive({
+          archivedChangeDir: archivePath,
+          ideasDir: path.join(specbaseRoot, 'ideas'),
+          ideaId: archivedMeta.ideaId,
+        });
+      }
+    } catch {
+      // keep the SysAdmin normal archive result; the carry is advisory
+    }
 
     if (!json) {
       console.log(`Change '${changeName}' archived as '${archiveName}'.`);

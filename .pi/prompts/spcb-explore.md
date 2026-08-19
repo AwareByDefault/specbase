@@ -279,6 +279,11 @@ Writing one governed spec pair (`spec.md` + `enforcement.yaml`):
 
 - State only current, verifiable truth. Write WHAT the system promises, never
   HOW the code delivers it. Delete mechanism narration.
+- Open every governed spec with a `## Purpose` section stating why the spec
+  exists and a gist of what its requirements deliver, written in the present
+  tense. The purpose is not a restatement of the requirement headings and not
+  a narration of history — it supplies the "why" that the headings' "what"
+  cannot convey.
 - Give every candidate requirement a verdict: keep durable truth, promote a real
   structural invariant to the architecture plane, demote code narration to
   design docs, drop what is superseded.
@@ -332,16 +337,13 @@ partner - the stages order the discussion, they are not a rigid script:
    invariant? Actively ask whether building this introduces any **structural
    trigger** (see the classifier below); a "yes" to any means an architectural
    spec is in scope, not optional.
-3. **Enforcement approach - stay general; certainty is the proposal's job.**
-   The requirements and scenarios do not exist yet, so do NOT enumerate bindings,
-   source files, `covers` lists, or evidence strengths here. Instead, name the
-   FEW most important architectural invariants and behavioral outcomes the idea
-   introduces, and for each sketch the *highest-leverage* way you would know it
-   holds (a fitness function? a property test? honest review?). Flag anything that
-   looks genuinely hard to verify (likely review or manual). Use the enforcement
-   philosophy below as the lens for that approach, and reserve concrete bindings,
-   sources, and coverage decisions for the proposal - where the requirements will
-   exist to bind against.
+3. **Enforcement - deferred to its own phase.** Feature exploration covers
+   desired behavior and supporting structure only. Do **NOT** sketch bindings,
+   source files, `covers` lists, or evidence strengths here, and do not decide
+   verifiability: the requirements do not exist yet. Once the feature is
+   proposed, verifiability is decided deliberately by **`/spcb-explore-enforce`**
+   (how each requirement is known to hold) then **`/spcb-propose-enforce`**
+   (writes the bindings and the testing sections on the same change).
 
 **Plane classifier:** explicitly classify which plane(s) the idea touches. For
 EACH declared plane, match the claim to its trigger list below; a "yes" to any
@@ -409,34 +411,10 @@ the artifact stays the runtime source of truth; the spec never generates it.
 - If it only alters one plane's concerns within the existing others, plan a spec
   pair in that plane only and say why no other plane is needed.
 
-### Enforcement philosophy (governed)
-
-Enforcement records how each normative claim is *known to hold* - it is not a
-coverage quota. Aim for deliberate, honest evidence, not a wall of tests:
-
-- **Coverage is a mirror, not a target.** A passing check proves it *ran*, not
-  that it verifies the claim; do not maximize automated bindings for their own
-  sake. `degraded` (a spec covered only by review/manual) is factual, not a
-  demerit - never write a hollow test to "upgrade" it.
-- **Prefer the highest-leverage check.** ONE fitness function (lint /
-  static-analysis / conformance test) protects a structural invariant across the
-  whole codebase; ONE property/invariant test covers a whole family of cases.
-  Reach for these before example tests.
-- **Bind at the requirement level, not per scenario.** Scenarios are examples
-  that one binding's test family already covers - do NOT write one test per
-  scenario, and do NOT create one binding per scenario.
-- **Spend example tests on what bites:** the representative, edge, and risky
-  cases - not every enumerated path.
-- **Match a resolved type to the claim:** use the projected type roster rather
-  than a frozen mechanism list. File-backed types point to project sources;
-  lens-backed types point to configured lenses. Keep procedures, assertions,
-  harness details, and limitations in planning artifacts and the source itself,
-  never in the compact manifest. Use review/manual strength openly rather than
-  faking automation.
-
-In explore this philosophy is a LENS for the approach, not a checklist to fill:
-use it to decide which claims deserve the strongest evidence and which are
-honestly review-only. The concrete bindings come later, in the proposal.
+The enforcement philosophy lives with the enforcement phase
+(`/spcb-explore-enforce` + `/spcb-propose-enforce`), where the requirements
+and scenarios exist to bind against. Feature exploration does not resolve it -
+that is the point of the split.
 
 ### Classifying durable insights (governed)
 

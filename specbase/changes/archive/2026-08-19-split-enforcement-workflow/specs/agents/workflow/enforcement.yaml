@@ -1,0 +1,21 @@
+bindings:
+  feature-propose-conformance:
+    type: command
+    covers: enforcement-own-phase
+    source: .pi/prompts/spcb-propose.md
+  explore-enforce-conformance:
+    type: command
+    covers: explore-enforce-skill
+    source: .pi/skills/specbase-explore-enforce/SKILL.md
+  propose-enforce-conformance:
+    type: command
+    covers:
+      - verifiability-feedback
+      - enforcement-own-phase
+    source: .pi/skills/specbase-propose-enforce/SKILL.md
+  enforcement-judgment-review:
+    type: review
+    covers:
+      - enforcement-own-phase
+      - verifiability-feedback
+    source: enforcement
