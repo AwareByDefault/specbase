@@ -17,13 +17,14 @@
 
 ## 3. Evidence delivery
 
-- [ ] 3.1 Implement `test/agents/workflow-enforcement-split.test.ts` asserting the workflow
-      shape (feature pass stops before enforcement; enforcement skills exist and fill; only
-      testability-driven feedback)
-- [ ] 3.2 Link `enforcement-phase-split-tests` and `enforcement-judgment-review` in
-      `specs/agents/workflow/enforcement.yaml`
-- [ ] 3.3 Execute the test source through the native harness and record the result in change
-      progress
+- [ ] 3.1 Add a `command` conformance source (or extend the existing instrument-conformance
+      harness) that drift-checks the workflow skill/prompt artifacts against the agents
+      `agents/workflow` spec
+- [ ] 3.2 Link the `command` conformance bindings (`feature-propose-conformance`,
+      `explore-enforce-conformance`, `propose-enforce-conformance`) and
+      `enforcement-judgment-review` in `specs/agents/workflow/enforcement.yaml`
+- [ ] 3.3 Execute each conformance source through its native harness and record results in
+      change progress
 
 ## 4. Cleanup
 

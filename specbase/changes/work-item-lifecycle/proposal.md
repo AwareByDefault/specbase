@@ -77,6 +77,7 @@ package or seam.
 | Covered truth | Planned type | Planned source | Intended proof |
 |---|---|---|---|
 | `lifecycle-state-reporting` | `test` | `test/commands/work-item-lifecycle.test.ts` | A test asserts `status` derives and emits a lifecycle state from the artifact set, task completion, and the review footprint, and that it never reads a stored `state` |
+| `lifecycle-state-reporting` | `review` | `behavioural` | A review binding asserts the code actually emits the derived states the tests check (behavior lens, not enforcement) |
 | `idea-thinking-archives` | `test` | `test/workflow/idea-archive.test.ts` | A test asserts an idea's `notes.md` and scratchpad are present in `changes/archive/<date>-<id>/` after an idea grown change is archived |
 | `instrument-elevates-idea` | `command` (conformance) | `.pi/skills/save-idea/SKILL.md` | A drift check asserts the `save-idea` skill's guidance treats an idea as a movable raised `backlog` record and preserves its thinking through the change lifecycle |
 | `instrument-elevates-idea` | `command` (conformance) | `.pi/skills/specbase-explore/SKILL.md` | A drift check asserts explore can resume an idea by passing its directory |

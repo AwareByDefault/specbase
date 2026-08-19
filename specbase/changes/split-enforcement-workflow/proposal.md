@@ -60,16 +60,20 @@ skills, but it is workflow behavior of a repo-owned instrument, hence agents tru
 
 | Covered truth | Planned type | Planned source | Intended proof |
 |---|---|---|---|
-| `enforcement-own-phase` | `test` | `test/agents/workflow-enforcement-split.test.ts` | A test asserts the propose workflow STOPS after `design` and does not emit `enforcement.yaml`; and that `explore` omits stage-three enforcement sketching |
+| `enforcement-own-phase` | `command` (conformance) | `.pi/prompts/spcb-propose.md` | A conformance drift check asserts the feature-mode propose prompt stops after `design`, leaves the testing sections TO-BE-FILLED, and does not emit `enforcement.yaml` |
+| `enforcement-own-phase` | `command` (conformance) | `.pi/skills/specbase-propose-enforce/SKILL.md` | A conformance drift check asserts the enforcement skill completes the same change and owns the enforcement output |
 | `enforcement-own-phase` | `review` | `enforcement` | A review binding asserts the new skills actually own the enforcement judgment, not just a hollow placeholder |
-| `explore-enforce-skill` | `static-analysis` / `test` | `test/agents/workflow-enforcement-split.test.ts` | A test asserts the `explore-enforce` / `propose-enforce` skills exist with the required capabilities and may emit testability-driven MODIFIED deltas |
-| `verifiability-feedback` | `test` | `test/agents/workflow-enforcement-split.test.ts` | A test asserts `propose-enforce` may rewrite a requirement/design toward verifiability |
+| `explore-enforce-skill` | `command` (conformance) | `.pi/skills/specbase-explore-enforce/SKILL.md` | A conformance drift check asserts the `explore-enforce` skill is verification-only and flags unverifiable requirements |
+| `verifiability-feedback` | `command` (conformance) | `.pi/skills/specbase-propose-enforce/SKILL.md` | A conformance drift check asserts `propose-enforce` fills `enforcement.yaml` and may emit testability-driven MODIFIED deltas |
 
 ## Impact
 
 - Affected code: the `spcb` skill surface (`.pi/skills/specbase-explore`, `specbase-propose`, new
-  `specbase-explore-enforce`, `specbase-propose-enforce`), the propose workflow template
-  (`src/core/templates/workflows/propose.ts`), and the proposal/design templates (mark
-  enforcement sections as TO-BE-FILLED).
+  `specbase-explore-enforce`, `specbase-propose-enforce`, plus their `.pi/prompts/spcb-*`
+  prompts), the propose workflow template (`src/core/templates/workflows/propose.ts`), and the
+  proposal/design templates (mark enforcement sections as TO-BE-FILLED).
+
+Enforcement for the agents pair uses `command` conformance sources tied to the workflow skill
+files (the established agents-plane pattern) plus the cross-cutting `enforcement` review lens.
 - Affected specs: `agents/workflow` (new pair).
 - No public CLI contract or package boundary changes.

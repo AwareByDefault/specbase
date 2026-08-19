@@ -45,21 +45,25 @@ invents enforcement without a design phase. This change forces the phase to be a
 
 ## Enforcement design
 
-Each planned source is executed through the project's native harness (vitest for tests).
+Each planned source is executed through the project's native harness; the agents-plane sources
+are `command` conformance checks run against the workflow skill/prompt artifacts (the
+established agents-plane pattern, e.g. `agents/idea-lifecycle`), not unit tests — a skill is
+enforced by a drift/conformance check on the artifact that declares it.
 
-- **`test/agents/workflow-enforcement-split.test.ts`** — asserts the workflow shape:
-  - The propose workflow (feature mode) stops after `design` and does not emit
-    `enforcement.yaml`.
-  - `spcb:explore` omits stage-three enforcement sketching (behavior + structure only).
-  - The `spcb:explore-enforce` and `spcb:propose-enforce` skills exist with the required
-    capabilities, and `propose-enforce` fills enforcement sections and may emit
-    testability-driven `MODIFIED` deltas.
-  - Failure signal: any assertion fails → the test suite fails. Known boundary: the test
-    checks the workflow contract, not the quality of any individual binding authored by a
-    future agent.
+- **`.pi/prompts/spcb-propose.md` (command conformance)** — asserts the feature-mode propose
+  prompt stops after `design`, leaves the enforcement/testing sections TO-BE-FILLED, and does
+  not emit `enforcement.yaml`. Failure signal: the prompt regresses to a one-shot all-artifact
+  flow. Known boundary: it checks the prompt's declared behavior, not whether any agent always
+  follows it.
+- **`.pi/skills/specbase-explore-enforce/SKILL.md` (command conformance)** — asserts the
+  `explore-enforce` skill is verification-only and flags unverifiable requirements. Failure
+  signal: the skill re-introduces feature-scope exploration or omits verifiability checks.
+- **`.pi/skills/specbase-propose-enforce/SKILL.md` (command conformance)** — asserts
+  `propose-enforce` fills `enforcement.yaml`, fills the testing sections, updates evidence
+  tasks, and may emit testability-driven `MODIFIED` deltas (never feature-scope creep).
 - **`enforcement` lens (review)** — a review binding asserts the new skills genuinely own the
-  enforcement judgment rather than a hollow placeholder, and that a proposal authored through
-  them reflects the enforcement quality stance. Executed by the review panel; not a gate.
+  enforcement judgment rather than a hollow placeholder. Executed by the review panel; not a
+  gate.
 
 ## Risks / Trade-offs
 

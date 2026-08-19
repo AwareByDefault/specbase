@@ -6,4 +6,4 @@ bindings:
   lifecycle-state-review:
     type: review
     covers: lifecycle-state-reporting
-    source: enforcement
+    source: behavioural
