@@ -13,6 +13,7 @@ type WorkflowId = (typeof ALL_WORKFLOWS)[number];
  */
 export const WORKFLOW_TO_SKILL_DIR: Record<WorkflowId, string> = {
   'explore': 'specbase-explore',
+  'stack': 'specbase-stack',
   'new': 'specbase-new-change',
   'continue': 'specbase-continue-change',
   'apply': 'specbase-apply-change',

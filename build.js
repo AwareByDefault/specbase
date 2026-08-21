@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'child_process';
-import { existsSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, rmSync } from 'fs';
 import { createRequire } from 'module';
+import path from 'path';
 
 const require = createRequire(import.meta.url);
 
@@ -36,6 +37,22 @@ console.log('Compiling TypeScript...');
 try {
   runTsc(['--version']);
   runTsc();
+
+  console.log('Bundling private Bun/OpenTUI renderer...');
+  const internalDir = path.join('dist', 'internal');
+  mkdirSync(internalDir, { recursive: true });
+  execFileSync('bun', [
+    'build',
+    path.join('src', 'tui', 'view', 'entry.ts'),
+    '--outfile', path.join(internalDir, 'view-tui.mjs'),
+    '--target', 'bun',
+    '--format', 'esm',
+    '--external', '@opentui/core',
+    '--external', '@opentui/core/*',
+  ], { stdio: 'inherit' });
+  // Only the private bundled application is published; intermediate tsc output
+  // is not another renderer entrypoint.
+  rmSync(path.join('dist', 'tui'), { recursive: true, force: true });
   console.log('\n✅ Build completed successfully!');
 } catch (error) {
   console.error('\n❌ Build failed!');

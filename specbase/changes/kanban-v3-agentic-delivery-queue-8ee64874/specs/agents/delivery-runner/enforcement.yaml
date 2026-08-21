@@ -1,0 +1,15 @@
+bindings:
+  delivery-runner-artifact:
+    type: command
+    covers:
+      - runner-claim-protocol
+      - runner-action-boundary
+      - runner-safety-checks
+    source: .pi/skills/specbase-delivery-runner/SKILL.md
+  delivery-runner-protocol-tests:
+    type: test
+    covers:
+      - runner-claim-protocol
+      - runner-action-boundary
+      - runner-safety-checks
+    source: test/core/delivery-runner-skill.test.ts

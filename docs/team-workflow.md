@@ -34,6 +34,14 @@ teammate reviews, merges
 
 The plan and the code live side by side in the same branch, so your teammates review both together, and six months later the archived spec still explains why the code looks the way it does.
 
+## Large outcomes: use change stacks, not larger tasks
+
+When one outcome is too large for one reviewable change, use `/spcb:stack` to decompose an idea into a finite repo-local sequence of **vertical delivery slices**. Each stack member is still an ordinary idea/change/archive item with its own proposal, spec delta, tasks, evidence, and PR. A member is not a task: it must make a newly observable outcome true through a real entry point and explicitly defer later outcomes.
+
+`specbase stack show <id>` derives progress from repository state. Downstream members may be authored with predecessor context, but Specbase makes no branch or PR safety claim. `specbase stack validate <id>` checks projected spec prefixes, and archive order is the durable gate. Stacks do not revive retired initiatives: they have no DAG, nesting, ownership, cross-repository, Git, worktree, or Kanban metadata.
+
+Review one member per independent review boundary, and preserve your team's normal branch/PR convention for each member.
+
 ## Reviewing specs in a pull request
 
 This is where a team feels the payoff. When a PR includes the change's delta spec, the reviewer gets something a raw diff never gives them: **a plain-language statement of what this change is supposed to do**, before they read a single line of code.

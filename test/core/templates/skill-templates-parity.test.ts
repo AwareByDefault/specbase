@@ -1,4 +1,7 @@
 import { createHash } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -23,6 +26,8 @@ import {
   getSpcbSyncCommandTemplate,
   getSpcbProposeCommandTemplate,
   getSpcbProposeSkillTemplate,
+  getStackSkillTemplate,
+  getSpcbStackCommandTemplate,
   getSpcbUpdateCommandTemplate,
   getSpcbVerifyCommandTemplate,
   getSyncSpecsSkillTemplate,
@@ -33,50 +38,51 @@ import {
   generateSkillContent,
   getCommandContents,
   getSkillTemplates,
+  resolveProjectSpecModel,
 } from '../../../src/core/shared/skill-generation.js';
 import { STORE_SELECTION_GUIDANCE } from '../../../src/core/templates/workflows/store-selection.js';
 
 const EXPECTED_FUNCTION_HASHES: Record<string, string> = {
-  getExploreSkillTemplate: '3883f4e7da792982e1e048a33c3ea284d35a67b657bf7b56662c52f14ea6c8c2',
-  getNewChangeSkillTemplate: '14ad56e4776f048e0af85bc7ad55ab1d458e0e65cb87c3a69b1bdb3b3a37dcfe',
-  getContinueChangeSkillTemplate: '47c2ec40d49de42beaf0239e0af204ece77ccdc273d6cd3037aef67d5ae5201b',
-  getApplyChangeSkillTemplate: '70170b30e9f994969438e7938ee26014181d271ddd61b924e84170fae7010dd5',
-  getFfChangeSkillTemplate: '492af7f7be2d83040842e41cba2de20a2a301a1cee5599b31afb376da8f09e17',
-  getSyncSpecsSkillTemplate: '37ea4b62a46c34d8fcf5a2a38753900972f9ff916f7cdb8f03bd8dc27fa6b65a',
-  getOnboardSkillTemplate: 'bb3464913cfeddc10f084f33695c853e29d9c855ffa6defd5e0c168b3172efd7',
-  getSpcbExploreCommandTemplate: '3057d21e8c2296ad779bad2d3548a84a3a1efb47a32794be9e71854475e000a8',
-  getSpcbNewCommandTemplate: '9064285f82900d9431f674ab005396428608d6183215bbd3e9a234a91159421e',
-  getSpcbContinueCommandTemplate: 'bf634153991f1c7c520db7067bf3afb1ef8e58bb5c5e963431eb3414e0ffe786',
-  getSpcbApplyCommandTemplate: 'ea436a3f4171147fb7d0ed5321cb6af6cea2dabb360b581ffe0fc518a6f14bd2',
-  getSpcbFfCommandTemplate: '43b8ee61d9500101cc3e25d0eedad43959a8fc4c9332b377ad9d1d97a67127fe',
-  getArchiveChangeSkillTemplate: '25c815fde5b63bd083e2e7fe229d32385014a28ac9e3090e7b6dc2a2fa275e84',
-  getBulkArchiveChangeSkillTemplate: '8a26798ff117cd47927fc283917cd33edc54a69c756653f175e6f5d77271bb31',
-  getSpcbSyncCommandTemplate: '15cb6a68ca8e53c85d54b19c42bda8dcdc104a96aeac058219a18c31ff4a3c70',
-  getVerifyChangeSkillTemplate: '880f298983df19bcc28ca0cb874f1295feadbe93d2027f4c296dbdd043f2e3eb',
-  getSpcbArchiveCommandTemplate: 'aa31d15392cdbe6da6b45835d7bf7a98c768ef1cd8be388dd415c56e9bb6d29a',
-  getSpcbOnboardCommandTemplate: 'f1f33f8c8cd5d3b021a379f40dc4d6ce1ac7bb469b57e32889fab472f11d6a2a',
-  getSpcbBulkArchiveCommandTemplate: 'fadb5f912aca5750c5c8725950c6d803e25f2fcc745a40c73e1d720603b63a47',
-  getSpcbVerifyCommandTemplate: 'df8e201aa722bd15c8dbdec1bc5a155697892f0e30adcbf84e93549bd2b40cfd',
-  getSpcbProposeSkillTemplate: '4064564e7eb62f33af6922621edb1bb6c61729baa69350b7fbc61f3d7204b8fc',
-  getSpcbProposeCommandTemplate: 'de3ccae5c7a2cacc165e7c2767c91a0b28323c57511907d7a8f8b858cf1449aa',
+  getExploreSkillTemplate: '853762e812aa2b5cdabd4a11efe0b7ae52abd583f263c1c1ef717354c538f89e',
+  getNewChangeSkillTemplate: '0facf563f4a73edc9030673929ec797ecc8fb6d3d628102e871e89d1d070ce38',
+  getContinueChangeSkillTemplate: '769e63ca0ae24818cb15a2e6c38d573a3ed8a1edc4e9d1fc1ae3bba23051d27f',
+  getApplyChangeSkillTemplate: '08b1a5638b1b2d038fa198db432f983853bc92f59dc2d9e58c539fda1ace674a',
+  getFfChangeSkillTemplate: 'eb7597d077e1ea2a9b5844cfb672c6fa2c0dea6894a109cc4ab9ae244510846d',
+  getSyncSpecsSkillTemplate: '99d72ac874c6424b7d0cc26310bbb1bd1262c837cac22fa8e5d12a69bd4e7b9c',
+  getOnboardSkillTemplate: 'c733dfb3f8afca34424a6e1f5409a6cc2434e4355a76ae793f0aed2535678d3c',
+  getSpcbExploreCommandTemplate: '5f1052626d4d49672007ee747686650caad1770db75c5e398c9c00353df78244',
+  getSpcbNewCommandTemplate: 'c0c99aadd60ccc1d3d12ffdb394f2d2d6dc76d1c7990714e6ed9ea3e01529832',
+  getSpcbContinueCommandTemplate: '05249f4208442b4019f336e01cef2519332498b96d67b8d687f6c43f5b6ec3ab',
+  getSpcbApplyCommandTemplate: 'faad56591f95a8614a3a73796906932d4e6dd84076fc86aea2691d8345123ac9',
+  getSpcbFfCommandTemplate: 'e1712927536a2719bbda96d56e51b94cc485ddf5a295d3e3256aa71b480e60f3',
+  getArchiveChangeSkillTemplate: '23c35e570f8e8e604be361403468fa1545970880d9fd133ad5ff24fad6cee230',
+  getBulkArchiveChangeSkillTemplate: 'cdc58e7f915cf1233db98dbb60b690a6626201043968fe2fc1475f0b952c091e',
+  getSpcbSyncCommandTemplate: 'fb599b9a2a1e20099411f30d1e421d8143b07dc118985ac5b87ff27db0baf573',
+  getVerifyChangeSkillTemplate: '0c4ec11ad04aadc659ee1ab96575c52d727a1c93a9a98097d5efb55b453238ee',
+  getSpcbArchiveCommandTemplate: '66f4d5d9f961da6c65f89c38dc8721f00d96ef6ab02b5f36af95453a596bdea1',
+  getSpcbOnboardCommandTemplate: '66354271cbc43642d2a430fc5278f588821e9cbb730595cf419f9471a31ca9a7',
+  getSpcbBulkArchiveCommandTemplate: '9826ed4e30e761b121bff8532bbff3e738e4eb479637bbdd51e55feeddc79697',
+  getSpcbVerifyCommandTemplate: 'aef20a603e3c6f0c1271c4301701c8a8aa6b7b1859679401e4981824aacfbe4d',
+  getSpcbProposeSkillTemplate: 'a4cc126fe52c66372aecaf0f6c674470c94243645dda56eea58c26b9dddd49e2',
+  getSpcbProposeCommandTemplate: 'cd500074a15cba418b91f7859e4af5870fe77b418439d63852014b7bd6127f48',
   getFeedbackSkillTemplate: '027cd1eb22e80b16dd53264ad1ec790d6c8c50a076762ca573e658f9967020b0',
-  getUpdateChangeSkillTemplate: '5a386fcc8dec3cc52555f8a32edd1589d493861b67f364fb2a341a9eca06fb8d',
-  getSpcbUpdateCommandTemplate: 'ba35d157bff7e52109e49d15422d07808d8d0284e8bb9e15b4a6f70d51d6a146',
+  getUpdateChangeSkillTemplate: '6fcaacfdbd72fe9c97df1db0750c55f007fd64694e329884b65178a7b0e1d4e2',
+  getSpcbUpdateCommandTemplate: '80db26eca30c9b1a99acc6e3857df2b6c503b43c01da94006ac02cb0e1591dc6',
 };
 
 const EXPECTED_GENERATED_SKILL_CONTENT_HASHES: Record<string, string> = {
-  'specbase-explore': 'b711db1c38e1ccd171771ae714154dadd29529e390b4e40bc55e1138c289f7ac',
-  'specbase-new-change': '7cf913854e549fec62376d70e40dd54d6da57b843f4ad5e994101f791cce2e53',
-  'specbase-continue-change': 'd4f1144c5e07bfb78837b46a08c790c99226faf1bdc7ef16059112812ee0009f',
-  'specbase-apply-change': '58d9460684dfdc9c6dc1b2e208482c108ec9bc2cfbb02e5dc74cf4cb0ae38255',
-  'specbase-ff-change': 'eac9d0476af4979f229b506415d68f0144aeec06fce642a96e87fd1450cf1d7c',
-  'specbase-sync-specs': '269484196ffcc8793812f779ecc9ad2e8f5ebd06b52d3a4e94857d00fb6bd6e9',
-  'specbase-archive-change': '540726a80e38c1bb86894034e8b193299d602fdf1954d90eb23ecb0cf517e939',
-  'specbase-bulk-archive-change': '1645b6c8c5fb58dd8d6d739ebc4edec03ef5953ccf88c7b7339b16509c70ed3e',
-  'specbase-verify-change': 'eafca3958ef1be6c279dac4ec394ed3d21a9e476ef80dee7c3553ee3955267cf',
-  'specbase-onboard': '38805ca9e375dac9484cebd925b8e110007b32aa312c47b232987ef351d7a8b6',
-  'specbase-propose': '474570490e255d3e5a692a39ada774d76b8c0d341112e9937a6598637cdfd3b5',
-  'specbase-update-change': 'c6371d044d13f23cac4c0de9a070a3c2a2b5cd711d60df05781b7eec9cef5449',
+  'specbase-explore': 'fbe21a2112c74c1013eb2117f235ced57f10da0d69e4297ddf435f363f65e55b',
+  'specbase-new-change': '70d44f69fb60d65e3434c183887c6266a742860a064914f1cfb8ff77c8a831ae',
+  'specbase-continue-change': 'ed1852139a09e27aee428a80f2b390f06fbcb826359dedc29d926143523d1d9c',
+  'specbase-apply-change': '9f201483486652e4c752ecc5c42c9c3eda83db7ef112b04e2d1b0425e589111d',
+  'specbase-ff-change': 'ba1810eff0cd27ed7e4b8ab8e47acfd7b5c312a4f57580569fb602f2abe23a01',
+  'specbase-sync-specs': 'f8d834c8e296b80409b2b4d09551e008295f34f11ae16f73eccdf92f586ed486',
+  'specbase-archive-change': '8440dd918c25e1d5ad72735cd574e305f1fb6c160134d3ea08540b1fbbca85c5',
+  'specbase-bulk-archive-change': '950731570544bb710c071dbfb363e548884093e3011060df92d39e75dcada61b',
+  'specbase-verify-change': '3387d67f5e47547632616100d372000bb63f7f445772fdcc32b93f3e2101f0ea',
+  'specbase-onboard': 'aec7cb2d32ff7c615808ada24d59a76cd17db61f88d062f705a177c974da96bc',
+  'specbase-propose': '0b0e2404ee6b28951440bcc601429501c02a0c8d1cd9eb684bbb21cc81c761c0',
+  'specbase-update-change': '7ae431c3e94895042cb969f78c25566194ea5594b79c6b156fac9607ba958706',
 };
 
 // Intentionally excludes getFeedbackSkillTemplate: this list only models templates
@@ -117,6 +123,46 @@ function hash(value: string): string {
 }
 
 describe('skill templates split parity', () => {
+  it('keeps checked-in affected workflow instruments synchronized with canonical governed templates', () => {
+    const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+    const model = resolveProjectSpecModel(projectRoot);
+    const workflows = [
+      ['specbase-explore', 'spcb-explore.md', getExploreSkillTemplate, getSpcbExploreCommandTemplate],
+      ['specbase-propose', 'spcb-propose.md', getSpcbProposeSkillTemplate, getSpcbProposeCommandTemplate],
+      ['specbase-apply-change', 'spcb-apply.md', getApplyChangeSkillTemplate, getSpcbApplyCommandTemplate],
+      ['specbase-archive-change', 'spcb-archive.md', getArchiveChangeSkillTemplate, getSpcbArchiveCommandTemplate],
+      ['specbase-stack', 'spcb-stack.md', getStackSkillTemplate, getSpcbStackCommandTemplate],
+    ] as const;
+    for (const [skillDir, promptName, skillFactory, commandFactory] of workflows) {
+      const skill = fs.readFileSync(path.join(projectRoot, '.pi', 'skills', skillDir, 'SKILL.md'), 'utf-8');
+      const canonicalSkill = generateSkillContent(skillFactory(model), '1.6.0');
+      expect(skill.replaceAll('/spcb-', '/spcb:')).toBe(canonicalSkill);
+      const prompt = fs.readFileSync(path.join(projectRoot, '.pi', 'prompts', promptName), 'utf-8').replaceAll('/spcb-', '/spcb:');
+      for (const line of commandFactory(model).content.split('\n').map((item) => item.trim()).filter(Boolean)) {
+        expect(prompt).toContain(line);
+      }
+    }
+  });
+
+  it('keeps idea resumption durable in both explore projections', () => {
+    for (const content of [getExploreSkillTemplate().instructions, getSpcbExploreCommandTemplate().content]) {
+      expect(content).toContain('When the user brings an idea from the catalogue');
+      expect(content).toContain('specbase ideas show');
+      expect(content).toContain('every prior `## Session` section');
+      expect(content).toContain('save-idea skill');
+      expect(content).toContain('`--from-idea`');
+    }
+  });
+
+  it('keeps stack skill and command semantics in parity', () => {
+    const skill = getStackSkillTemplate().instructions;
+    const command = getSpcbStackCommandTemplate().content;
+    expect(command).toBe(skill);
+    for (const phrase of ['vertical-slice test', 'explicit deferrals', 'newly true', 'horizontal phases', 'specbase stack create']) {
+      expect(skill).toContain(phrase);
+    }
+  });
+
   it('preserves all template function payloads exactly', () => {
     const functionFactories: Record<string, () => unknown> = {
       getExploreSkillTemplate,

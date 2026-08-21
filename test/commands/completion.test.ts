@@ -93,6 +93,20 @@ describe('CompletionCommand', () => {
       const output = consoleLogSpy.mock.calls[0][0];
       expect(output).toContain('#compdef specbase');
     });
+
+    it.each([
+      ['bash', '--member', '--from-idea', '_specbase_complete_work_items', '_specbase_complete_ideas'],
+      ['zsh', '--member', '--from-idea', ':value:_specbase_complete_work_items', ':value:_specbase_complete_ideas'],
+      ['fish', '-l member', '-l from-idea', '(__fish_specbase_work_items)', '(__fish_specbase_ideas)'],
+      ['powershell', '--member', '--from-idea', 'Get-SpecbaseWorkItems', 'Get-SpecbaseIdeas'],
+    ])('routes work-item and idea flag completion independently for %s', async (shell, memberFlag, ideaFlag, memberMarker, ideaMarker) => {
+      await command.generate({ shell });
+      const output = consoleLogSpy.mock.calls.at(-1)?.[0] as string;
+      expect(output).toContain(memberFlag);
+      expect(output).toContain(ideaFlag);
+      expect(output).toContain(memberMarker);
+      expect(output).toContain(ideaMarker);
+    });
   });
 
   describe('install subcommand', () => {

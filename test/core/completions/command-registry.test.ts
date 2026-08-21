@@ -168,10 +168,18 @@ describe('command completion registry', () => {
       'archive',
       'context',
       'doctor',
+      'ideas add',
+      'ideas delete',
+      'ideas list',
+      'ideas show',
       'instructions',
       'list',
       'new change',
       'show',
+      'stack create',
+      'stack list',
+      'stack show',
+      'stack validate',
       'status',
       'validate',
     ]);
@@ -183,6 +191,22 @@ describe('command completion registry', () => {
       expect(STORE_SELECTION_GUIDANCE, `guidance names ${commandPath}`).toContain(
         `\`${commandPath}\``
       );
+    }
+  });
+
+  it('routes idea graduation and stack membership to distinct dynamic sources', () => {
+    const newChange = command('new')?.subcommands?.find((entry) => entry.name === 'change');
+    expect(newChange?.flags.find((flag) => flag.name === 'from-idea')?.valueType).toBe('idea-id');
+    const stackCreate = command('stack')?.subcommands?.find((entry) => entry.name === 'create');
+    expect(stackCreate?.flags.find((flag) => flag.name === 'from-idea')?.valueType).toBe('idea-id');
+    expect(stackCreate?.flags.find((flag) => flag.name === 'member')?.valueType).toBe('work-item-id');
+  });
+
+  it('advertises store selection on every idea command used by decomposition', () => {
+    const ideas = command('ideas');
+    for (const name of ['add', 'list', 'ls', 'show', 'delete']) {
+      const subcommand = ideas?.subcommands?.find((entry) => entry.name === name);
+      expect(subcommand?.flags.find((flag) => flag.name === 'store'), `ideas ${name} --store flag`).toBeDefined();
     }
   });
 

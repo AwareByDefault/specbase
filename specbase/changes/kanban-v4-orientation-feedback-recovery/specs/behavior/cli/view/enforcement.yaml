@@ -1,0 +1,33 @@
+bindings:
+  view-cli-mode-tests:
+    type: test
+    covers:
+      - interactive-viewer-launch
+      - plain-and-json-projections
+      - viewer-actionable-recovery
+    source: test/commands/view.test.ts
+  view-headless-input-tests:
+    type: test
+    covers:
+      - viewer-input-parity
+      - viewer-detail-navigation
+      - viewer-terminal-lifecycle
+      - viewer-location-context
+      - viewer-action-signifiers
+      - viewer-navigation-semantics
+      - viewer-immediate-feedback
+      - viewer-actionable-recovery
+    source: test/tui/view-board.test.ts
+  view-reducer-feedback-tests:
+    type: test
+    covers:
+      - viewer-navigation-semantics
+      - viewer-immediate-feedback
+    source: test/core/view.test.ts
+  view-terminal-pty-integration:
+    type: test
+    covers:
+      - interactive-viewer-launch
+      - viewer-terminal-lifecycle
+      - viewer-actionable-recovery
+    source: test/tui/view-terminal.integration.test.ts

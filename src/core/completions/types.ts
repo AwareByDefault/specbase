@@ -28,6 +28,9 @@ export interface FlagDefinition {
    * Possible values for the flag (for completion suggestions)
    */
   values?: string[];
+
+  /** Dynamic completion source for a flag value. */
+  valueType?: PositionalType;
 }
 
 export type PositionalType =
@@ -36,7 +39,10 @@ export type PositionalType =
   | 'change-or-spec-id'
   | 'path'
   | 'shell'
-  | 'schema-name';
+  | 'schema-name'
+  | 'stack-id'
+  | 'idea-id'
+  | 'work-item-id';
 
 /**
  * Definition of a positional argument.

@@ -37,6 +37,7 @@ ${STORE_SELECTION_GUIDANCE}
    Parse the JSON to understand:
    - \`schemaName\`: The workflow being used
    - \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`actionContext\`: path and scope context
+   - Optional \`stack.archiveEligible\` and \`stack.requiredPredecessor\`: obey the CLI gate, name the predecessor, and never parse manifests or invent Git safety
    - \`artifacts\`: List of artifacts with their status (\`done\` or other)
 
    **If any artifacts are not \`done\`:**
@@ -155,6 +156,7 @@ ${STORE_SELECTION_GUIDANCE}
    Parse the JSON to understand:
    - \`schemaName\`: The workflow being used
    - \`planningHome\`, \`changeRoot\`, \`artifactPaths\`, and \`actionContext\`: path and scope context
+   - Optional \`stack.archiveEligible\` and \`stack.requiredPredecessor\`: obey the CLI gate, name the predecessor, and never parse manifests or invent Git safety
    - \`artifacts\`: List of artifacts with their status (\`done\` or other)
 
    **If any artifacts are not \`done\`:**

@@ -1,0 +1,9 @@
+bindings:
+  activity-boundary-tests:
+    type: test
+    covers:
+      - injected-activity-inputs
+      - bounded-local-provider
+      - advisory-enrichment-boundary
+      - per-card-failure-isolation
+    source: test/core/activity-awareness.architecture.test.ts

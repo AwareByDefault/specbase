@@ -46,6 +46,8 @@ ${STORE_SELECTION_GUIDANCE}
    \`\`\`
 
    This returns:
+   - optional \`stack\`: CLI-resolved predecessor state, projected base context, and warnings. Report active predecessors as context only; do not claim Git branch or merge safety and do not parse stack manifests directly.
+
    - \`contextFiles\`: artifact ID -> array of concrete file paths (varies by schema - could be proposal/specs/design/tasks or spec/tests/implementation/docs)
    - Progress (total, complete, remaining)
    - Task list with status
@@ -206,6 +208,8 @@ ${STORE_SELECTION_GUIDANCE}
    \`\`\`
 
    This returns:
+   - optional \`stack\`: CLI-resolved predecessor state, projected base context, and warnings. Report active predecessors as context only; do not claim Git branch or merge safety and do not parse stack manifests directly.
+
    - \`contextFiles\`: artifact ID -> array of concrete file paths (varies by schema)
    - Progress (total, complete, remaining)
    - Task list with status

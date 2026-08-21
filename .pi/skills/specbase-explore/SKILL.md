@@ -16,7 +16,7 @@ Enter explore mode. Think deeply. Visualize freely. Follow the conversation wher
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
-**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
+**Store selection:** If the user names a store (a store is a standalone Specbase repo registered on this machine) or the work lives in one, run `specbase store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `ideas add`, `ideas list`, `ideas show`, `ideas delete`, `stack create`, `stack list`, `stack show`, `stack validate`). Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `specbase/` root.
 
 ---
 
@@ -93,6 +93,25 @@ This tells you:
 - If there are active changes
 - Their names, schemas, and status
 - What the user might be working on
+
+### When the user brings an idea from the catalogue
+
+An idea ID is a first-class input alongside a change ID. Resume it rather than restarting:
+
+1. Run `specbase ideas show "<idea-id>" --json` using the resolved store flag when applicable.
+2. Read the reported notes, including every prior `## Session` section, and supporting members before exploring.
+3. Build on settled thinking and call out only the questions that remain open.
+4. When the session produces durable thinking the user wants kept, offer the save-idea skill so it appends a new session instead of overwriting history.
+5. When the idea is proposal-ready, hand off to propose with `--from-idea`; graduation moves the same stable identity into changes rather than creating a duplicate.
+
+Example:
+```
+User: Explore idea dark-mode-x7k2p9f3a
+
+You: [reads the CLI-resolved idea notes first]
+     Building on the prior sessions: palette direction is settled and
+     contrast remains open. Where do you want to focus next?
+```
 
 ### When no change exists
 

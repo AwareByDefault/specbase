@@ -81,6 +81,11 @@ jobs:
           node-version: '20.19.0'
           cache: 'pnpm'
 
+      - name: Setup Bun 1.3
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
+
       - name: Print environment diagnostics
         run: |
           node -p "JSON.stringify({ platform: process.platform, arch: process.arch, shell: process.env.SHELL || process.env.ComSpec || '' })"
@@ -95,6 +100,9 @@ jobs:
         env:
           VITEST_MAX_WORKERS: ${{ matrix.vitest_workers }}
         run: pnpm test
+
+      - name: Run Bun/OpenTUI terminal and packed-runtime tests
+        run: pnpm run test:tui
 
       - name: Upload test coverage
         if: matrix.os == 'ubuntu-latest'
@@ -133,6 +141,11 @@ jobs:
         with:
           node-version: '20.19.0'
           cache: 'pnpm'
+
+      - name: Setup Bun 1.3
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.14'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

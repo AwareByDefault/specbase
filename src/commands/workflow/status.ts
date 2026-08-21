@@ -20,6 +20,7 @@ import {
   withGovernedStatus,
   type ChangeStatus,
 } from '../../core/artifact-graph/index.js';
+import { getChangeStackContext, resolveSelectedChangeId } from '../../core/change-stacks/context.js';
 import {
   validateChangeExists,
   validateSchemaExists,
@@ -99,8 +100,9 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
     }
 
     // loadChangeContext will auto-detect schema from metadata if not provided
+    const selectedChangeDir = getChangeDir(planningHome, changeName);
     const context = loadChangeContext(projectRoot, changeName, options.schema, {
-      changeDir: getChangeDir(planningHome, changeName),
+      changeDir: selectedChangeDir,
       planningHome,
     });
     const baseStatus = formatChangeStatus(
@@ -110,6 +112,9 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
     // Governed-only: attach spec model + pair context. No-op (returns the base
     // object) under the legacy model, keeping legacy output unchanged.
     const status = await withGovernedStatus(baseStatus, context);
+    const stableChangeId = await resolveSelectedChangeId(selectedChangeDir, changeName);
+    const stack = await getChangeStackContext(projectRoot, stableChangeId);
+    if (stack) status.stack = stack;
 
     spinner?.stop();
 

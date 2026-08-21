@@ -1,5 +1,10 @@
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { getActiveChangeIds, getSpecIds } from '../../utils/item-discovery.js';
 import { listSchemas } from '../artifact-graph/index.js';
+import { listStackManifests, readWorkItemId } from '../change-stacks/store.js';
+import { planningDir } from '../planning-dir.js';
+import { listIdeas } from '../ideas/store.js';
 
 /**
  * Cache entry for completion data
@@ -19,6 +24,8 @@ export class CompletionProvider {
   private changeCache: CacheEntry<string[]> | null = null;
   private specCache: CacheEntry<string[]> | null = null;
   private schemaCache: CacheEntry<string[]> | null = null;
+  private stackCache: CacheEntry<string[]> | null = null;
+  private ideaCache: CacheEntry<string[]> | null = null;
 
   /**
    * Creates a new completion provider
@@ -108,6 +115,43 @@ export class CompletionProvider {
     return schemaNames;
   }
 
+  async getStackIds(): Promise<string[]> {
+    const now = Date.now();
+    if (this.stackCache && now - this.stackCache.timestamp < this.cacheTTL) return this.stackCache.data;
+    const data = (await listStackManifests(this.projectRoot)).map((stack) => stack.id);
+    this.stackCache = { data, timestamp: now };
+    return data;
+  }
+
+  async getIdeaIds(): Promise<string[]> {
+    const now = Date.now();
+    if (this.ideaCache && now - this.ideaCache.timestamp < this.cacheTTL) return this.ideaCache.data;
+    const data = (await listIdeas(this.projectRoot)).map((idea) => idea.id).sort();
+    this.ideaCache = { data, timestamp: now };
+    return data;
+  }
+
+  async getWorkItemIds(): Promise<string[]> {
+    const archiveHome = path.join(planningDir(this.projectRoot), 'changes', 'archive');
+    let archived: string[] = [];
+    try {
+      const entries = await fs.readdir(archiveHome, { withFileTypes: true });
+      archived = (await Promise.all(entries
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+        .map(async (entry) => readWorkItemId(
+          path.join(archiveHome, entry.name),
+          entry.name.replace(/^\d{4}-\d{2}-\d{2}-/, '')
+        ).catch(() => null))))
+        .filter((id): id is string => id !== null);
+    } catch { /* young roots may omit archive */ }
+    const [changeDirectories, ideas] = await Promise.all([this.getChangeIds(), this.getIdeaIds()]);
+    const changes = (await Promise.all(changeDirectories.map(async (directory) => readWorkItemId(
+      path.join(planningDir(this.projectRoot), 'changes', directory),
+      directory
+    ).catch(() => null)))).filter((id): id is string => id !== null);
+    return [...new Set([...ideas, ...changes, ...archived])].sort();
+  }
+
   /**
    * Get both change and spec IDs for completion
    *
@@ -129,6 +173,8 @@ export class CompletionProvider {
     this.changeCache = null;
     this.specCache = null;
     this.schemaCache = null;
+    this.stackCache = null;
+    this.ideaCache = null;
   }
 
   /**

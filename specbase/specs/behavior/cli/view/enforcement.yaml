@@ -1,20 +1,31 @@
 bindings:
-  view-classification-tests:
-    type: test
-    covers:
-      - change-classification
-      - change-ordering
-      - task-progress-resolution
-    source: test/core/view.test.ts
   tracked-tasks-resolution-tests:
     type: test
     covers: task-progress-resolution
     source: test/utils/task-progress.test.ts
-  dashboard-rendering-review:
-    type: review
+  view-board-model-tests:
+    type: test
     covers:
       - dashboard-sections
       - summary-metrics
-      - specs-display
+      - change-classification
       - change-ordering
-    source: behavioural
+      - specs-display
+    source: test/core/view/model.test.ts
+  view-cli-mode-tests:
+    type: test
+    covers:
+      - interactive-viewer-launch
+      - plain-and-json-projections
+    source: test/commands/view.test.ts
+  view-headless-input-tests:
+    type: test
+    covers:
+      - viewer-input-parity
+      - viewer-detail-navigation
+      - viewer-terminal-lifecycle
+    source: test/tui/view-board.test.ts
+  view-terminal-pty-integration:
+    type: test
+    covers: viewer-terminal-lifecycle
+    source: test/tui/view-terminal.integration.test.ts
