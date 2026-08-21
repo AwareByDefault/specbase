@@ -18,8 +18,23 @@ beforeAll(async () => {
 afterAll(async () => fs.rm(projectRoot, { recursive: true, force: true }));
 
 type Action = 'quit-key' | 'quit-mouse' | 'sigint' | 'sigterm' | 'sighup' | 'none';
+
+async function projectSnapshot(): Promise<string[]> {
+  const result: string[] = [];
+  async function walk(dir: string): Promise<void> {
+    for (const item of (await fs.readdir(dir, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
+      const absolute = path.join(dir, item.name);
+      if (item.isDirectory()) await walk(absolute);
+      else result.push(`${path.relative(projectRoot, absolute)}:${await fs.readFile(absolute, 'utf8')}`);
+    }
+  }
+  await walk(projectRoot);
+  return result;
+}
+
 async function runPty(action: Action, extraEnv: Record<string, string> = {}) {
   let output = '';
+  const filesBefore = await projectSnapshot();
   let acted = false;
   let processRef: ReturnType<typeof Bun.spawn> | undefined;
   const terminal = new Bun.Terminal({
@@ -28,12 +43,12 @@ async function runPty(action: Action, extraEnv: Record<string, string> = {}) {
     name: 'xterm-256color',
     data(_term, data) {
       output += new TextDecoder().decode(data);
-      if (acted || !output.includes('Viewer-only Lifecycle Board')) return;
+      if (acted || !output.includes('Lifecycle Board')) return;
       acted = true;
       if (action === 'quit-key') terminal.write('q');
       if (action === 'quit-mouse') {
         // Real SGR mouse down/up on the visible footer Quit control.
-        terminal.write('\u001b[<0;61;27M\u001b[<0;61;27m');
+        terminal.write('\u001b[<0;41;27M\u001b[<0;41;27m');
       }
       if (action === 'sigint') processRef?.kill('SIGINT');
       if (action === 'sigterm') processRef?.kill('SIGTERM');
@@ -60,7 +75,7 @@ async function runPty(action: Action, extraEnv: Record<string, string> = {}) {
     local: terminal.localFlags,
   };
   terminal.close();
-  return { code, output, acted, before, after };
+  return { code, output, acted, before, after, filesBefore, filesAfter: await projectSnapshot() };
 }
 
 async function malformedFrame(payload: Uint8Array): Promise<{ code: number | null; stdout: string; stderr: string }> {
@@ -88,15 +103,17 @@ describe('real PTY parent/child terminal lifecycle', () => {
     expect(result.output).toContain('\u001b[?25l');
     expect(result.output).toContain('\u001b[?25h');
     expect(result.after).toEqual(result.before);
+    expect(result.filesAfter).toEqual(result.filesBefore);
   }, 30_000);
 
   test('real SGR mouse down/up activates the visible Quit control and restores the PTY', async () => {
     const result = await runPty('quit-mouse');
     expect(result.acted).toBe(true);
     expect(result.code).toBe(0);
-    expect(result.output).toContain('Quit q');
+    expect(result.output).toContain('Quit');
     expect(result.output).toContain('\u001b[?1049l');
     expect(result.after).toEqual(result.before);
+    expect(result.filesAfter).toEqual(result.filesBefore);
   }, 30_000);
 
   for (const [action, expected, restores] of [['sigint', 130, true], ['sigterm', 143, true], ['sighup', 129, false]] as const) {
@@ -115,6 +132,8 @@ describe('real PTY parent/child terminal lifecycle', () => {
     const result = await runPty('none', { SPECBASE_VIEW_TEST_OUTCOME: 'renderer-failure' });
     expect(result.code).toBe(70);
     expect(result.output).toContain('injected renderer failure');
+    expect(result.output).toContain('interactive board ended without changing project files');
+    expect(result.output).toContain('specbase view --plain');
     expect(result.output).toContain('\u001b[?1049l');
     expect(result.after).toEqual(result.before);
   }, 30_000);
@@ -127,11 +146,13 @@ describe('real PTY parent/child terminal lifecycle', () => {
   }, 30_000);
 
   test('empty, malformed, trailing, unsupported, invalid UTF-8, and schema-invalid fd 3 frames fail 65 before takeover', async () => {
-    const validShape = { version: 1, summary: {}, columns: {}, specs: [], diagnostics: [] };
-    for (const payload of [new Uint8Array(), Buffer.from('{'), Buffer.from('{} trailing'), Buffer.from(JSON.stringify({ ...validShape, version: 2 })), Uint8Array.from([0xff]), Buffer.from(JSON.stringify(validShape))]) {
+    const validShape = { version: 3, project: { name: 'pty-project' }, summary: {}, lanes: {}, specs: [], diagnostics: [] };
+    for (const payload of [new Uint8Array(), Buffer.from('{'), Buffer.from('{} trailing'), Buffer.from(JSON.stringify({ ...validShape, version: 4 })), Uint8Array.from([0xff]), Buffer.from(JSON.stringify(validShape))]) {
       const result = await malformedFrame(payload);
       expect(result.code).toBe(65);
       expect(result.stderr).toContain('protocol error');
+      expect(result.stderr).toContain('interactive board ended without changing project files');
+      expect(result.stderr).toContain('specbase view --plain');
       expect(result.stdout).not.toContain('\u001b[?1049h');
     }
   }, 30_000);

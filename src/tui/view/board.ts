@@ -2,6 +2,7 @@ import {
   BoxRenderable,
   ScrollBoxRenderable,
   TextRenderable,
+  RenderableEvents,
   type CliRenderer,
   type MouseEvent,
 } from '@opentui/core';
@@ -27,38 +28,85 @@ export interface ViewBoardController {
 }
 
 const LABELS: Record<ViewPane, string> = {
-  ideas: 'Open Ideas',
-  changes: 'Active Changes',
-  archives: 'Archived Changes',
-  specs: 'Specifications',
+  ideas: 'Ideas',
+  proposed: 'Proposed',
+  enforcement: 'Enforcement',
+  'ready-to-apply': 'Ready to Apply',
+  implementing: 'Implementing',
+  reviewing: 'Reviewing',
+  archived: 'Archived',
+  specs: 'Specs',
+};
+
+const NAV_LABELS: Record<ViewPane, string> = {
+  ideas: 'Ideas',
+  proposed: 'Proposed',
+  enforcement: 'Enforcement',
+  'ready-to-apply': 'Ready',
+  implementing: 'Implementing',
+  reviewing: 'Reviewing',
+  archived: 'Archived',
+  specs: 'Specs',
 };
 
 function paneItems(model: ViewBoardModel, pane: ViewPane): Array<{ id: string; title: string }> {
   if (pane === 'specs') return model.specs.map((spec) => ({ id: spec.id, title: spec.locator }));
-  return model.columns[pane].map((card) => ({ id: card.id, title: card.title }));
+  return model.lanes[pane].map((card) => ({ id: card.id, title: card.title }));
 }
 
 function cardDescription(model: ViewBoardModel, pane: ViewPane, index: number): string[] {
   if (pane === 'ideas') {
-    const card = model.columns.ideas[index];
+    const card = model.lanes.ideas[index];
     return card ? [`○ Idea: ${card.title}`, `ID: ${card.id}`, `Created: ${card.created ?? 'unknown'}`, `Files: ${card.members.join(', ') || 'none'}`] : [];
   }
-  if (pane === 'changes') {
-    const card = model.columns.changes[index];
-    return card ? [`◉ Active change: ${card.title}`, `ID: ${card.id}`, `○ Artifacts: ${card.artifacts.completed}/${card.artifacts.total}`, `◉ Tasks: ${card.tasks.completed}/${card.tasks.total}`, 'Lifecycle: ACTIVE (completion does not archive)'] : [];
-  }
-  if (pane === 'archives') {
-    const card = model.columns.archives[index];
+  if (pane === 'archived') {
+    const card = model.lanes.archived[index];
     return card ? [`✓ Archived change: ${card.title}`, `ID: ${card.id}`, `Archived: ${card.archived ?? 'unknown'}`, `✓ Tasks: ${card.tasks.completed}/${card.tasks.total}`] : [];
   }
-  const spec = model.specs[index];
-  return spec ? [`▪ Specification: ${spec.locator}`, `ID: ${spec.id}`, `Requirements: ${spec.requirementCount}`, ...spec.requirements.map((title) => `• ${title}`), ...(spec.diagnostic ? [`⚠ ${spec.diagnostic}`] : [])] : [];
+  if (pane === 'specs') {
+    const spec = model.specs[index];
+    return spec ? [`▪ Specification: ${spec.locator}`, `ID: ${spec.id}`, `Requirements: ${spec.requirementCount}`, ...spec.requirements.map((title) => `• ${title}`), ...(spec.diagnostic ? [`⚠ ${spec.diagnostic}`] : [])] : [];
+  }
+  const card = model.lanes[pane][index];
+  return card ? [`◉ ${LABELS[pane]} change: ${card.title}`, `ID: ${card.id}`, `Lifecycle: ${card.lifecycle}`, `○ Artifacts: ${card.artifacts.completed}/${card.artifacts.total}`, `◉ Tasks: ${card.tasks.completed}/${card.tasks.total}`] : [];
 }
 
 function summaryText(model: ViewBoardModel): string {
   const s = model.summary;
-  return `Specs ${s.acceptedSpecs} • Requirements ${s.requirements} • Ideas ${s.openIdeas} • Active ${s.activeChanges} • Archives ${s.archivedChanges} • Tasks ${s.completedTasks}/${s.totalTasks}`;
+  return `Specs ${s.acceptedSpecs} • Reqs ${s.requirements} • Ideas ${s.openIdeas} • Proposed ${s.lanes.proposed} • Enforce ${s.lanes.enforcement} • Ready ${s.lanes['ready-to-apply']} • Doing ${s.lanes.implementing} • Review ${s.lanes.reviewing} • Archived ${s.lanes.archived} • Tasks ${s.completedTasks}/${s.totalTasks}`;
 }
+
+function diagnosticDescription(model: ViewBoardModel): string[] {
+  return model.diagnostics.flatMap((item, index) => [
+    `${index + 1}. ${item.source}`,
+    `Problem: ${item.message}`,
+    'Consequence: This item may be missing or incomplete in the snapshot.',
+    'Next step: Run specbase validate, then use specbase view --plain for full project context.',
+    '',
+  ]);
+}
+
+const HELP_LINES = [
+  'Board navigation',
+  '  ←/→ or h/l     Previous/next lane',
+  '  Tab/Shift-Tab  Next/previous lane',
+  '  ↑/↓ or k/j     Previous/next item',
+  '  Page Up/Down   Move by a page in the focused lane',
+  '',
+  'Detail navigation',
+  '  Enter          View selected item details',
+  '  ↑/↓ or k/j     Scroll detail content',
+  '  Page Up/Down   Scroll detail content by a page',
+  '  d              View diagnostics when present',
+  '  ?              Open this help',
+  '  Esc            Close help, diagnostics, or details',
+  '',
+  'Exit and recovery',
+  '  q              Quit',
+  '  --plain        Use deterministic non-interactive output',
+  '',
+  'READ ONLY • The lifecycle board never changes project files.',
+];
 
 export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, onQuit: () => void): ViewBoardController {
   let state = createViewerState(model, renderer.terminalWidth, renderer.terminalHeight);
@@ -77,16 +125,29 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
 
   const dispatch = (command: ViewCommand) => {
     if (destroyed) return;
-    state = reduceViewerState(state, command, model);
+    const existingDetail = command.type === 'scroll-detail'
+      ? renderer.root.findDescendantById('detail-content') as ScrollBoxRenderable | undefined
+      : undefined;
+    const effectiveCommand: ViewCommand = command.type === 'scroll-detail'
+      ? { ...command, maximum: existingDetail ? Math.max(0, existingDetail.scrollHeight - existingDetail.height) : command.maximum }
+      : command;
+    state = reduceViewerState(state, effectiveCommand, model);
     if (state.quit) {
       onQuit();
       return;
+    }
+    if (effectiveCommand.type === 'scroll-detail') {
+      if (existingDetail) {
+        existingDetail.scrollTop = state.detailScroll;
+        renderer.requestRender();
+        return;
+      }
     }
     render();
     renderer.requestRender();
   };
 
-  const click = (command: ViewCommand, open = false) => {
+  const click = (command: ViewCommand, after?: ViewCommand) => {
     let armed = false;
     return {
       onMouseDown(event: MouseEvent) {
@@ -98,7 +159,7 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
         if (!armed || event.button !== 0) return;
         armed = false;
         dispatch(command);
-        if (open) dispatch({ type: 'open-detail' });
+        if (after) dispatch(after);
         event.stopPropagation();
       },
     };
@@ -110,6 +171,9 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       focusedBorderColor: '#ffffff', focusable: true, justifyContent: 'center', alignItems: 'center',
       ...click(command),
     });
+    box.borderStyle = 'single';
+    box.on(RenderableEvents.FOCUSED, () => { box.borderStyle = 'double'; });
+    box.on(RenderableEvents.BLURRED, () => { box.borderStyle = 'single'; });
     box.add(new TextRenderable(renderer, { content: label, selectable: false }));
     parent.add(box);
   };
@@ -124,12 +188,12 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       border: true,
       borderStyle: focused ? 'double' : 'single',
       borderColor: focused ? '#ffffff' : '#64748b',
-      title: `${focused ? '▶ ' : ''}${LABELS[pane]} (${items.length})`,
+      title: `${focused ? '▶ ' : ''}${LABELS[pane]} (${items.length}) • ${items.length ? `item ${state.selected[pane] + 1}/${items.length}` : 'empty'}`,
       titleColor: '#ffffff',
       flexDirection: 'column',
       scrollY: true,
       scrollX: false,
-      padding: 1,
+      padding: state.height < 15 ? 0 : 1,
       onMouseDown(event) {
         if (event.button === 0) dispatch({ type: 'select-pane', pane });
       },
@@ -141,16 +205,32 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       },
     });
     const start = state.scroll[pane];
-    const visibleRows = Math.max(1, state.height - 12);
+    const reservedRows = state.height < 15 ? 6 : state.height < 20 ? 8 : 12;
+    const visibleRows = Math.max(1, state.height - reservedRows);
     const visible = items.slice(start, start + visibleRows);
-    if (!visible.length) paneBox.add(new TextRenderable(renderer, { content: '  (none)', selectable: false, height: 1 }));
+    if (!visible.length) {
+      paneBox.add(new TextRenderable(renderer, {
+        content: `No items in ${LABELS[pane]}.\nUse ←/→ or Prev/Next to choose another lane.`,
+        selectable: false,
+        height: 2,
+      }));
+    }
     visible.forEach((item, offset) => {
       const index = start + offset;
       const selected = focused && state.selected[pane] === index;
       const details = cardDescription(model, pane, index);
+      if (state.height < 15) {
+        paneBox.add(new TextRenderable(renderer, {
+          id: `card-label:${pane}:${item.id}`,
+          content: `${selected ? '▶' : ' '} ${item.title}`,
+          selectable: false,
+          height: 1,
+        }));
+        return;
+      }
       const card = new BoxRenderable(renderer, {
         id: `card:${pane}:${item.id}`,
-        width: '100%', height: 4, marginBottom: 1, border: true,
+        width: '100%', height: 5, marginBottom: 1, border: true,
         borderStyle: selected ? 'double' : 'single',
         borderColor: selected ? '#ffffff' : '#76839a',
         focusable: true,
@@ -164,20 +244,18 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
           }
         },
       });
-      const progressLines = details.filter((line) => line.startsWith('○ Artifacts:') || line.startsWith('◉ Tasks:') || line.startsWith('✓ Tasks:') || line.startsWith('Artifacts:') || line.startsWith('Tasks:') || line.startsWith('Requirements:') || line.startsWith('Created:') || line.startsWith('Archived:') || line.startsWith('⚠'));
-      const progressStr = progressLines.length > 0 ? `  ${progressLines.slice(0, 2).join('  ')}` : '';
-      card.add(new TextRenderable(renderer, { id: `card-label:${pane}:${item.id}`, content: `${selected ? '▶' : ' '} ${item.title}\n${progressStr}    [Open Enter]`, selectable: false }));
+      const progressLines = details.filter((line) => line.startsWith('○ Artifacts:') || line.startsWith('◉ Tasks:') || line.startsWith('✓ Tasks:') || line.startsWith('Requirements:') || line.startsWith('Created:') || line.startsWith('Archived:') || line.startsWith('⚠'));
+      const progressStr = progressLines.map((line) => `  ${line}`).join('\n');
+      card.add(new TextRenderable(renderer, { id: `card-label:${pane}:${item.id}`, content: `${selected ? '▶' : ' '} ${item.title}\n${progressStr}`, selectable: false }));
       paneBox.add(card);
     });
     parent.add(paneBox);
   };
 
-  const renderDetail = () => {
-    if (!state.detail) return;
-    const { pane, index } = state.detail;
+  const addScrollableOverlay = (id: string, title: string, lines: string[], closeId: string, closeCommand: ViewCommand) => {
     const overlay = new BoxRenderable(renderer, {
-      id: 'detail-overlay', position: 'absolute', zIndex: 100, left: 1, top: 1, right: 1, bottom: 1,
-      border: true, borderStyle: 'double', borderColor: '#ffffff', title: `${LABELS[pane]} detail`,
+      id, position: 'absolute', zIndex: 100, left: 1, top: 1, right: 1, bottom: 1,
+      border: true, borderStyle: 'double', borderColor: '#ffffff', title,
       backgroundColor: '#111827', flexDirection: 'column', padding: 1,
       onMouseScroll(event) {
         if (event.scroll?.direction === 'up' || event.scroll?.direction === 'down') {
@@ -186,69 +264,123 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
         }
       },
     });
-    const controls = new BoxRenderable(renderer, { width: '100%', height: 3, flexDirection: 'row', gap: 1 });
-    addControl(controls, 'detail-close', '[Close Esc]', { type: 'close-detail' }, 13);
-    addControl(controls, 'detail-quit', '[Quit q]', { type: 'quit' }, 10);
+    const overlayPane = state.detail?.pane ?? state.pane;
+    const overlayIndex = state.detail?.index ?? state.selected[overlayPane];
+    const overlayCount = paneLength(model, overlayPane);
+    const context = `Project ${model.project.name} • READ ONLY • ${LABELS[overlayPane]} ${overlayCount ? `${overlayIndex + 1}/${overlayCount}` : 'empty'}`;
+    overlay.add(new TextRenderable(renderer, {
+      id: 'overlay-context',
+      content: context.length < Math.max(8, state.width - 8) ? context : `${context.slice(0, Math.max(1, state.width - 9))}…`,
+      selectable: false,
+      height: 1,
+    }));
+    const compactOverlay = state.width < 30;
+    const controls = new BoxRenderable(renderer, { width: '100%', height: compactOverlay ? 6 : 3, flexDirection: 'row', flexWrap: compactOverlay ? 'wrap' : 'no-wrap', gap: compactOverlay ? 0 : 1 });
+    addControl(controls, closeId, compactOverlay ? '[Close]' : '[Close Esc]', closeCommand, compactOverlay ? 9 : 13);
+    addControl(controls, `${id}-quit`, compactOverlay ? '[Quit]' : '[Quit q]', { type: 'quit' }, compactOverlay ? 8 : 10);
     overlay.add(controls);
     const content = new ScrollBoxRenderable(renderer, { id: 'detail-content', width: '100%', flexGrow: 1, scrollY: true, border: true, padding: 1 });
-    content.add(new TextRenderable(renderer, { content: cardDescription(model, pane, index).join('\n'), selectable: true }));
+    content.add(new TextRenderable(renderer, { content: lines.join('\n'), selectable: true }));
     overlay.add(content);
     app.add(overlay);
   };
 
+  const renderOverlay = () => {
+    if (state.detail) {
+      const { pane, index } = state.detail;
+      addScrollableOverlay('detail-overlay', `${LABELS[pane]} details`, cardDescription(model, pane, index), 'detail-close', { type: 'close-overlay' });
+      return;
+    }
+    if (state.overlay === 'help') {
+      addScrollableOverlay('help-overlay', 'Keyboard help • READ ONLY', HELP_LINES, 'overlay-close', { type: 'close-overlay' });
+      return;
+    }
+    if (state.overlay === 'diagnostics') {
+      addScrollableOverlay('diagnostics-overlay', `Diagnostics (${model.diagnostics.length})`, diagnosticDescription(model), 'overlay-close', { type: 'close-overlay' });
+    }
+  };
+
   const render = () => {
     clear();
-    const header = new BoxRenderable(renderer, { width: '100%', height: 5, border: true, borderStyle: 'double', borderColor: '#ffffff', flexDirection: 'column', paddingLeft: 1, title: 'SPECBASE • Viewer-only Lifecycle Board' });
-    header.add(new TextRenderable(renderer, { content: `${summaryText(model)}${model.diagnostics.length ? ` • Diagnostics: ${model.diagnostics.length}` : ``}\nMouse: click / wheel • Keys: Tab or ←→ pane, ↑↓ item, Enter open, Esc close, q quit`, selectable: false }));
+    const short = state.height < 15;
+    const terminalTooSmall = state.width < 30 || state.height < 12 || (state.width < 48 && state.height < 14);
+    const innerWidth = Math.max(8, state.width - 4);
+    const fit = (text: string, width = innerWidth) => text.length <= width ? text : `${text.slice(0, Math.max(1, width - 1))}…`;
+    const navItems = VIEW_PANES.map((pane) => {
+      const count = pane === 'specs' ? model.specs.length : model.lanes[pane].length;
+      const label = `[${NAV_LABELS[pane]} ${count}]`;
+      return { pane, label, width: label.length + 2 };
+    });
+    const requiredNavWidth = navItems.reduce((sum, item) => sum + item.width, 0) + navItems.length - 1;
+    const singleLane = state.narrow || requiredNavWidth > state.width;
+    const header = new BoxRenderable(renderer, {
+      id: 'board-context', width: '100%', height: short ? 4 : 5, border: true, borderStyle: 'double', borderColor: '#ffffff',
+      flexDirection: 'column', paddingLeft: 1,
+      title: 'SPECBASE • Lifecycle Board',
+    });
+    const paneCount = paneLength(model, state.pane);
+    const location = `${LABELS[state.pane]} ${VIEW_PANES.indexOf(state.pane) + 1}/${VIEW_PANES.length} • ${paneCount ? `item ${state.selected[state.pane] + 1}/${paneCount}` : 'no items'}`;
+    const issues = model.diagnostics.length ? ` • Issues ${model.diagnostics.length}` : '';
+    const compactProject = fit(model.project.name, Math.max(4, innerWidth - 20));
+    const contextLine = `READ ONLY • Project ${compactProject}`;
+    const announcementLine = fit(`${state.announcement}${issues}`);
+    const headerContent = short
+      ? `${fit(`${contextLine} • ${LABELS[state.pane]} ${VIEW_PANES.indexOf(state.pane) + 1}/${VIEW_PANES.length}`)}\n${announcementLine}`
+      : singleLane
+        ? `${fit(contextLine)}\n${fit(`Snapshot • ${location}`)}\n${announcementLine}`
+        : `${fit(contextLine)}\n${fit(summaryText(model))}\n${fit(`${location} • ${state.announcement}${issues}`)}`;
+    header.add(new TextRenderable(renderer, { content: headerContent, selectable: false }));
     app.add(header);
 
-    if (state.narrow) {
-      const prevLabel = '[◀ Prev]';
-      const nextLabel = '[Next ▶]';
-      const quitLabel = '[Quit q]';
-      const prevWidth = prevLabel.length + 2;
-      const nextWidth = nextLabel.length + 2;
-      const quitWidth = quitLabel.length + 2;
-      const centerMin = 8;
-      const gaps = 3; // 3 gaps between 4 controls
-      const available = Math.max(20, state.width - 2);
-      const centerWidth = Math.max(centerMin, available - prevWidth - nextWidth - quitWidth - gaps);
+    if (terminalTooSmall) {
+      app.add(new TextRenderable(renderer, {
+        id: 'terminal-too-small',
+        content: 'Terminal small\nResize ≥30×12\nq Quit',
+        selectable: false,
+        flexGrow: 1,
+      }));
+      renderOverlay();
+      return;
+    }
 
-      const controls = new BoxRenderable(renderer, { id: 'narrow-controls', width: '100%', height: 3, flexDirection: 'row', gap: 1 });
-      addControl(controls, 'column-prev', prevLabel, { type: 'focus-next', direction: -1 }, prevWidth);
-      controls.add(new TextRenderable(renderer, { content: `${LABELS[state.pane]} ${VIEW_PANES.indexOf(state.pane) + 1}/${VIEW_PANES.length}`, width: Math.max(centerMin, centerWidth), selectable: false }));
-      addControl(controls, 'column-next', nextLabel, { type: 'focus-next', direction: 1 }, nextWidth);
-      addControl(controls, 'board-quit', quitLabel, { type: 'quit' }, quitWidth);
-      app.add(controls);
+    if (singleLane || state.pane === 'specs') {
       const body = new BoxRenderable(renderer, { width: '100%', flexGrow: 1 });
       addPane(body, state.pane, '100%');
       app.add(body);
-    } else if (state.pane === 'specs') {
-      const body = new BoxRenderable(renderer, { width: '100%', flexGrow: 1, flexDirection: 'row', gap: 1 });
-      addPane(body, 'specs', '100%');
-      app.add(body);
     } else {
-      const body = new BoxRenderable(renderer, { id: 'lifecycle-columns', width: '100%', flexGrow: 1, flexDirection: 'row', gap: 1 });
-      addPane(body, 'ideas', '33%');
-      addPane(body, 'changes', '34%');
-      addPane(body, 'archives', '33%');
+      const nav = new BoxRenderable(renderer, { id: 'lane-nav', width: '100%', height: 3, flexDirection: 'row', gap: 1 });
+      for (const item of navItems) {
+        addControl(nav, `lane:${item.pane}`, item.label, { type: 'select-pane', pane: item.pane }, item.width);
+      }
+      app.add(nav);
+      const body = new BoxRenderable(renderer, { width: '100%', flexGrow: 1 });
+      addPane(body, state.pane, '100%');
       app.add(body);
     }
-    const footer = new BoxRenderable(renderer, { width: '100%', height: 5, flexDirection: 'row', border: true, borderColor: '#64748b', padding: 1 });
-    addControl(footer, 'ideas-control', 'Ideas', { type: 'select-pane', pane: 'ideas' }, 7);
-    addControl(footer, 'changes-control', 'Changes', { type: 'select-pane', pane: 'changes' }, 9);
-    addControl(footer, 'archives-control', 'Archives', { type: 'select-pane', pane: 'archives' }, 10);
-    addControl(footer, 'specs-control', `[Specs ${model.specs.length}]`, { type: 'select-pane', pane: 'specs' }, 13);
-    addControl(footer, 'open-control', '[Open Enter]', { type: 'open-detail' }, 14);
-    addControl(footer, 'quit-control', '[Quit q]', { type: 'quit' }, 10);
-    footer.add(new TextRenderable(renderer, { content: ' READ ONLY', selectable: false }));
+
+    const veryNarrow = state.width < 48;
+    const footerHeight = veryNarrow ? 6 : short ? 3 : 5;
+    const footer = new BoxRenderable(renderer, {
+      id: 'board-controls', width: '100%', height: footerHeight, flexDirection: 'row', flexWrap: veryNarrow ? 'wrap' : 'no-wrap',
+      border: !short && !veryNarrow, borderColor: '#64748b', padding: !short && !veryNarrow ? 1 : 0,
+    });
+    const compact = singleLane;
+    addControl(footer, 'lane-prev', compact ? '[Prev]' : '[◀ Prev]', { type: 'focus-next', direction: -1 }, compact ? 8 : 10);
+    addControl(footer, 'lane-next', compact ? '[Next]' : '[Next ▶]', { type: 'focus-next', direction: 1 }, compact ? 8 : 10);
+    addControl(footer, 'details-control', compact ? '[Details]' : '[Details Enter]', { type: 'open-detail' }, compact ? 11 : 17);
+    addControl(footer, 'help-control', compact ? '[Help]' : '[Help ?]', { type: 'open-help' }, compact ? 8 : 10);
+    addControl(footer, 'quit-control', compact ? '[Quit]' : '[Quit q]', { type: 'quit' }, compact ? 8 : 10);
+    if (model.diagnostics.length) {
+      const issuesLabel = compact ? `[Issues ${model.diagnostics.length}]` : `[Issues ${model.diagnostics.length}]`;
+      addControl(footer, 'diagnostics-control', issuesLabel, { type: 'open-diagnostics' }, issuesLabel.length + 2);
+    }
+    if (!singleLane) footer.add(new TextRenderable(renderer, { content: ` ${state.announcement}`, selectable: false }));
     app.add(footer);
-    renderDetail();
+    renderOverlay();
   };
 
   const onKey = (key: { name: string; shift: boolean; preventDefault(): void }) => {
-    if (state.detail) {
-      // When detail is open, route movement keys to detail scrolling
+    if (state.detail || state.overlay) {
       if (key.name === 'up' || key.name === 'k') {
         key.preventDefault();
         dispatch({ type: 'scroll-detail', delta: -1 });
@@ -259,14 +391,19 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
         dispatch({ type: 'scroll-detail', delta: 1 });
         return;
       }
-      if (key.name === 'pageup') {
+      if (key.name === 'pageup' || key.name === 'pagedown') {
         key.preventDefault();
-        dispatch({ type: 'scroll-detail', delta: -10 });
+        dispatch({ type: 'scroll-detail', delta: key.name === 'pageup' ? -10 : 10 });
         return;
       }
-      if (key.name === 'pagedown') {
+      if (key.name === 'escape') {
         key.preventDefault();
-        dispatch({ type: 'scroll-detail', delta: 10 });
+        dispatch({ type: 'close-overlay' });
+        return;
+      }
+      if (key.name === 'q') {
+        key.preventDefault();
+        dispatch({ type: 'quit' });
         return;
       }
     }

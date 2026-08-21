@@ -6,12 +6,18 @@ import {
   VIEW_RENDERER_ERROR,
 } from '../../core/view/protocol.js';
 
+function writeActionableFailure(kind: string, problem: string): void {
+  process.stderr.write(`specbase view ${kind}: ${problem}\n`);
+  process.stderr.write('The interactive board ended without changing project files.\n');
+  process.stderr.write('Run specbase validate, then retry or use specbase view --plain.\n');
+}
+
 async function run(): Promise<number> {
   let model;
   try {
     model = decodeViewModelFrame(readFileSync(VIEW_MODEL_FD));
   } catch (error) {
-    process.stderr.write(`specbase view protocol error: ${error instanceof Error ? error.message : String(error)}\n`);
+    writeActionableFailure('protocol error', error instanceof Error ? error.message : String(error));
     return VIEW_PROTOCOL_DATA_ERROR;
   }
 
@@ -57,11 +63,11 @@ async function run(): Promise<number> {
     controller = createViewBoard(renderer, model, () => complete(0));
     renderer.on(CliRenderEvents.RESIZE, () => controller?.resize(renderer?.terminalWidth ?? 80, renderer?.terminalHeight ?? 24));
     renderer.on(CliRenderEvents.RENDER_ERROR, (event: { error: Error }) => {
-      process.stderr.write(`specbase view renderer error: ${event.error.message}\n`);
+      writeActionableFailure('renderer error', event.error.message);
       complete(VIEW_RENDERER_ERROR);
     });
     renderer.on(CliRenderEvents.HANDLER_ERROR, (event: { error: unknown }) => {
-      process.stderr.write(`specbase view input error: ${event.error instanceof Error ? event.error.message : String(event.error)}\n`);
+      writeActionableFailure('input error', event.error instanceof Error ? event.error.message : String(event.error));
       complete(VIEW_RENDERER_ERROR);
     });
     renderer.requestRender();
@@ -78,6 +84,7 @@ async function run(): Promise<number> {
     const platform = `${process.platform}/${process.arch}`;
     const pkg = '@opentui/core@0.5.4';
     process.stderr.write(`specbase view renderer failure: ${msg}\n`);
+    process.stderr.write('The interactive board ended without changing project files.\n');
     process.stderr.write(`Renderer requires ${pkg}. Platform: ${platform}\n`);
     process.stderr.write(`Try reinstalling: pnpm install --frozen-lockfile\n`);
     process.stderr.write(`Or use plain mode: specbase view --plain\n`);

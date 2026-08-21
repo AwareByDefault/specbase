@@ -8,9 +8,10 @@ import { discoverBun } from '../../src/core/view/launcher.js';
 import type { ViewBoardModel } from '../../src/core/view/model.js';
 
 const model: ViewBoardModel = {
-  version: 1,
-  summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 1, activeChanges: 0, archivedChanges: 0, completedTasks: 0, totalTasks: 0 },
-  columns: { ideas: [{ kind: 'idea', id: 'idea-1', title: 'Idea', created: '2025-01-01', members: [] }], changes: [], archives: [] },
+  version: 3,
+  project: { name: 'sample-project' },
+  summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 1, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+  lanes: { ideas: [{ kind: 'idea', id: 'idea-1', title: 'Idea', created: '2025-01-01', members: [] }], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] },
   specs: [], diagnostics: [],
 };
 
@@ -55,12 +56,15 @@ describe('view command modes and protocol', () => {
     expect(JSON.parse(output)).toEqual(model);
   });
 
-  it('launches only for two TTYs and propagates the exact child status', async () => {
+  it('announces loading, launches only for two TTYs, and propagates the exact child status', async () => {
     let seen: ViewBoardModel | undefined;
+    let stderr = '';
     const code = await new ViewCommand().execute('.', {
       stdinTTY: true, stdoutTTY: true, derive: async () => model,
+      writeError: (text) => { stderr += text; },
       launcher: async (value) => { seen = value; return { code: 143 }; },
     });
+    expect(stderr).toContain('Loading Specbase lifecycle board');
     expect(seen).toEqual(model);
     expect(code).toBe(143);
   });
@@ -76,9 +80,17 @@ describe('view command modes and protocol', () => {
 
   it('accepts exactly one EOF-delimited JSON model and rejects malformed, empty, version, and schema failures', () => {
     expect(decodeViewModelFrame(Buffer.from(JSON.stringify(model)))).toEqual(model);
-    for (const invalid of [Buffer.alloc(0), Buffer.from('{'), Buffer.from(`${JSON.stringify(model)} trailing`), Buffer.from(JSON.stringify({ ...model, version: 2 })), Buffer.from(JSON.stringify({ version: 1 }))]) {
+    for (const invalid of [Buffer.alloc(0), Buffer.from('{'), Buffer.from(`${JSON.stringify(model)} trailing`), Buffer.from(JSON.stringify({ ...model, version: 4 })), Buffer.from(JSON.stringify({ version: 1 }))]) {
       expect(() => decodeViewModelFrame(invalid)).toThrow();
     }
+    const wrongLane = {
+      ...model,
+      lanes: {
+        ...model.lanes,
+        proposed: [{ kind: 'change', id: 'wrong', title: 'Wrong lane', created: null, artifacts: { completed: 0, total: 1 }, tasks: { completed: 0, total: 1 }, lifecycle: 'ready-to-apply' }],
+      },
+    };
+    expect(() => decodeViewModelFrame(Buffer.from(JSON.stringify(wrongLane)))).toThrow(/schema/);
     expect(() => decodeViewModelFrame(Uint8Array.from([0xff]))).toThrow(/UTF-8/);
   });
 
@@ -99,15 +111,20 @@ describe('view command modes and protocol', () => {
 
   it('renders complete plain projection with every section, ordering, IDs, progress, warnings, and parity with JSON', async () => {
     const rich: ViewBoardModel = {
-      version: 1,
-      summary: { acceptedSpecs: 2, requirements: 3, openIdeas: 1, activeChanges: 2, archivedChanges: 1, completedTasks: 3, totalTasks: 10 },
-      columns: {
+      version: 3,
+      project: { name: 'rich-project' },
+      summary: { acceptedSpecs: 2, requirements: 3, openIdeas: 1, completedTasks: 3, totalTasks: 10, lanes: { proposed: 2, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 1 } },
+      lanes: {
         ideas: [{ kind: 'idea', id: 'idea-a', title: 'Alpha idea', created: '2025-01-01', members: ['notes.md'] }],
-        changes: [
-          { kind: 'change', id: 'change-low', title: 'Low progress', created: '2025-01-15', artifacts: { completed: 1, total: 3 }, tasks: { completed: 1, total: 10 } },
-          { kind: 'change', id: 'change-high', title: 'High progress', created: '2025-01-10', artifacts: { completed: 3, total: 3 }, tasks: { completed: 2, total: 10 } },
+        proposed: [
+          { kind: 'change', id: 'change-low', title: 'Low progress', created: '2025-01-15', artifacts: { completed: 1, total: 3 }, tasks: { completed: 1, total: 10 }, lifecycle: 'proposed' },
+          { kind: 'change', id: 'change-high', title: 'High progress', created: '2025-01-10', artifacts: { completed: 3, total: 3 }, tasks: { completed: 2, total: 10 }, lifecycle: 'proposed' },
         ],
-        archives: [{ kind: 'archive', id: 'archive-old', title: 'Old archive', archived: '2025-01-03', tasks: { completed: 5, total: 5 } }],
+        enforcement: [],
+        'ready-to-apply': [],
+        implementing: [],
+        reviewing: [],
+        archived: [{ kind: 'archive', id: 'archive-old', title: 'Old archive', archived: '2025-01-03', tasks: { completed: 5, total: 5 } }],
       },
       specs: [
         { kind: 'spec', id: 'behavior.sample', locator: 'behavior/sample', title: 'behavior/sample', requirementCount: 2, requirements: ['First', 'Second'], diagnostic: 'parse warning' },
@@ -119,22 +136,27 @@ describe('view command modes and protocol', () => {
     const code = await new ViewCommand().execute('.', { plain: true, derive: async () => rich, writeOut: (text) => { output += text; } });
     expect(code).toBe(0);
     expect(output).toContain('Specbase Lifecycle Board');
+    expect(output).toContain('Project: rich-project • Snapshot • Read only');
     expect(output).toContain('○ Alpha idea [idea-a]');
-    expect(output).toContain('◉ Low progress [change-low]');
-    expect(output).toContain('◉ High progress [change-high]');
+    expect(output).toContain('◉ Low progress [change-low] artifacts 1/3 | tasks 1/10');
+    expect(output).toContain('◉ High progress [change-high] artifacts 3/3 | tasks 2/10');
+    expect(output.indexOf('change-low')).toBeLessThan(output.indexOf('change-high'));
     expect(output).toContain('✓ Old archive [archive-old]');
     expect(output).toContain('behavior/sample');
     expect(output).toContain('behavior/unparseable');
     expect(output).toContain('⚠');
     expect(output).toContain('Diagnostics');
-    expect(output).toContain('missing .openspec.yaml');
+    expect(output).toContain('Problem: missing .openspec.yaml');
+    expect(output).toContain('Consequence: This item may be missing or incomplete in the snapshot.');
+    expect(output).toContain('Next step: Run specbase validate');
     expect(output).toContain('Viewer only');
     expect(output).not.toMatch(/\u001b\[/);
     const json = JSON.parse(await new ViewCommand().execute('.', { plain: true, json: true, derive: async () => rich, writeOut: (text) => { output = text; } }).then(() => output));
     expect(json.summary).toEqual(rich.summary);
-    expect(json.columns.ideas.length).toBe(rich.columns.ideas.length);
-    expect(json.columns.changes.length).toBe(rich.columns.changes.length);
-    expect(json.columns.archives.length).toBe(rich.columns.archives.length);
+    expect(json.lanes.ideas.length).toBe(rich.lanes.ideas.length);
+    expect(json.lanes.proposed.map((card: { id: string }) => card.id)).toEqual(['change-low', 'change-high']);
+    expect(json.lanes.proposed.map((card: { tasks: unknown }) => card.tasks)).toEqual(rich.lanes.proposed.map((card) => card.tasks));
+    expect(json.lanes.archived.length).toBe(rich.lanes.archived.length);
     expect(json.specs.length).toBe(rich.specs.length);
     expect(json.diagnostics.length).toBe(rich.diagnostics.length);
   });
@@ -150,12 +172,14 @@ describe('view command modes and protocol', () => {
       await fs.writeFile(path.join(root, 'specbase', 'specs', 'behavior', 'test', 'spec.md'), '---\nid: behavior.test\n---\n### Requirement: One\n**ID:** one\nText.\n');
       // Construct a model that has items to select and scroll
       const interactiveModel: ViewBoardModel = {
-        version: 1,
-        summary: { acceptedSpecs: 1, requirements: 1, openIdeas: 1, activeChanges: 1, archivedChanges: 0, completedTasks: 0, totalTasks: 0 },
-        columns: {
+        version: 3,
+        project: { name: path.basename(root) },
+        summary: { acceptedSpecs: 1, requirements: 1, openIdeas: 1, completedTasks: 0, totalTasks: 0, lanes: { proposed: 1, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+        lanes: {
           ideas: [{ kind: 'idea', id: 'idea-one', title: 'First idea', created: '2025-01-01', members: [] }],
-          changes: [{ kind: 'change', id: 'change-a', title: 'Change A', created: null, artifacts: { completed: 0, total: 3 }, tasks: { completed: 0, total: 0 } }],
-          archives: [],
+          proposed: [{ kind: 'change', id: 'change-a', title: 'Change A', created: null, artifacts: { completed: 0, total: 3 }, tasks: { completed: 0, total: 0 }, lifecycle: 'proposed' }],
+          enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [],
+          archived: [],
         },
         specs: [{ kind: 'spec', id: 'behavior.test', locator: 'behavior/test', title: 'behavior/test', requirementCount: 1, requirements: ['One'], diagnostic: null }],
         diagnostics: [],
@@ -175,7 +199,7 @@ describe('view command modes and protocol', () => {
       expect(code).toBe(0);
       expect(interactions).toBe(1);
       expect(lastModel).toBeDefined();
-      expect(lastModel!.columns.ideas.length).toBe(1);
+      expect(lastModel!.lanes.ideas.length).toBe(1);
       // Verify no filesystem changes
       expect(await snapshot(root)).toEqual(before);
     } finally {

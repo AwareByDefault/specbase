@@ -1,1 +1,1 @@
-export const VIEW_BOARD_VERSION = 1 as const;
+export const VIEW_BOARD_VERSION = 3 as const;

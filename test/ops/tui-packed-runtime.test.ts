@@ -69,9 +69,10 @@ describe('packed consumer OpenTUI runtime', () => {
 
     // Exercise the packed private application itself, not only Core testing.
     const model = {
-      version: 1,
-      summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 0, activeChanges: 0, archivedChanges: 0, completedTasks: 0, totalTasks: 0 },
-      columns: { ideas: [], changes: [], archives: [] },
+      version: 3,
+      project: { name: 'packed-project' },
+      summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 0, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+      lanes: { ideas: [], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] },
       specs: [], diagnostics: [],
     };
     const applicationCode = await new Promise<number | null>((resolve, reject) => {
@@ -102,9 +103,10 @@ describe('packed consumer OpenTUI runtime', () => {
     const privateEntry = path.join(process.cwd(), 'dist', 'internal', 'view-tui.mjs');
     expect((await fs.stat(privateEntry)).isFile()).toBe(true);
     const model = {
-      version: 1,
-      summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 0, activeChanges: 0, archivedChanges: 0, completedTasks: 0, totalTasks: 0 },
-      columns: { ideas: [], changes: [], archives: [] },
+      version: 3,
+      project: { name: 'packed-project' },
+      summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 0, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+      lanes: { ideas: [], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] },
       specs: [], diagnostics: [],
     };
     const node = process.platform === 'win32' ? 'node.exe' : 'node';

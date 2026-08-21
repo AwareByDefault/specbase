@@ -19,28 +19,43 @@ function progress(value: unknown): boolean {
   return isRecord(value) && Number.isInteger(value.completed) && Number.isInteger(value.total) && Number(value.completed) >= 0 && Number(value.total) >= Number(value.completed);
 }
 
+const LIFECYCLE_KEYS = ['proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const;
+
 export function validateViewBoardModel(value: unknown): value is ViewBoardModel {
-  if (!isRecord(value) || value.version !== VIEW_BOARD_VERSION || !isRecord(value.summary) || !isRecord(value.columns)) return false;
+  if (!isRecord(value) || value.version !== VIEW_BOARD_VERSION || !isRecord(value.project) || !isRecord(value.summary) || !isRecord(value.lanes)) return false;
+  if (typeof value.project.name !== 'string' || !value.project.name.trim()) return false;
   const summary = value.summary;
-  const columns = value.columns;
-  const numericSummary = ['acceptedSpecs', 'requirements', 'openIdeas', 'activeChanges', 'archivedChanges', 'completedTasks', 'totalTasks'];
-  if (!numericSummary.every((key) => Number.isInteger(summary[key]) && Number(summary[key]) >= 0)) return false;
-  if (!array(columns.ideas) || !array(columns.changes) || !array(columns.archives) || !array(value.specs) || !array(value.diagnostics)) return false;
+  const lanes = value.lanes;
+  if (!Number.isInteger(summary.acceptedSpecs) || Number(summary.acceptedSpecs) < 0) return false;
+  if (!Number.isInteger(summary.requirements) || Number(summary.requirements) < 0) return false;
+  if (!Number.isInteger(summary.openIdeas) || Number(summary.openIdeas) < 0) return false;
+  if (!Number.isInteger(summary.completedTasks) || Number(summary.completedTasks) < 0) return false;
+  if (!Number.isInteger(summary.totalTasks) || Number(summary.totalTasks) < 0) return false;
+  const laneSummary = summary.lanes;
+  if (!isRecord(laneSummary) || !LIFECYCLE_KEYS.every((key) => Number.isInteger(laneSummary[key]) && Number(laneSummary[key]) >= 0)) return false;
+  if (!array(lanes.ideas) || !array(lanes.proposed) || !array(lanes.enforcement) || !array(lanes['ready-to-apply']) || !array(lanes.implementing) || !array(lanes.reviewing) || !array(lanes.archived) || !array(value.specs) || !array(value.diagnostics)) return false;
   const base = (card: unknown, kind: string) => isRecord(card) && card.kind === kind && typeof card.id === 'string' && typeof card.title === 'string';
-  if (!columns.ideas.every((card) => {
+  if (!lanes.ideas.every((card) => {
     if (!base(card, 'idea')) return false;
     const c = card as Record<string, unknown>;
     if (!array(c.members)) return false;
     if (c.created !== null && typeof c.created !== 'string') return false;
     return (c.members as unknown[]).every((m: unknown) => typeof m === 'string');
   })) return false;
-  if (!columns.changes.every((card) => {
+  const changeLanes = [
+    ['proposed', lanes.proposed],
+    ['enforcement', lanes.enforcement],
+    ['ready-to-apply', lanes['ready-to-apply']],
+    ['implementing', lanes.implementing],
+    ['reviewing', lanes.reviewing],
+  ] as const;
+  if (!changeLanes.every(([expectedLifecycle, lane]) => lane.every((card) => {
     if (!base(card, 'change') || !progress((card as Record<string, unknown>).artifacts) || !progress((card as Record<string, unknown>).tasks)) return false;
     const c = card as Record<string, unknown>;
     if (c.created !== null && typeof c.created !== 'string') return false;
-    return true;
-  })) return false;
-  if (!columns.archives.every((card) => {
+    return c.lifecycle === expectedLifecycle;
+  }))) return false;
+  if (!lanes.archived.every((card) => {
     if (!base(card, 'archive') || !progress((card as Record<string, unknown>).tasks)) return false;
     const c = card as Record<string, unknown>;
     if (c.archived !== null && typeof c.archived !== 'string') return false;

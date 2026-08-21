@@ -7,12 +7,13 @@ import type { ViewBoardModel } from '../../../src/core/view/model.js';
 const root = process.cwd();
 const source = (relative: string) => fs.readFile(path.join(root, ...relative.split('/')), 'utf8');
 const model: ViewBoardModel = {
-  version: 1,
-  summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 2, activeChanges: 0, archivedChanges: 0, completedTasks: 0, totalTasks: 0 },
-  columns: { ideas: [
+  version: 3,
+  project: { name: 'architecture-project' },
+  summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 2, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+  lanes: { ideas: [
     { kind: 'idea', id: 'a', title: 'A', created: null, members: [] },
     { kind: 'idea', id: 'b', title: 'B', created: null, members: [] },
-  ], changes: [], archives: [] }, specs: [], diagnostics: [],
+  ], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] }, specs: [], diagnostics: [],
 };
 
 describe('view architecture boundaries', () => {
@@ -72,7 +73,7 @@ describe('view architecture boundaries', () => {
     const keyboardDetail = reduceViewerState(keyboardMoved, keyboardCommand({ name: 'enter' })!, model);
     const mouseDetail = reduceViewerState(mouseMoved, { type: 'open-detail' }, model);
     expect(keyboardDetail.detail).toEqual(mouseDetail.detail);
-    expect(model.columns.ideas.map((card) => card.id)).toEqual(['a', 'b']);
+    expect(model.lanes.ideas.map((card) => card.id)).toEqual(['a', 'b']);
   });
 
   it('confines renderer ownership and cleanup to one child entrypoint', async () => {

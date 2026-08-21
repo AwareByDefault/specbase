@@ -1,33 +1,47 @@
 import { afterEach, describe, expect, test } from 'bun:test';
+import { Buffer } from 'node:buffer';
 import { createTestRenderer } from '@opentui/core/testing';
-import type { Renderable } from '@opentui/core';
+import { BoxRenderable, type Renderable } from '@opentui/core';
 import { createViewBoard, type ViewBoardController } from '../../src/tui/view/board.js';
-import type { ViewBoardModel } from '../../src/core/view/model.js';
+import type { ViewBoardModel, LifecycleState } from '../../src/core/view/model.js';
+import { VIEW_PANES } from '../../src/core/view/commands.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()?.(); });
 
-function fixture(changeCount = 8): ViewBoardModel {
+function changeCard(id: string, title: string, lifecycle: LifecycleState, tasks = { completed: 0, total: 10 }): import('../../src/core/view/model.js').ChangeCard {
+  return { kind: 'change', id, title, created: null, artifacts: { completed: 1, total: 3 }, tasks, lifecycle };
+}
+
+function fixture(readyCount = 8): ViewBoardModel {
   return {
-    version: 1,
-    summary: { acceptedSpecs: 1, requirements: 2, openIdeas: 2, activeChanges: changeCount, archivedChanges: 1, completedTasks: 3, totalTasks: 10 },
-    columns: {
+    version: 3,
+    project: { name: 'sample-project' },
+    summary: { acceptedSpecs: 1, requirements: 2, openIdeas: 2, completedTasks: 3, totalTasks: 10, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': readyCount, implementing: 2, reviewing: 1, archived: 1 } },
+    lanes: {
       ideas: [
         { kind: 'idea', id: 'idea-a', title: 'First idea', created: '2025-01-01', members: ['notes.md'] },
         { kind: 'idea', id: 'idea-b', title: 'Second idea', created: '2025-01-02', members: [] },
       ],
-      changes: Array.from({ length: changeCount }, (_, index) => ({ kind: 'change' as const, id: `change-${index}`, title: `Change ${index}`, created: null, artifacts: { completed: index % 3, total: 3 }, tasks: { completed: index, total: 10 } })),
-      archives: [{ kind: 'archive', id: 'archived-a', title: 'Archived A', archived: '2025-01-03', tasks: { completed: 2, total: 2 } }],
+      proposed: [],
+      enforcement: [],
+      'ready-to-apply': Array.from({ length: readyCount }, (_, index) => changeCard(`ready-${index}`, `Ready ${index}`, 'ready-to-apply', { completed: index, total: 10 })),
+      implementing: [
+        changeCard('imp-a', 'Implementing A', 'implementing', { completed: 2, total: 3 }),
+        changeCard('imp-b', 'Implementing B', 'implementing', { completed: 1, total: 3 }),
+      ],
+      reviewing: [changeCard('rev-a', 'Reviewing A', 'reviewing', { completed: 3, total: 3 })],
+      archived: [{ kind: 'archive', id: 'archived-a', title: 'Archived A', archived: '2025-01-03', tasks: { completed: 2, total: 2 } }],
     },
     specs: [{ kind: 'spec', id: 'behavior.sample', locator: 'behavior/sample', title: 'behavior/sample', requirementCount: 2, requirements: ['First outcome', 'Second outcome'], diagnostic: 'sample warning' }],
     diagnostics: [],
   };
 }
 
-async function setup(width = 120, height = 30, changeCount = 8) {
+async function setup(width = 120, height = 30, readyCount = 8, model = fixture(readyCount)) {
   const harness = await createTestRenderer({ width, height, useMouse: true, kittyKeyboard: true });
   let quit = false;
-  const controller = createViewBoard(harness.renderer, fixture(changeCount), () => { quit = true; });
+  const controller = createViewBoard(harness.renderer, model, () => { quit = true; });
   await harness.renderOnce();
   const cleanup = () => { controller.destroy(); harness.renderer.destroy(); };
   cleanups.push(cleanup);
@@ -44,70 +58,80 @@ function center(item: Renderable): [number, number] {
 }
 
 describe('OpenTUI lifecycle board', () => {
-  test('renders hierarchy, labelled progress, controls, warnings, and non-color focus cues', async () => {
+  test('renders lifecycle lanes, labelled progress, controls, warnings, and non-color focus cues', async () => {
     const app = await setup();
+    app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
+    await app.flush();
     const frame = app.captureCharFrame();
-    expect(frame).toContain('Viewer-only Lifecycle Board');
-    expect(frame).toContain('Open Ideas (2)');
-    expect(frame).toContain('Active Changes (8)');
-    expect(frame).toContain('Archived Changes (1)');
-    expect(frame).toContain('Specs 1');
-    expect(frame).toContain('[Open Enter]');
+    expect(frame).toContain('sample-project');
+    expect(frame).toContain('Lifecycle Board');
+    for (const label of ['Ideas 2', 'Proposed 0', 'Enforcement 0', 'Ready 8', 'Implementing 2', 'Reviewing 1', 'Archived 1', 'Specs 1']) {
+      expect(frame).toContain(label);
+    }
+    expect(frame).toContain('Ready to Apply');
+    expect(frame).toContain('item 1/8');
+    expect(frame).toContain('[Details Enter]');
+    expect(frame).toContain('[Help ?]');
     expect(frame).toContain('[Quit q]');
     expect(frame).toContain('▶');
     expect(frame).toContain('◉ Tasks:');
+    expect(frame.indexOf('Ready 0')).toBeLessThan(frame.indexOf('Ready 1'));
     expect(frame).toContain('READ ONLY');
   });
 
   test('parses real mouse down/up clicks for selection and visible detail open/close controls', async () => {
     const app = await setup();
-    const second = target(app.renderer, 'card:ideas:idea-b');
+    app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
+    await app.flush();
+    const second = target(app.renderer, 'card:ready-to-apply:ready-1');
     await app.mockMouse.click(...center(second));
     await app.flush();
-    expect(app.controller.state.selected.ideas).toBe(1);
+    expect(app.controller.state.selected['ready-to-apply']).toBe(1);
     expect(app.controller.state.detail).toBeNull();
 
-    // Open detail via the footer Open control
-    const openCtrl = target(app.renderer, 'open-control');
-    await app.mockMouse.click(...center(openCtrl));
+    // Open detail via the precisely labelled Details control.
+    const detailsControl = target(app.renderer, 'details-control');
+    await app.mockMouse.click(...center(detailsControl));
     await app.flush();
-    expect(app.controller.state.detail).toEqual({ pane: 'ideas', index: 1 });
-    expect(app.captureCharFrame()).toContain('Idea: Second idea');
+    expect(app.controller.state.detail).toEqual({ pane: 'ready-to-apply', index: 1 });
+    expect(app.captureCharFrame()).toContain('Ready to Apply change: Ready 1');
+    expect(app.captureCharFrame()).toContain('Project sample-project • READ ONLY • Ready to Apply 2/8');
     expect(app.captureCharFrame()).toContain('[Close Esc]');
 
     const close = target(app.renderer, 'detail-close');
     await app.mockMouse.click(...center(close));
     await app.flush();
     expect(app.controller.state.detail).toBeNull();
-    expect(app.controller.state.selected.ideas).toBe(1);
+    expect(app.controller.state.selected['ready-to-apply']).toBe(1);
   });
 
-  test('routes parsed wheel input only to the intended pane and keeps focused cards visible', async () => {
+  test('routes parsed wheel input only to the intended lane and keeps focused cards visible', async () => {
     const app = await setup(120, 18, 12);
-    app.controller.dispatch({ type: 'select-pane', pane: 'changes' });
+    app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
     await app.flush();
-    const pane = target(app.renderer, 'pane:changes');
+    const pane = target(app.renderer, 'pane:ready-to-apply');
     const beforeIdeas = app.controller.state.scroll.ideas;
     await app.mockMouse.scroll(...center(pane), 'down');
     await app.flush();
-    expect(app.controller.state.scroll.changes).toBeGreaterThan(0);
+    expect(app.controller.state.scroll['ready-to-apply']).toBeGreaterThan(0);
     expect(app.controller.state.scroll.ideas).toBe(beforeIdeas);
     for (let index = 0; index < 8; index++) app.mockInput.pressArrow('down');
     await app.flush();
-    expect(app.controller.state.selected.changes).toBe(8);
-    expect(app.controller.state.scroll.changes).toBeGreaterThan(0);
-    expect(app.captureCharFrame()).toContain('Change 8');
+    expect(app.controller.state.selected['ready-to-apply']).toBe(8);
+    expect(app.controller.state.scroll['ready-to-apply']).toBeGreaterThan(0);
+    expect(app.captureCharFrame()).toContain('Ready 8');
   });
 
   test('keyboard reaches pane, selection, detail, close, and quit outcomes', async () => {
     const app = await setup();
-    app.mockInput.pressTab();
+    app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
+    await app.flush();
     app.mockInput.pressArrow('down');
     app.mockInput.pressEnter();
     await app.flush();
-    expect(app.controller.state.pane).toBe('changes');
-    expect(app.controller.state.selected.changes).toBe(1);
-    expect(app.controller.state.detail).toEqual({ pane: 'changes', index: 1 });
+    expect(app.controller.state.pane).toBe('ready-to-apply');
+    expect(app.controller.state.selected['ready-to-apply']).toBe(1);
+    expect(app.controller.state.detail).toEqual({ pane: 'ready-to-apply', index: 1 });
     app.mockInput.pressEscape();
     await app.flush();
     expect(app.controller.state.detail).toBeNull();
@@ -116,21 +140,83 @@ describe('OpenTUI lifecycle board', () => {
     expect(app.quit).toBe(true);
   });
 
-  test('reflows to narrow single-column navigation while retaining logical focus', async () => {
+  test('reflows to narrow single-lane navigation while retaining logical focus', async () => {
     const app = await setup();
-    app.controller.dispatch({ type: 'select-pane', pane: 'changes' });
-    app.controller.dispatch({ type: 'select-item', pane: 'changes', index: 3 });
+    app.controller.dispatch({ type: 'select-pane', pane: 'implementing' });
+    app.controller.dispatch({ type: 'select-item', pane: 'implementing', index: 0 });
     app.resize(55, 20);
     app.controller.resize(55, 20);
     await app.renderOnce();
     const frame = app.captureCharFrame();
     expect(app.controller.state.narrow).toBe(true);
-    expect(app.controller.state.selected.changes).toBe(3);
-    expect(frame).toContain('Active Changes 2/4');
-    expect(frame).toContain('[◀ Prev]');
-    expect(frame).toContain('[Next ▶]');
-    expect(frame).toContain('Change 3');
-    expect(frame).not.toContain('Archived Changes (1)');
+    expect(app.controller.state.selected.implementing).toBe(0);
+    expect(frame).toContain('[Prev]');
+    expect(frame).toContain('[Next]');
+    expect(frame).toContain('[Details]');
+    expect(frame).toContain('[Help]');
+    expect(frame).toContain('sample-project');
+    expect(frame).toContain('READ ONLY');
+    expect(frame).toContain('Implementing 5/8');
+    expect(frame).toContain('item 1/2');
+    expect(frame).toContain('Implementing A');
+    for (const label of ['[Prev]', '[Next]', '[Details]', '[Help]', '[Quit]']) {
+      expect(frame.split(label).length - 1).toBe(1);
+    }
+    // The single-lane board must not show the archived lane's card.
+    expect(frame).not.toContain('Archived A');
+  });
+
+  test('switches to one-lane mode before the full lifecycle strip would clip', async () => {
+    const app = await setup(86, 20, 1);
+    expect(app.controller.state.narrow).toBe(true);
+    const frame = app.captureCharFrame();
+    expect(frame).not.toContain('[Archive 1]');
+    expect(frame).toContain('First idea');
+    expect(frame).toContain('[Help]');
+  });
+
+  test('uses one-lane mode when multi-digit counts make the full strip too wide', async () => {
+    const app = await setup(120, 20, 1000);
+    expect(app.controller.state.narrow).toBe(false);
+    expect(() => target(app.renderer, 'lane-nav')).toThrow();
+    expect(app.captureCharFrame()).toContain('[Details]');
+  });
+
+  test('wraps labelled controls at very narrow supported widths without clipping them', async () => {
+    const app = await setup(35, 20, 1);
+    const frame = app.captureCharFrame();
+    for (const label of ['[Prev]', '[Next]', '[Details]', '[Help]', '[Quit]']) expect(frame).toContain(label);
+    for (const id of ['lane-prev', 'lane-next', 'details-control', 'help-control', 'quit-control']) {
+      const control = target(app.renderer, id);
+      expect(control.screenX).toBeGreaterThanOrEqual(0);
+      expect(control.screenX + control.width).toBeLessThanOrEqual(35);
+    }
+  });
+
+  test('shows explicit resize and recovery guidance below the supported terminal floor', async () => {
+    const app = await setup(15, 20, 1);
+    const frame = app.captureCharFrame();
+    expect(frame).toContain('Terminal small');
+    expect(frame).toContain('Resize');
+    expect(frame).toContain('q');
+  });
+
+  test('keeps a recognizable project identity in constrained headers', async () => {
+    const model = fixture(1);
+    model.project.name = 'project-with-a-deliberately-long-identity-for-a-small-terminal';
+    const app = await setup(55, 20, 1, model);
+    const frame = app.captureCharFrame();
+    expect(frame).toContain('project-with-a-deliberately');
+    expect(frame).toContain('READ ONLY');
+  });
+
+  test('keeps fixed board and read-only identity with an unbounded wide project name', async () => {
+    const model = fixture(1);
+    model.project.name = 'x'.repeat(300);
+    const app = await setup(120, 30, 1, model);
+    const frame = app.captureCharFrame();
+    expect(frame).toContain('SPECBASE • Lifecycle Board');
+    expect(frame).toContain('READ ONLY • Project');
   });
 
   test('opens specification identity, titles, and non-color warning detail', async () => {
@@ -145,57 +231,145 @@ describe('OpenTUI lifecycle board', () => {
     expect(frame).toContain('⚠ sample warning');
   });
 
-  test('logical destroy is idempotent and removes input handlers and renderables', async () => {
-    const app = await setup();
-    app.controller.destroy();
-    app.controller.destroy();
-    expect(app.renderer.root.findDescendantById('view-board-root')).toBeUndefined();
+  test('actual mouse and keyboard routes produce equivalent pane, item, and detail state', async () => {
+    const mouse = await setup();
+    const keyboard = await setup();
+
+    await mouse.mockMouse.click(...center(target(mouse.renderer, 'lane:ready-to-apply')));
+    await mouse.flush();
+    await mouse.mockMouse.click(...center(target(mouse.renderer, 'card:ready-to-apply:ready-1')));
+    await mouse.flush();
+    await mouse.mockMouse.click(...center(target(mouse.renderer, 'details-control')));
+    await mouse.flush();
+
+    for (let index = 0; index < 3; index++) keyboard.mockInput.pressArrow('right');
+    keyboard.mockInput.pressArrow('down');
+    keyboard.mockInput.pressEnter();
+    await keyboard.flush();
+
+    expect(mouse.controller.state.pane).toBe(keyboard.controller.state.pane);
+    expect(mouse.controller.state.selected).toEqual(keyboard.controller.state.selected);
+    expect(mouse.controller.state.detail).toEqual(keyboard.controller.state.detail);
   });
 
-  test('table-driven mouse and keyboard equivalence for pane selection, detail access, and scroll', async () => {
-    const app = await setup();
-    const scenarios = [
-      { action: () => { app.controller.dispatch({ type: 'select-pane', pane: 'changes' }); }, desc: 'changes pane via dispatch' },
-    ];
-    for (const { action, desc } of scenarios) {
-      app.controller.dispatch({ type: 'select-pane', pane: 'ideas' });
+  test('mouse Prev, Next, and Quit controls match keyboard outcomes', async () => {
+    const mouse = await setup();
+    const keyboard = await setup();
+    await mouse.mockMouse.click(...center(target(mouse.renderer, 'lane-prev')));
+    keyboard.mockInput.pressArrow('left');
+    await mouse.flush();
+    await keyboard.flush();
+    expect(mouse.controller.state.pane).toBe(keyboard.controller.state.pane);
+    await mouse.mockMouse.click(...center(target(mouse.renderer, 'lane-next')));
+    keyboard.mockInput.pressArrow('right');
+    await mouse.flush();
+    await keyboard.flush();
+    expect(mouse.controller.state.pane).toBe(keyboard.controller.state.pane);
+    await mouse.mockMouse.click(...center(target(mouse.renderer, 'quit-control')));
+    keyboard.mockInput.pressKey('q');
+    await mouse.flush();
+    await keyboard.flush();
+    expect(mouse.quit).toBe(true);
+    expect(keyboard.quit).toBe(true);
+  });
+
+  test('mouse wheel and keyboard keys produce equivalent detail scrolling', async () => {
+    const model = fixture(1);
+    model.specs[0].requirements = Array.from({ length: 30 }, (_, index) => `Requirement ${index + 1}`);
+    model.specs[0].requirementCount = 30;
+    const mouse = await setup(80, 20, 1, model);
+    const keyboard = await setup(80, 20, 1, model);
+    for (const app of [mouse, keyboard]) {
+      app.controller.dispatch({ type: 'select-pane', pane: 'specs' });
+      app.controller.dispatch({ type: 'open-detail' });
       await app.flush();
-      action();
-      await app.flush();
-      expect(app.controller.state.pane, desc).toBe('changes');
     }
+    await mouse.mockMouse.scroll(...center(target(mouse.renderer, 'detail-overlay')), 'down');
+    for (let index = 0; index < 3; index++) keyboard.mockInput.pressArrow('down');
+    await mouse.flush();
+    await keyboard.flush();
+    expect(mouse.controller.state.detailScroll).toBe(keyboard.controller.state.detailScroll);
+  });
 
-    // Mouse pane selection: click on the changes pane border area
-    app.controller.dispatch({ type: 'select-pane', pane: 'ideas' });
-    await app.flush();
-    const changesPane = target(app.renderer, 'pane:changes');
-    await app.mockMouse.click(...center(changesPane));
-    await app.flush();
-    expect(app.controller.state.pane).toBe('changes');
+  test('opens and closes details for every work-item kind without losing origin selection', async () => {
+    const app = await setup(120, 30, 2);
+    for (const [pane, index] of [['ideas', 1], ['ready-to-apply', 1], ['archived', 0], ['specs', 0]] as const) {
+      app.controller.dispatch({ type: 'select-pane', pane });
+      app.controller.dispatch({ type: 'select-item', pane, index });
+      app.controller.dispatch({ type: 'open-detail' });
+      await app.flush();
+      expect(app.controller.state.detail).toEqual({ pane, index });
+      app.controller.dispatch({ type: 'close-overlay' });
+      await app.flush();
+      expect(app.controller.state.detail).toBeNull();
+      expect(app.controller.state.selected[pane]).toBe(index);
+    }
+  });
 
-    // Keyboard pane navigation (Tab)
-    app.controller.dispatch({ type: 'select-pane', pane: 'changes' });
+  test('Page Down moves within the focused lane and keeps the selected card visible', async () => {
+    const app = await setup(120, 18, 14);
+    app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
     await app.flush();
+    app.renderer.stdin.emit('data', Buffer.from('\u001b[57355u'));
+    await app.flush();
+    expect(app.controller.state.pane).toBe('ready-to-apply');
+    expect(app.controller.state.selected['ready-to-apply']).toBe(10);
+    expect(app.captureCharFrame()).toContain('Ready 10');
+  });
+
+  test('focused controls change border style as a non-color cue', async () => {
+    const app = await setup();
+    const control = target(app.renderer, 'help-control') as BoxRenderable;
+    expect(control.borderStyle).toBe('single');
+    control.focus();
+    await app.flush();
+    expect(control.borderStyle).toBe('double');
+    control.blur();
+    expect(control.borderStyle).toBe('single');
+  });
+
+  test('keyboard Tab advances through lifecycle lanes and arrow navigates within a lane', async () => {
+    const app = await setup();
+    app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
+    await app.flush();
+    // Tab from ready-to-apply advances forward through the pane cycle.
     app.mockInput.pressTab();
     await app.flush();
-    expect(app.controller.state.pane).toBe('archives');
-
-    // Keyboard item navigation
-    app.controller.dispatch({ type: 'select-pane', pane: 'ideas' });
+    expect(VIEW_PANES).toContain(app.controller.state.pane);
+    // Back to a populated lane: arrow moves within it.
+    app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
     await app.flush();
     app.mockInput.pressArrow('down');
     await app.flush();
-    expect(app.controller.state.selected.ideas).toBe(1);
+    expect(app.controller.state.selected['ready-to-apply']).toBe(1);
+  });
 
-    // Mouse item selection
+  test('mouse clicks a lane and card; wheel scrolls only the detail pane when open', async () => {
+    const model = fixture();
+    model.specs[0].requirements = Array.from({ length: 30 }, (_, index) => `Requirement ${index + 1}`);
+    model.specs[0].requirementCount = 30;
+    const app = await setup(120, 30, 8, model);
+    app.controller.dispatch({ type: 'select-pane', pane: 'implementing' });
+    await app.flush();
+    expect(app.controller.state.pane).toBe('implementing');
+
+    // Arrow navigation within the implementing lane (2 cards).
+    app.mockInput.pressArrow('down');
+    await app.flush();
+    expect(app.controller.state.selected.implementing).toBe(1);
     app.mockInput.pressArrow('up');
     await app.flush();
-    const firstCard = target(app.renderer, 'card:ideas:idea-a');
-    await app.mockMouse.click(...center(firstCard));
-    await app.flush();
-    expect(app.controller.state.selected.ideas).toBe(0);
+    expect(app.controller.state.selected.implementing).toBe(0);
 
-    // Wheel scrolls detail pane when detail is open
+    // Mouse item selection.
+    const card = target(app.renderer, 'card:implementing:imp-a');
+    await app.mockMouse.click(...center(card));
+    await app.flush();
+    expect(app.controller.state.selected.implementing).toBe(0);
+
+    // Wheel scrolls long detail content without changing the prior lane scroll.
+    const laneScrollBefore = app.controller.state.scroll.implementing;
+    app.controller.dispatch({ type: 'select-pane', pane: 'specs' });
     app.controller.dispatch({ type: 'open-detail' });
     await app.flush();
     expect(app.controller.state.detail).toBeDefined();
@@ -204,30 +378,122 @@ describe('OpenTUI lifecycle board', () => {
     await app.mockMouse.scroll(...center(detailOverlay), 'down');
     await app.flush();
     expect(app.controller.state.detailScroll).toBeGreaterThan(detailScrollBefore);
+    expect(app.controller.state.scroll.implementing).toBe(laneScrollBefore);
   });
 
-  test('renders complete active card vs archive with distinct cues and focused control states', async () => {
-    const app = await setup(120, 30, 1);
-    app.controller.dispatch({ type: 'select-pane', pane: 'changes' });
+  test('opens discoverable help and closes it with the same Escape convention as details', async () => {
+    const app = await setup();
+    const help = target(app.renderer, 'help-control');
+    await app.mockMouse.click(...center(help));
+    await app.flush();
+    expect(app.controller.state.overlay).toBe('help');
+    const frame = app.captureCharFrame();
+    for (const text of ['Project sample-project', 'Ideas 1/2', 'Board navigation', 'Detail navigation', 'Exit and recovery', '←/→ or h/l', '↑/↓ or k/j', 'Page Up/Down', 'Enter', 'Esc', 'q', '--plain', 'READ ONLY']) {
+      expect(frame).toContain(text);
+    }
+    app.mockInput.pressEscape();
+    await app.flush();
+    expect(app.controller.state.overlay).toBeNull();
+  });
+
+  test('shows concise feedback for lane movement and empty or boundary actions', async () => {
+    const app = await setup();
+    app.controller.dispatch({ type: 'select-pane', pane: 'proposed' });
+    await app.flush();
+    expect(app.captureCharFrame()).toContain('No items in Proposed');
+    app.mockInput.pressArrow('down');
+    await app.flush();
+    expect(app.controller.state.announcement).toContain('no items');
+    app.controller.dispatch({ type: 'select-pane', pane: 'implementing' });
+    await app.flush();
+    expect(app.captureCharFrame()).toContain('Implementing: item 1 of 2');
+    app.controller.dispatch({ type: 'select-item', pane: 'implementing', index: 1 });
+    await app.flush();
+    expect(app.captureCharFrame()).toContain('Implementing: item 2 of 2');
+    app.controller.dispatch({ type: 'open-detail' });
+    await app.flush();
+    expect(app.controller.state.announcement).toContain('Details opened');
+    expect(app.captureCharFrame()).toContain('Implementing details');
+    app.controller.dispatch({ type: 'close-overlay' });
+    await app.flush();
+    expect(app.captureCharFrame()).toContain('Implementing: item 2 of 2');
+    app.mockInput.pressArrow('down');
+    await app.flush();
+    expect(app.controller.state.announcement).toContain('End of Implementing');
+    expect(app.captureCharFrame()).toContain('End of Implementing');
+  });
+
+  test('renders actionable diagnostics without hiding readable board content', async () => {
+    const model = fixture(1);
+    model.diagnostics.push({ source: 'changes/broken', message: 'metadata must be a mapping' });
+    const app = await setup(120, 30, 1, model);
+    expect(app.captureCharFrame()).toContain('First idea');
+    const issues = target(app.renderer, 'diagnostics-control');
+    await app.mockMouse.click(...center(issues));
     await app.flush();
     const frame = app.captureCharFrame();
-    expect(frame).toContain('Active Changes');
-    expect(frame).toContain('◉');
-    expect(frame).toContain('○ Artifacts:');
-    expect(frame).toContain('◉ Tasks:');
+    expect(frame).toContain('Project sample-project • READ ONLY • Ideas 1/2');
+    expect(frame).toContain('Problem: metadata must be a mapping');
+    expect(frame).toContain('Consequence: This item may be missing or incomplete in the snapshot.');
+    expect(frame).toContain('Next step: Run specbase validate');
+  });
 
-    app.controller.dispatch({ type: 'select-pane', pane: 'archives' });
+  test('applies stored detail offset to visibly long detail content', async () => {
+    const model = fixture(1);
+    model.specs[0].requirements = Array.from({ length: 30 }, (_, index) => `Requirement ${index + 1}`);
+    model.specs[0].requirementCount = 30;
+    const app = await setup(80, 20, 1, model);
+    app.controller.dispatch({ type: 'select-pane', pane: 'specs' });
+    app.controller.dispatch({ type: 'open-detail' });
+    await app.flush();
+    expect(app.captureCharFrame()).toContain('Requirement 1');
+    for (let index = 0; index < 8; index++) app.controller.dispatch({ type: 'scroll-detail', delta: 1 });
+    await app.flush();
+    expect(app.controller.state.detailScroll).toBeGreaterThan(0);
+    expect(app.captureCharFrame()).not.toContain('Requirement 1\n');
+  });
+
+  test('short layout keeps identity, focused content, help, and quit recovery', async () => {
+    const app = await setup(70, 12, 1);
+    const frame = app.captureCharFrame();
+    expect(frame).toContain('sample-project');
+    expect(frame).toContain('READ ONLY');
+    expect(frame).toContain('Ideas 1/8');
+    expect(frame).toContain('item 1/2');
+    expect(frame).toContain('▶ First idea');
+    expect(frame).toContain('[Details]');
+    expect(frame).toContain('[Help]');
+    expect(frame).toContain('[Quit]');
+    expect(frame).not.toContain('Specs 1 • Reqs');
+    app.controller.dispatch({ type: 'open-detail' });
+    await app.flush();
+    const detail = app.captureCharFrame();
+    expect(detail).toContain('Project sample-project');
+    expect(detail).toContain('READ ONLY');
+    expect(detail).toContain('Close');
+  });
+
+  test('distinguishes a completed active card from an archived card with distinct non-color cues', async () => {
+    const app = await setup(120, 30, 1);
+    app.controller.dispatch({ type: 'select-pane', pane: 'reviewing' });
+    await app.flush();
+    const activeFrame = app.captureCharFrame();
+    expect(activeFrame).toContain('Reviewing');
+    expect(activeFrame).toContain('◉');
+    expect(activeFrame).toContain('◉ Tasks: 3/3');
+    expect(activeFrame).not.toContain('✓ Tasks: 3/3');
+
+    app.controller.dispatch({ type: 'select-pane', pane: 'archived' });
     await app.flush();
     const archiveFrame = app.captureCharFrame();
     expect(archiveFrame).toContain('✓');
     expect(archiveFrame).toContain('✓ Tasks:');
 
-    // Focus each control in the footer and capture frame
-    for (const ctrlId of ['specs-control', 'quit-control', 'open-control']) {
+    // Focus each footer control and verify it remains reachable
+    for (const ctrlId of ['help-control', 'quit-control', 'details-control']) {
       const ctrl = target(app.renderer, ctrlId);
       await app.mockMouse.click(...center(ctrl));
       await app.flush();
-      // The control was clicked, verify interaction happened
       expect(() => target(app.renderer, ctrlId)).not.toThrow();
     }
   });

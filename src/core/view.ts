@@ -19,6 +19,10 @@ export class ViewCommand {
   async execute(targetPath = '.', options: ViewCommandOptions = {}): Promise<number> {
     const writeOut = options.writeOut ?? ((text: string) => process.stdout.write(text));
     const writeError = options.writeError ?? ((text: string) => process.stderr.write(text));
+    const stdinTTY = options.stdinTTY ?? Boolean(process.stdin.isTTY);
+    const stdoutTTY = options.stdoutTTY ?? Boolean(process.stdout.isTTY);
+    const interactive = !options.plain && !options.json && stdinTTY && stdoutTTY;
+    if (interactive) writeError('Loading Specbase lifecycle board…\n');
     const model = await (options.derive ?? deriveViewBoard)(targetPath);
 
     // Machine output always wins, including when --plain is also present.
@@ -27,8 +31,6 @@ export class ViewCommand {
       return 0;
     }
 
-    const stdinTTY = options.stdinTTY ?? Boolean(process.stdin.isTTY);
-    const stdoutTTY = options.stdoutTTY ?? Boolean(process.stdout.isTTY);
     if (options.plain || !stdinTTY || !stdoutTTY) {
       writeOut(renderViewPlain(model));
       return 0;

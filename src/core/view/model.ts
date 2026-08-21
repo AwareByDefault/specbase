@@ -6,9 +6,11 @@ import { parseGovernedSpec } from '../governed/spec-parser.js';
 import { getTaskProgressForChange } from '../../utils/task-progress.js';
 import { resolveArtifactOutputs, resolveSchema } from '../artifact-graph/index.js';
 import { resolveSchemaForChange } from '../../utils/change-metadata.js';
+import { deriveLifecycleState, gatherLifecycleInput, type LifecycleState } from '../work-item-lifecycle.js';
 import { VIEW_BOARD_VERSION } from './version.js';
 
 export { VIEW_BOARD_VERSION } from './version.js';
+export type { LifecycleState } from '../work-item-lifecycle.js';
 
 export interface ViewDiagnostic {
   source: string;
@@ -35,6 +37,8 @@ export interface ChangeCard {
   created: string | null;
   artifacts: ProgressCount;
   tasks: ProgressCount;
+  /** Derived lifecycle state that determined this card's lane placement. */
+  lifecycle: LifecycleState;
 }
 
 export interface ArchiveCard {
@@ -57,19 +61,28 @@ export interface SpecCard {
 
 export interface ViewBoardModel {
   version: typeof VIEW_BOARD_VERSION;
+  project: {
+    /** Display-safe identity for the selected project root. */
+    name: string;
+  };
   summary: {
     acceptedSpecs: number;
     requirements: number;
     openIdeas: number;
-    activeChanges: number;
-    archivedChanges: number;
+    /** Per-lifecycle-lane counts for the six derived states. */
+    lanes: Record<LifecycleState, number>;
     completedTasks: number;
     totalTasks: number;
   };
-  columns: {
+  /** Idea backlog lane plus six lifecycle-state lanes. */
+  lanes: {
     ideas: IdeaCard[];
-    changes: ChangeCard[];
-    archives: ArchiveCard[];
+    proposed: ChangeCard[];
+    enforcement: ChangeCard[];
+    'ready-to-apply': ChangeCard[];
+    implementing: ChangeCard[];
+    reviewing: ChangeCard[];
+    archived: ArchiveCard[];
   };
   specs: SpecCard[];
   diagnostics: ViewDiagnostic[];
@@ -80,6 +93,12 @@ export interface ViewModelPorts {
   readFile(file: string): Promise<string>;
   taskProgress?(changesDir: string, changeName: string, projectRoot: string): Promise<ProgressCount>;
   artifactProgress?(changeDir: string, projectRoot: string): ProgressCount;
+  lifecycleState?(
+    changeDir: string,
+    changesDir: string,
+    projectRoot: string,
+    metadata: Record<string, unknown> | null
+  ): LifecycleState;
 }
 
 const defaultPorts: ViewModelPorts = {
@@ -89,10 +108,21 @@ const defaultPorts: ViewModelPorts = {
   artifactProgress,
 };
 
-async function safeDirectories(ports: ViewModelPorts, dir: string): Promise<import('node:fs').Dirent[]> {
+async function safeDirectories(
+  ports: ViewModelPorts,
+  dir: string,
+  root: string,
+  diagnostics: ViewDiagnostic[]
+): Promise<import('node:fs').Dirent[]> {
   try {
     return (await ports.readDir(dir)).filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'));
-  } catch {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      diagnostics.push({
+        source: path.relative(root, dir),
+        message: `Could not read this board section: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
     return [];
   }
 }
@@ -154,7 +184,7 @@ function artifactProgress(changeDir: string, projectRoot: string): ProgressCount
 async function collectIdeas(root: string, store: string, ports: ViewModelPorts, diagnostics: ViewDiagnostic[]): Promise<IdeaCard[]> {
   const cards: IdeaCard[] = [];
   const home = path.join(store, 'ideas');
-  for (const entry of await safeDirectories(ports, home)) {
+  for (const entry of await safeDirectories(ports, home, root, diagnostics)) {
     const dir = path.join(home, entry.name);
     try {
       const meta = await readMetadata(ports, dir);
@@ -178,12 +208,13 @@ async function collectIdeas(root: string, store: string, ports: ViewModelPorts, 
 async function collectChanges(root: string, store: string, ports: ViewModelPorts, diagnostics: ViewDiagnostic[]): Promise<ChangeCard[]> {
   const cards: ChangeCard[] = [];
   const home = path.join(store, 'changes');
-  for (const entry of await safeDirectories(ports, home)) {
+  for (const entry of await safeDirectories(ports, home, root, diagnostics)) {
     if (entry.name === 'archive') continue;
     const dir = path.join(home, entry.name);
     try {
       const meta = await readMetadata(ports, dir);
       const tasks = await (ports.taskProgress ?? getTaskProgressForChange)(home, entry.name, root);
+      const lifecycle = (ports.lifecycleState ?? lifecycleForChange)(dir, home, root, meta);
       cards.push({
         kind: 'change',
         id: textField(meta, 'id') ?? entry.name,
@@ -191,6 +222,7 @@ async function collectChanges(root: string, store: string, ports: ViewModelPorts
         created: textField(meta, 'created'),
         artifacts: (ports.artifactProgress ?? artifactProgress)(dir, root),
         tasks,
+        lifecycle,
       });
     } catch (error) {
       diagnostics.push({ source: path.relative(root, dir), message: error instanceof Error ? error.message : String(error) });
@@ -199,10 +231,46 @@ async function collectChanges(root: string, store: string, ports: ViewModelPorts
   return cards.sort((a, b) => progressRatio(a.tasks) - progressRatio(b.tasks) || a.id.localeCompare(b.id));
 }
 
+/**
+ * Derive a change's lifecycle state from the same observable reality the status
+ * surface uses: artifact presence, apply-required artifacts, tracked tasks, a
+ * review-completion footprint, and the archive location. The board never reads a
+ * stored state field; it consumes the derived state to place the card in a lane.
+ */
+function lifecycleForChange(
+  changeDir: string,
+  changesDir: string,
+  projectRoot: string,
+  meta: Record<string, unknown> | null
+): LifecycleState {
+  try {
+    const schemaName = resolveSchemaForChange(changeDir, undefined, projectRoot);
+    const schema = resolveSchema(schemaName, projectRoot);
+    const artifactDispositions: Record<string, 'done' | 'ready' | 'blocked'> = {};
+    for (const artifact of schema.artifacts) {
+      artifactDispositions[artifact.id] =
+        resolveArtifactOutputs(changeDir, artifact.generates).length > 0 ? 'done' : 'blocked';
+    }
+    const applyRequires = schema.apply?.requires ?? schema.artifacts.map((artifact) => artifact.id);
+    return deriveLifecycleState(
+      gatherLifecycleInput({
+        changeDir,
+        changesDir,
+        tracksFile: schema.apply?.tracks ?? null,
+        metadata: meta as { lastReviewedAt?: string } | null,
+        artifactDispositions,
+        applyRequires,
+      })
+    );
+  } catch {
+    return 'proposed';
+  }
+}
+
 async function collectArchives(root: string, store: string, ports: ViewModelPorts, diagnostics: ViewDiagnostic[]): Promise<ArchiveCard[]> {
   const cards: ArchiveCard[] = [];
   const home = path.join(store, 'changes', 'archive');
-  for (const entry of await safeDirectories(ports, home)) {
+  for (const entry of await safeDirectories(ports, home, root, diagnostics)) {
     const dir = path.join(home, entry.name);
     try {
       const meta = await readMetadata(ports, dir);
@@ -226,25 +294,44 @@ async function collectArchives(root: string, store: string, ports: ViewModelPort
   });
 }
 
-async function walkSpecFiles(ports: ViewModelPorts, dir: string, relative: string[] = []): Promise<Array<{ file: string; parts: string[] }>> {
+async function walkSpecFiles(
+  ports: ViewModelPorts,
+  dir: string,
+  root: string,
+  diagnostics: ViewDiagnostic[],
+  relative: string[] = []
+): Promise<Array<{ file: string; parts: string[] }>> {
   let entries: import('node:fs').Dirent[];
-  try { entries = await ports.readDir(dir); } catch { return []; }
+  try {
+    entries = await ports.readDir(dir);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      diagnostics.push({
+        source: path.relative(root, dir),
+        message: `Could not read this specification section: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+    return [];
+  }
   const found: Array<{ file: string; parts: string[] }> = [];
   if (entries.some((entry) => entry.isFile() && entry.name === 'spec.md')) found.push({ file: path.join(dir, 'spec.md'), parts: relative });
   for (const entry of entries.filter((item) => item.isDirectory() && !item.name.startsWith('.')).sort((a, b) => a.name.localeCompare(b.name))) {
-    found.push(...await walkSpecFiles(ports, path.join(dir, entry.name), [...relative, entry.name]));
+    found.push(...await walkSpecFiles(ports, path.join(dir, entry.name), root, diagnostics, [...relative, entry.name]));
   }
   return found;
 }
 
 async function collectSpecs(root: string, store: string, ports: ViewModelPorts, diagnostics: ViewDiagnostic[]): Promise<SpecCard[]> {
   const cards: SpecCard[] = [];
-  for (const item of await walkSpecFiles(ports, path.join(store, 'specs'))) {
+  for (const item of await walkSpecFiles(ports, path.join(store, 'specs'), root, diagnostics)) {
     const locator = item.parts.join('/');
     try {
       const content = await ports.readFile(item.file);
       const parsed = parseGovernedSpec(content);
       const structural = parsed.issues.map((issue) => issue.message).join('; ');
+      if (structural) {
+        diagnostics.push({ source: path.relative(root, item.file), message: structural });
+      }
       if (parsed.id) {
         cards.push({ kind: 'spec', id: parsed.id, locator, title: locator, requirementCount: parsed.requirements.length, requirements: parsed.requirements.map((r) => r.title), diagnostic: structural || null });
       } else {
@@ -273,21 +360,43 @@ export async function deriveViewBoard(root = '.', ports: ViewModelPorts = defaul
     collectArchives(root, store, ports, diagnostics),
     collectSpecs(root, store, ports, diagnostics),
   ]);
+  // Distribute every change card into the lane for its derived lifecycle state.
+  // `changes` is already sorted by progress then immutable ID; distributing a
+  // sorted list preserves that per-lane ordering (progress then ID) for each lane.
+  const changeLanes: Record<Exclude<LifecycleState, 'archived'>, ChangeCard[]> = {
+    proposed: [],
+    enforcement: [],
+    'ready-to-apply': [],
+    implementing: [],
+    reviewing: [],
+  };
+  for (const card of changes) {
+    if (card.lifecycle !== 'archived') changeLanes[card.lifecycle].push(card);
+  }
+  const lanes: ViewBoardModel['lanes'] = { ideas, ...changeLanes, archived: archives };
   const completedTasks = changes.reduce((sum, card) => sum + card.tasks.completed, 0);
   const totalTasks = changes.reduce((sum, card) => sum + card.tasks.total, 0);
   diagnostics.sort((a, b) => a.source.localeCompare(b.source) || a.message.localeCompare(b.message));
+  const resolvedRoot = path.resolve(root);
   return {
     version: VIEW_BOARD_VERSION,
+    project: { name: path.basename(resolvedRoot) || resolvedRoot },
     summary: {
       acceptedSpecs: specs.length,
       requirements: specs.reduce((sum, spec) => sum + spec.requirementCount, 0),
       openIdeas: ideas.length,
-      activeChanges: changes.length,
-      archivedChanges: archives.length,
+      lanes: {
+        proposed: lanes.proposed.length,
+        enforcement: lanes.enforcement.length,
+        'ready-to-apply': lanes['ready-to-apply'].length,
+        implementing: lanes.implementing.length,
+        reviewing: lanes.reviewing.length,
+        archived: lanes.archived.length,
+      },
       completedTasks,
       totalTasks,
     },
-    columns: { ideas, changes, archives },
+    lanes,
     specs,
     diagnostics,
   };
