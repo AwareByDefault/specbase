@@ -123,9 +123,9 @@ export interface GatherLifecycleInputOptions {
 export function gatherLifecycleInput(
   options: GatherLifecycleInputOptions
 ): LifecycleInput {
-  const archived = options.changesDir
-    ? options.changeDir.startsWith(path.join(options.changesDir, 'archive') + path.sep)
-    : false;
+  const archiveDir = options.changesDir ? path.resolve(options.changesDir, 'archive') : null;
+  const relativeToArchive = archiveDir ? path.relative(archiveDir, path.resolve(options.changeDir)) : '';
+  const archived = archiveDir !== null && relativeToArchive !== '' && !relativeToArchive.startsWith(`..${path.sep}`) && relativeToArchive !== '..' && !path.isAbsolute(relativeToArchive);
 
   let tasksChecked = 0;
   let tasksTotal = 0;

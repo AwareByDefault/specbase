@@ -65,6 +65,34 @@ describe('view architecture boundaries', () => {
     expect(entry).toMatch(/from ['"].+\/protocol(\.js)?['"]/);
   });
 
+  it('keeps the public lifecycle boundary headless across its import graph', async () => {
+    const pathMod = await import('node:path');
+    const visited = new Set<string>();
+    const forbidden = [/^src\/cli\//, /^src\/tui\//, /@opentui\//, /@inquirer\//, /renderer|interactive-input/];
+
+    async function visit(relative: string, chain: string[]): Promise<void> {
+      if (visited.has(relative)) return;
+      visited.add(relative);
+      const text = (await source(relative)).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+      for (const match of text.matchAll(/(?:import|export)\s+(?:[^'\"]+?\s+from\s+)?['\"]([^'\"]+)['\"]/g)) {
+        const specifier = match[1];
+        if (forbidden.some((pattern) => pattern.test(specifier))) {
+          throw new Error(`Lifecycle boundary reaches forbidden module through ${[...chain, relative, specifier].join(' -> ')}`);
+        }
+        if (!specifier.startsWith('.')) continue;
+        const target = pathMod.normalize(pathMod.join(pathMod.dirname(relative), specifier.replace(/\.js$/, '.ts')));
+        const normalized = target.split(pathMod.sep).join('/');
+        if (forbidden.some((pattern) => pattern.test(normalized))) {
+          throw new Error(`Lifecycle boundary reaches forbidden module through ${[...chain, relative, normalized].join(' -> ')}`);
+        }
+        await visit(normalized, [...chain, relative]);
+      }
+    }
+
+    await visit('src/index.ts', []);
+    expect([...visited]).toContain('src/core/lifecycle-snapshot.ts');
+  });
+
   it('reduces equivalent keyboard and mouse selection/detail commands through immutable transient state', () => {
     const initial = createViewerState(model);
     const keyboardMoved = reduceViewerState(initial, keyboardCommand({ name: 'down' })!, model);

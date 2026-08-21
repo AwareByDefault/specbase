@@ -104,6 +104,23 @@ async function listRelativeEntries(root: string, skipDirs: Set<string>): Promise
   return found.sort();
 }
 
+async function writeLifecycleSnapshotFixture(root: string): Promise<void> {
+  const active = path.join(root, 'specbase', 'changes', 'renamed-active');
+  const archived = path.join(root, 'specbase', 'changes', 'archive', '2025-01-02-renamed-archive');
+  const duplicateActive = path.join(root, 'specbase', 'changes', 'duplicate-active');
+  const duplicateArchived = path.join(root, 'specbase', 'changes', 'archive', '2025-01-03-duplicate-archive');
+  for (const [directory, id] of [
+    [active, 'snapshot-active'],
+    [archived, 'snapshot-archived'],
+    [duplicateActive, 'snapshot-duplicate'],
+    [duplicateArchived, 'snapshot-duplicate'],
+  ] as const) {
+    await fs.mkdir(directory, { recursive: true });
+    await fs.writeFile(path.join(directory, '.openspec.yaml'), `schema: spec-driven\nid: ${id}\n`, 'utf8');
+    await fs.writeFile(path.join(directory, 'tasks.md'), '- [x] done\n- [ ] pending\n', 'utf8');
+  }
+}
+
 async function writeCompletedChangeArtifacts(
   changeDir: string,
   capability: string
@@ -195,6 +212,52 @@ afterAll(async () => {
 });
 
 describe('standalone store lifecycle journey', () => {
+  it('installed package resolves lifecycle snapshots and matches status JSON', async () => {
+    const fixtureRoot = path.join(base, 'lifecycle-api-store');
+    const consumerRoot = path.join(base, 'lifecycle-api-consumer');
+    const packedRoot = path.join(base, 'packed');
+    await writeLifecycleSnapshotFixture(fixtureRoot);
+    await fs.mkdir(consumerRoot, { recursive: true });
+    await fs.mkdir(packedRoot, { recursive: true });
+
+    await execFileAsync('pnpm', ['run', 'build'], { cwd: path.resolve('.') });
+    await execFileAsync('pnpm', ['pack', '--pack-destination', packedRoot], { cwd: path.resolve('.') });
+    const tarball = path.join(packedRoot, (await fs.readdir(packedRoot)).find((entry) => entry.endsWith('.tgz'))!);
+    await execFileAsync('npm', ['install', '--ignore-scripts', '--no-package-lock', tarball], { cwd: consumerRoot });
+
+    async function packageResult(id: string) {
+      const script = [
+        "import { getLifecycleSnapshot, LIFECYCLE_SNAPSHOT_VERSION } from '@awarebydefault/specbase';",
+        "const result = getLifecycleSnapshot({ root: process.argv[1], id: process.argv[2] });",
+        'console.log(JSON.stringify({ version: LIFECYCLE_SNAPSHOT_VERSION, result }));',
+      ].join(' ');
+      const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '--eval', script, fixtureRoot, id], { cwd: consumerRoot });
+      return JSON.parse(stdout) as { version: number; result: { snapshot: unknown; diagnostics: unknown[] } };
+    }
+
+    const active = await packageResult('snapshot-active');
+    const archived = await packageResult('snapshot-archived');
+    const missing = await packageResult('snapshot-missing');
+    const ambiguous = await packageResult('snapshot-duplicate');
+
+    expect(active.version).toBe(1);
+    expect(JSON.parse(JSON.stringify(active.result))).toEqual(active.result);
+    expect(active.result.snapshot).toMatchObject({ id: 'snapshot-active', position: 'active', lifecycle: 'implementing' });
+    expect(archived.result.snapshot).toMatchObject({ id: 'snapshot-archived', position: 'archived', lifecycle: 'archived' });
+    expect(missing.result).toMatchObject({ snapshot: null, diagnostics: [{ code: 'lifecycle_snapshot_unresolved', id: 'snapshot-missing' }] });
+    expect(ambiguous.result).toMatchObject({ snapshot: null, diagnostics: [{ code: 'lifecycle_snapshot_ambiguous', id: 'snapshot-duplicate' }] });
+
+    const status = await runCLI(['status', '--change', 'snapshot-active', '--json'], { cwd: fixtureRoot });
+    expect(status.exitCode).toBe(0);
+    const statusJson = JSON.parse(status.stdout);
+    expect(statusJson.lifecycleSnapshot).toEqual(active.result);
+
+    const archivedStatus = await runCLI(['status', '--change', 'snapshot-archived', '--json'], { cwd: fixtureRoot });
+    expect(archivedStatus.exitCode).toBe(0);
+    const archivedStatusJson = JSON.parse(archivedStatus.stdout);
+    expect(archivedStatusJson.lifecycleSnapshot).toEqual(archived.result);
+  }, JOURNEY_TIMEOUT_MS);
+
   it('machine A: setup produces a committed, clonable repo', async () => {
     const result = await runCLI(
       ['store', 'setup', STORE_ID, '--path', storeRoot, '--json'],

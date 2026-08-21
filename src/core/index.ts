@@ -18,6 +18,15 @@ export * from './store/index.js';
 export * from './planning-home.js';
 export * from './openspec-root.js';
 export {
+  LIFECYCLE_SNAPSHOT_VERSION,
+  getLifecycleSnapshot,
+  type GetLifecycleSnapshotOptions,
+  type LifecycleSnapshot,
+  type LifecycleSnapshotDiagnostic,
+  type LifecycleSnapshotPosition,
+  type LifecycleSnapshotResult,
+} from './lifecycle-snapshot.js';
+export {
   EnforcementTypeSchema,
   EnforcementStrengthSchema,
   EnforcementSourceKindSchema,
