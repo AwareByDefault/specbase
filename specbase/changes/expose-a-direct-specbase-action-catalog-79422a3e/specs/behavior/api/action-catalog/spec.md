@@ -50,6 +50,21 @@ The supported package API SHALL validate one intent that exactly identifies the 
 - **WHEN** the store, work-item, version, action, or dispatch kind does not exactly match the canonical catalog
 - **THEN** validation returns a stable mismatch diagnostic and no dispatch descriptor
 
+### Requirement: Consumers can record a confirmed draft result
+**ID:** `record-draft-pr-result`
+The supported package API SHALL accept only an exact canonical draft-PR action identity and a schema-valid confirmed draft descriptor, preserve existing change metadata, and project the authoritative Reviewing lifecycle with the confirmed pull-request link.
+
+#### Scenario: Confirmed draft is recorded
+**ID:** `confirmed-draft-recorded`
+- **WHEN** an autonomous client submits the exact repository, base, head, verified commit, draft number, URL, and correlated run identity for the canonical draft-PR action
+- **THEN** Specbase records the descriptor without performing a remote operation
+- **AND** the refreshed lifecycle and board card present Reviewing with that link
+
+#### Scenario: Malformed result is rejected
+**ID:** `malformed-draft-result-rejected`
+- **WHEN** the action identity or draft descriptor is malformed or no longer names the canonical target
+- **THEN** Specbase records no result and returns a stable diagnostic
+
 ### Requirement: Invalid targets and actions fail predictably
 **ID:** `action-catalog-diagnostics`
 The supported package API SHALL return stable machine diagnostics that identify the requested target or action and a concrete remediation when a work-item ID is unresolved or ambiguous, an action ID is unknown, or a catalog version is unsupported.

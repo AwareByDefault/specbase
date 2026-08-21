@@ -10,6 +10,8 @@ import { resolveSpecModel } from './artifact-graph/types.js';
 import { resolveRegisteredStore } from './store/registry.js';
 import { Validator } from './validation/validator.js';
 import { FileSystemUtils } from '../utils/file-system.js';
+import { readChangeMetadata, writeChangeMetadata } from '../utils/change-metadata.js';
+import { DraftPullRequestSchema, type DraftPullRequest } from './change-metadata/index.js';
 
 /** Version of the supported direct-action catalogue contract. */
 export const DIRECT_ACTION_CATALOG_VERSION = 1 as const;
@@ -114,6 +116,15 @@ export interface DirectActionIntent {
 export type DirectActionIntentValidation =
   | { accepted: true; descriptor: DirectActionDescriptor; diagnostics: [] }
   | { accepted: false; descriptor: null; diagnostics: DirectActionDiagnostic[] };
+
+export interface RecordDirectActionResultOptions {
+  root?: string;
+  globalDataDir?: string;
+}
+
+export type DirectActionResultRecording =
+  | { accepted: true; snapshot: LifecycleSnapshot; draftPullRequest: DraftPullRequest; diagnostics: [] }
+  | { accepted: false; snapshot: null; draftPullRequest: null; diagnostics: DirectActionDiagnostic[] };
 
 interface ChangeFacts {
   snapshot: LifecycleSnapshot;
@@ -513,4 +524,131 @@ export async function validateDirectActionIntent(
   if (descriptor.dispatch.kind !== intent.dispatchKind) return rejected('direct_action_dispatch_kind_mismatch', intent, 'Intent dispatch kind does not match the canonical action.', 'Preserve the dispatch kind from the current catalog descriptor.');
   if (descriptor.availability === 'blocked') return { accepted: false, descriptor: null, diagnostics: [diagnostic(descriptor.blocker!.code, catalog.target.storeId, catalog.target.workItemId, descriptor.blocker!.message, descriptor.blocker!.remediation, descriptor.actionId)] };
   return { accepted: true, descriptor, diagnostics: [] };
+}
+
+/**
+ * Record the confirmed terminal result of the autonomous draft-PR capability.
+ * The boundary accepts only the exact canonical action identity and a
+ * schema-valid GitHub draft descriptor; it performs no remote operation.
+ */
+export async function recordDirectActionResult(
+  intentValue: unknown,
+  resultValue: unknown,
+  options: RecordDirectActionResultOptions = {}
+): Promise<DirectActionResultRecording> {
+  const parsed = parseIntent(intentValue);
+  if ('rejection' in parsed) {
+    return { accepted: false, snapshot: null, draftPullRequest: null, diagnostics: parsed.rejection.diagnostics };
+  }
+  const intent = parsed.intent;
+  if (
+    intent.version !== DIRECT_ACTION_CATALOG_VERSION ||
+    intent.actionId !== 'open-draft-pr' ||
+    intent.dispatchKind !== 'capability'
+  ) {
+    return {
+      accepted: false,
+      snapshot: null,
+      draftPullRequest: null,
+      diagnostics: [diagnostic(
+        'direct_action_result_kind',
+        intent.storeId,
+        intent.workItemId,
+        'Only the canonical open-draft-pr capability may record a draft pull request.',
+        'Use the exact current draft-PR action intent.',
+        intent.actionId
+      )],
+    };
+  }
+
+  const parsedResult = DraftPullRequestSchema.safeParse(resultValue);
+  if (!parsedResult.success) {
+    return {
+      accepted: false,
+      snapshot: null,
+      draftPullRequest: null,
+      diagnostics: [diagnostic(
+        'direct_action_result_malformed',
+        intent.storeId,
+        intent.workItemId,
+        'The draft pull-request result is malformed.',
+        'Provide exact number, URL, repository, base, head, headSha, and runId fields.',
+        intent.actionId
+      )],
+    };
+  }
+
+  const catalog = await getDirectActions({
+    ...options,
+    workItemId: intent.workItemId,
+    ...(intent.storeId ? { storeId: intent.storeId } : {}),
+  });
+  if (!catalog.target || catalog.target.storeId !== intent.storeId || catalog.target.workItemId !== intent.workItemId) {
+    return {
+      accepted: false,
+      snapshot: null,
+      draftPullRequest: null,
+      diagnostics: catalog.diagnostics.length > 0
+        ? catalog.diagnostics
+        : [diagnostic('direct_action_identity_mismatch', intent.storeId, intent.workItemId, 'Result identity no longer matches the canonical target.', 'Refresh canonical state before recording the result.', intent.actionId)],
+    };
+  }
+  const descriptor = catalog.actions.find((entry) => entry.actionId === 'open-draft-pr');
+  const dispatch = descriptor?.dispatch;
+  if (
+    dispatch?.kind !== 'capability' ||
+    dispatch.capabilityId !== 'specbase.draft-pr-delivery' ||
+    dispatch.arguments.changeId !== intent.workItemId ||
+    (intent.storeId === null ? 'storeId' in dispatch.arguments : dispatch.arguments.storeId !== intent.storeId)
+  ) {
+    return {
+      accepted: false,
+      snapshot: null,
+      draftPullRequest: null,
+      diagnostics: [diagnostic('direct_action_result_route_mismatch', intent.storeId, intent.workItemId, 'Canonical draft-PR route no longer matches this result.', 'Refresh and resolve the identity conflict before recording.', intent.actionId)],
+    };
+  }
+
+  const root = await resolveRoot({
+    ...options,
+    workItemId: intent.workItemId,
+    ...(intent.storeId ? { storeId: intent.storeId } : {}),
+  });
+  const resolved = resolveLifecycleSnapshot({ root: root.root, id: intent.workItemId });
+  if (!resolved.context || !resolved.snapshot || resolved.snapshot.position !== 'active') {
+    return {
+      accepted: false,
+      snapshot: null,
+      draftPullRequest: null,
+      diagnostics: [diagnostic('direct_action_result_target_unresolved', intent.storeId, intent.workItemId, 'The active change could not be resolved for result recording.', 'Restore the active change and retry recording.', intent.actionId)],
+    };
+  }
+  const metadata = readChangeMetadata(resolved.context.changeDir, root.root);
+  if (!metadata) {
+    return {
+      accepted: false,
+      snapshot: null,
+      draftPullRequest: null,
+      diagnostics: [diagnostic('direct_action_result_metadata_missing', intent.storeId, intent.workItemId, 'The change metadata required for canonical recording is missing.', 'Restore .openspec.yaml and retry.', intent.actionId)],
+    };
+  }
+  writeChangeMetadata(
+    resolved.context.changeDir,
+    {
+      ...metadata,
+      lastReviewedAt: metadata.lastReviewedAt ?? new Date().toISOString(),
+      draftPullRequest: parsedResult.data,
+    },
+    root.root
+  );
+  const refreshed = resolveLifecycleSnapshot({ root: root.root, id: intent.workItemId });
+  if (!refreshed.snapshot || refreshed.snapshot.lifecycle !== 'reviewing' || !refreshed.snapshot.draftPullRequest) {
+    return {
+      accepted: false,
+      snapshot: null,
+      draftPullRequest: null,
+      diagnostics: [diagnostic('direct_action_result_observation_failed', intent.storeId, intent.workItemId, 'Canonical state did not project the recorded draft into Reviewing.', 'Inspect change metadata and refresh the board.', intent.actionId)],
+    };
+  }
+  return { accepted: true, snapshot: refreshed.snapshot, draftPullRequest: parsedResult.data, diagnostics: [] };
 }

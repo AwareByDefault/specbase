@@ -1,3 +1,9 @@
+## Draft-result API follow-up — 2026-08-21
+
+- Added `recordDirectActionResult()` as the canonical no-remote mutation boundary for an exact `open-draft-pr` intent and typed confirmed GitHub draft descriptor.
+- Extended change metadata and lifecycle/board snapshots with the confirmed draft identity; Reviewing remains derived from `lastReviewedAt` plus completed tasks.
+- `pnpm run build` passed and `pnpm exec vitest run test/commands/work-item-lifecycle.test.ts` passed 20 tests, including valid recording and malformed-result rejection.
+
 ## Outcome
 
 A consumer can request the valid direct actions for an immutable work item and validate one exact action intent using stable availability, blocker, remediation, and dispatch-context values.

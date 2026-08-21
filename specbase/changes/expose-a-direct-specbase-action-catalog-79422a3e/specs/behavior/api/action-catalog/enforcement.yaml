@@ -4,6 +4,7 @@ bindings:
     covers:
       - list-direct-actions
       - validate-direct-action-intent
+      - record-draft-pr-result
     source: test/commands/work-item-lifecycle.test.ts
   direct-action-package-journey:
     type: test

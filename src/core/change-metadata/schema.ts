@@ -20,6 +20,18 @@ export const InitiativeLinkSchema = z.object({
 
 export type InitiativeLink = z.infer<typeof InitiativeLinkSchema>;
 
+export const DraftPullRequestSchema = z.object({
+  number: z.number().int().positive(),
+  url: z.string().url(),
+  repository: z.string().min(1),
+  base: z.string().min(1),
+  head: z.string().min(1),
+  headSha: z.string().regex(/^[0-9a-f]{40}$/),
+  runId: z.string().min(1),
+}).strict();
+
+export type DraftPullRequest = z.infer<typeof DraftPullRequestSchema>;
+
 // Per-change metadata schema. The schema field is validated against available
 // workflow schemas when metadata is read or written.
 export const ChangeMetadataSchema = z.object({
@@ -44,6 +56,9 @@ export const ChangeMetadataSchema = z.object({
   /// Presence derives the `reviewing` lifecycle state; absent means not yet reviewed.
   /// It records that the panel RAN, never that it approved (the panel never gates).
   lastReviewedAt: z.string().datetime({ offset: true }).optional(),
+  /// Confirmed draft pull request recorded through the canonical direct-action
+  /// result boundary. The URL is presentation data; lifecycle remains derived.
+  draftPullRequest: DraftPullRequestSchema.optional(),
   /// Originating idea id (`<slug>-<short-uuid>`) when a change grew from an idea.
   /// Used by archive to carry the idea's preserved thinking into the archived change.
   ideaId: z

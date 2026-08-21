@@ -12,6 +12,7 @@ import {
   DIRECT_ACTION_CATALOG_VERSION,
   getDirectActions,
   getDirectActionsWithReadProbe,
+  recordDirectActionResult,
   validateDirectActionIntent,
 } from '../../src/core/direct-actions.js';
 
@@ -284,6 +285,46 @@ describe('direct action catalog', () => {
     expect(completed.actions.find((action) => action.actionId === 'review')).toMatchObject({
       availability: 'blocked',
       blocker: { code: 'direct_action_strict_validation' },
+    });
+  });
+
+  it('records one canonical draft result and projects Reviewing with its link', async () => {
+    const root = lifecycleFixture('active', 'change-directory', 'change-id');
+    writeFileSync(path.join(root, 'specbase', 'changes', 'change-directory', 'tasks.md'), '- [x] verified\n- [x] complete\n', 'utf8');
+    const intent = {
+      version: DIRECT_ACTION_CATALOG_VERSION,
+      storeId: null,
+      workItemId: 'change-id',
+      actionId: 'open-draft-pr' as const,
+      dispatchKind: 'capability' as const,
+    };
+    const draft = {
+      number: 42,
+      url: 'https://github.com/acme/widget/pull/42',
+      repository: 'acme/widget',
+      base: 'main',
+      head: 'feature/change-id',
+      headSha: 'a'.repeat(40),
+      runId: '2026-08-21_17-00-00-abcd',
+    };
+    const recorded = await recordDirectActionResult(intent, draft, { root });
+    expect(recorded.diagnostics).toEqual([]);
+    expect(recorded).toMatchObject({
+      accepted: true,
+      snapshot: {
+        id: 'change-id',
+        lifecycle: 'reviewing',
+        draftPullRequest: draft,
+      },
+      draftPullRequest: draft,
+    });
+    expect(resolveLifecycleSnapshot({ root, id: 'change-id' }).snapshot).toMatchObject({
+      lifecycle: 'reviewing',
+      draftPullRequest: draft,
+    });
+    await expect(recordDirectActionResult(intent, { ...draft, headSha: 'bad' }, { root })).resolves.toMatchObject({
+      accepted: false,
+      diagnostics: [{ code: 'direct_action_result_malformed' }],
     });
   });
 

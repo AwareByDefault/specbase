@@ -5,8 +5,9 @@
 - [x] 1.3 Implement pure deterministic policy for `explore`, `propose-feature`, `explore-enforcement`, `propose-enforcement`, `apply`, `review`, and `archive`, including one highest-priority blocker per known action and stack predecessor ordering.
 - [x] 1.4 Implement catalog lookup by immutable work-item ID with stable store/target identity, deterministic descriptor and diagnostic ordering, no timestamps or absolute paths, and no board-card or display-label authority.
 - [x] 1.5 Implement exact-intent validation that re-resolves fresh state, rebuilds the canonical catalog, requires exact store/target/version/action/dispatch-kind equality, and returns only the current canonical descriptor or stable rejection diagnostics.
-- [x] 1.6 Keep command, Git, Pi skill, RPIV workflow, queue, approval, mutation, authorization, confirmation, and result handling outside the boundary; reject arbitrary executable fields before an external adapter can run.
+- [x] 1.6 Keep command, Git, Pi skill, RPIV workflow, queue, approval, remote mutation, and confirmation outside the boundary; reject arbitrary executable fields before an external adapter can run.
 - [x] 1.7 Build the package and inspect root exports and generated declarations for clean installed-consumer use without CLI, renderer, Pi, RPIV, Git, or shell dependencies.
+- [x] 1.8 Add a canonical result-recording boundary that accepts only the exact draft-PR action identity and confirmed typed descriptor, preserves metadata, and projects Reviewing with the link without performing remote work.
 
 ## 2. Deliver policy and execution-boundary evidence
 
@@ -16,6 +17,7 @@
 - [x] 2.4 Confirm all architecture and unit-policy bindings contain exactly `type`, requirement-level `covers`, and `source` and resolve to `test/commands/work-item-lifecycle.test.ts`.
 - [x] 2.5 Execute `pnpm exec vitest run test/commands/work-item-lifecycle.test.ts` through the native Vitest harness.
 - [x] 2.6 Record the command, policy matrix, pass/fail result, and any limitation or remediation in the change `notes.md` evidence log.
+- [x] 2.7 Prove valid draft-result recording, malformed rejection, metadata preservation, and lifecycle/link projection in `test/commands/work-item-lifecycle.test.ts`.
 
 ## 3. Deliver installed-package diagnostics evidence
 

@@ -14,6 +14,7 @@ import type { PlanningHome } from './planning-home.js';
 import { ChangeMetadataError, readChangeMetadata } from '../utils/change-metadata.js';
 import { FileSystemUtils } from '../utils/file-system.js';
 import { countTaskCheckboxes } from './work-item-lifecycle.js';
+import type { DraftPullRequest } from './change-metadata/index.js';
 
 /** Version of the stable, serializable lifecycle snapshot contract. */
 export const LIFECYCLE_SNAPSHOT_VERSION = 1 as const;
@@ -33,6 +34,7 @@ export interface LifecycleSnapshot {
   lifecycle: NonNullable<ChangeStatus['lifecycle']>;
   artifacts: { complete: number; total: number };
   tasks: { complete: number; total: number };
+  draftPullRequest?: DraftPullRequest;
 }
 
 export interface LifecycleSnapshotResult {
@@ -62,6 +64,7 @@ interface Candidate {
   directoryName: string;
   id: string;
   position: LifecycleSnapshotPosition;
+  draftPullRequest?: DraftPullRequest;
 }
 
 export interface ResolvedLifecycleSnapshot extends LifecycleSnapshotResult {
@@ -112,7 +115,13 @@ function findCandidates(root: string, id: string, allowDirectoryFallback: boolea
         continue;
       }
       if (metadata?.id === id || (!metadata?.id && fallbackId === id) || (allowDirectoryFallback && fallbackId === id)) {
-        candidates.push({ changeDir, directoryName, id: metadata?.id ?? fallbackId, position: location.position });
+        candidates.push({
+          changeDir,
+          directoryName,
+          id: metadata?.id ?? fallbackId,
+          position: location.position,
+          ...(metadata?.draftPullRequest ? { draftPullRequest: metadata.draftPullRequest } : {}),
+        });
       }
     }
   }
@@ -213,6 +222,7 @@ export function resolveLifecycleSnapshot(
       lifecycle: status.lifecycle!,
       artifacts: { complete: status.artifacts.filter((artifact) => artifact.status === 'done').length, total: status.artifacts.length },
       tasks,
+      ...(candidate.draftPullRequest ? { draftPullRequest: candidate.draftPullRequest } : {}),
     },
     diagnostics: [],
     context,

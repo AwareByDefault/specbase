@@ -45,6 +45,8 @@ export interface ChangeCard {
   lifecycle: Exclude<LifecycleState, 'archived'>;
   /** Lifecycle-resolver position; additive for renderer compatibility. */
   position?: 'active';
+  /** Canonically recorded draft PR, present on Reviewing cards after remote delivery. */
+  draftPullRequest?: { number: number; url: string; repository: string; base: string; head: string; headSha: string; runId: string };
   /** Lifecycle-resolver diagnostics; additive for renderer compatibility. */
   diagnostics?: KanbanDiagnostic[];
 }
@@ -234,6 +236,7 @@ async function collectChanges(root: string, store: string, ports: ViewModelPorts
         tasks: { completed: resolved.snapshot.tasks.complete, total: resolved.snapshot.tasks.total },
         lifecycle: resolved.snapshot.lifecycle,
         position: resolved.snapshot.position,
+        ...(resolved.snapshot.draftPullRequest ? { draftPullRequest: resolved.snapshot.draftPullRequest } : {}),
         diagnostics: cardDiagnostics,
       });
     } catch (error) {
