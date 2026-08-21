@@ -1,0 +1,9 @@
+bindings:
+  lifecycle-board-design-review:
+    type: review
+    covers:
+      - board-hierarchy
+      - focus-and-controls
+      - status-language
+      - narrow-layout
+    source: design
