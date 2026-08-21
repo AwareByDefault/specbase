@@ -322,6 +322,11 @@ describe('direct action catalog', () => {
       lifecycle: 'reviewing',
       draftPullRequest: draft,
     });
+    await expect(recordDirectActionResult(intent, draft, { root })).resolves.toMatchObject({ accepted: true });
+    await expect(recordDirectActionResult(intent, { ...draft, number: 43, url: 'https://github.com/acme/widget/pull/43' }, { root })).resolves.toMatchObject({
+      accepted: false,
+      diagnostics: [{ code: 'direct_action_result_conflict' }],
+    });
     await expect(recordDirectActionResult(intent, { ...draft, headSha: 'bad' }, { root })).resolves.toMatchObject({
       accepted: false,
       diagnostics: [{ code: 'direct_action_result_malformed' }],

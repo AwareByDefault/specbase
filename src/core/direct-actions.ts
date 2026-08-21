@@ -632,6 +632,24 @@ export async function recordDirectActionResult(
       diagnostics: [diagnostic('direct_action_result_metadata_missing', intent.storeId, intent.workItemId, 'The change metadata required for canonical recording is missing.', 'Restore .openspec.yaml and retry.', intent.actionId)],
     };
   }
+  if (
+    metadata.draftPullRequest &&
+    JSON.stringify(metadata.draftPullRequest) !== JSON.stringify(parsedResult.data)
+  ) {
+    return {
+      accepted: false,
+      snapshot: null,
+      draftPullRequest: null,
+      diagnostics: [diagnostic(
+        'direct_action_result_conflict',
+        intent.storeId,
+        intent.workItemId,
+        'A different draft pull-request result is already recorded for this change.',
+        'Resolve the conflicting canonical draft descriptor before retrying.',
+        intent.actionId
+      )],
+    };
+  }
   writeChangeMetadata(
     resolved.context.changeDir,
     {
