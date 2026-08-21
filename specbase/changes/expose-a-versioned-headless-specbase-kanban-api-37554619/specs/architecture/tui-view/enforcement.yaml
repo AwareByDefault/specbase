@@ -1,0 +1,5 @@
+bindings:
+  kanban-lifecycle-composition-tests:
+    type: test
+    covers: pure-board-model
+    source: test/core/view/model.test.ts

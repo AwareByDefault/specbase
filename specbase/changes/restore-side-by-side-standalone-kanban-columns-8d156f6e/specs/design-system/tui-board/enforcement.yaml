@@ -1,0 +1,9 @@
+bindings:
+  tui-wide-column-presentation-tests:
+    type: test
+    covers: wide-column-layout
+    source: test/tui/view-board.test.ts
+  tui-wide-column-design-review:
+    type: review
+    covers: wide-column-layout
+    source: design

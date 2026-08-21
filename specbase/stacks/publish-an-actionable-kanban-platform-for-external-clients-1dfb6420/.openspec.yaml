@@ -1,0 +1,8 @@
+id: publish-an-actionable-kanban-platform-for-external-clients-1dfb6420
+summary: Publish an actionable kanban platform for external clients
+created: 2026-08-21
+members:
+  - expose-stable-specbase-lifecycle-snapshots-e1911fd5
+  - expose-a-versioned-headless-specbase-kanban-api-37554619
+  - restore-side-by-side-standalone-kanban-columns-8d156f6e
+  - expose-a-direct-specbase-action-catalog-79422a3e

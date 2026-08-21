@@ -1,0 +1,11 @@
+bindings:
+  lifecycle-snapshot-api-tests:
+    type: test
+    covers:
+      - resolve-lifecycle-snapshot
+      - lifecycle-resolution-diagnostics
+    source: test/cli-e2e/store-lifecycle.test.ts
+  lifecycle-status-parity-tests:
+    type: test
+    covers: status-snapshot-parity
+    source: test/cli-e2e/store-lifecycle.test.ts

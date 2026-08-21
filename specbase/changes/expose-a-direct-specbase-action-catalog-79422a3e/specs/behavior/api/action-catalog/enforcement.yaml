@@ -1,0 +1,14 @@
+bindings:
+  direct-action-policy-tests:
+    type: test
+    covers:
+      - list-direct-actions
+      - validate-direct-action-intent
+    source: test/commands/work-item-lifecycle.test.ts
+  direct-action-package-journey:
+    type: test
+    covers:
+      - list-direct-actions
+      - validate-direct-action-intent
+      - action-catalog-diagnostics
+    source: test/cli-e2e/store-lifecycle.test.ts
