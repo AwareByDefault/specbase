@@ -7,6 +7,7 @@ import {
   type ChangeContext,
   type ChangeStatus,
 } from './artifact-graph/instruction-loader.js';
+import { resolveArtifactOutputs } from './artifact-graph/outputs.js';
 import { resolveSchema } from './artifact-graph/resolver.js';
 import { resolvePlanningDirName } from './planning-dir.js';
 import type { PlanningHome } from './planning-home.js';
@@ -179,11 +180,29 @@ export function resolveLifecycleSnapshot(
     planningHome,
   });
   const status = formatChangeStatus(context, options.storeId ? { storeId: options.storeId } : {});
-  const tracksFile = resolveSchema(context.schemaName, root).apply?.tracks;
-  const tasksPath = tracksFile ? path.join(candidate.changeDir, tracksFile) : null;
-  const taskCounts = tasksPath && fs.existsSync(tasksPath)
-    ? countTaskCheckboxes(fs.readFileSync(tasksPath, 'utf8'))
-    : { checked: 0, total: 0 };
+  const resolvedSchema = resolveSchema(context.schemaName, root);
+  const tracksFile = resolvedSchema.apply?.tracks;
+  const trackedArtifact = tracksFile
+    ? resolvedSchema.artifacts.find((artifact) => artifact.generates === tracksFile)
+    : resolvedSchema.artifacts.find((artifact) => artifact.id === 'tasks');
+  const taskFiles = trackedArtifact
+    ? resolveArtifactOutputs(candidate.changeDir, trackedArtifact.generates)
+    : tracksFile
+      ? resolveArtifactOutputs(candidate.changeDir, tracksFile)
+      : [];
+  const fallbackTasksPath = path.join(candidate.changeDir, 'tasks.md');
+  const resolvedTaskFiles = taskFiles.length > 0
+    ? taskFiles
+    : fs.existsSync(fallbackTasksPath)
+      ? [fallbackTasksPath]
+      : [];
+  const taskCounts = resolvedTaskFiles.reduce(
+    (total, tasksPath) => {
+      const counts = countTaskCheckboxes(fs.readFileSync(tasksPath, 'utf8'));
+      return { checked: total.checked + counts.checked, total: total.total + counts.total };
+    },
+    { checked: 0, total: 0 }
+  );
   const tasks = { complete: taskCounts.checked, total: taskCounts.total };
 
   return {

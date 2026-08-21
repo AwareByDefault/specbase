@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { KANBAN_BOARD_VERSION, validateKanbanBoardSnapshot } from '../../src/index.js';
 import { ViewCommand } from '../../src/core/view.js';
 import { decodeViewModelFrame, bunVersionSupported } from '../../src/core/view/protocol.js';
 import { discoverBun } from '../../src/core/view/launcher.js';
@@ -30,6 +31,53 @@ async function snapshot(dir: string): Promise<string[]> {
 }
 
 describe('view command modes and protocol', () => {
+  it('validates unknown public kanban values without mutating a supported snapshot', () => {
+    const before = JSON.stringify(model);
+    const accepted = validateKanbanBoardSnapshot(model, KANBAN_BOARD_VERSION);
+    expect(accepted).toEqual({ valid: true, snapshot: model, diagnostics: [] });
+    expect(accepted.valid && accepted.snapshot).toBe(model);
+
+    const unsupported = validateKanbanBoardSnapshot(model, KANBAN_BOARD_VERSION + 1);
+    expect(unsupported).toMatchObject({
+      valid: false,
+      snapshot: null,
+      diagnostics: [{ code: 'kanban_board_unsupported_version', message: expect.stringContaining(String(KANBAN_BOARD_VERSION + 1)), remediation: expect.stringContaining(String(KANBAN_BOARD_VERSION)) }],
+    });
+    const malformed = { ...model, lanes: { ...model.lanes, proposed: [{ kind: 'change', id: 'broken' }] } };
+    const first = validateKanbanBoardSnapshot(malformed, KANBAN_BOARD_VERSION);
+    const second = validateKanbanBoardSnapshot(malformed, KANBAN_BOARD_VERSION);
+    expect(first).toEqual(second);
+    expect(first).toMatchObject({
+      valid: false,
+      snapshot: null,
+      diagnostics: [{ code: 'kanban_board_invalid_shape', message: expect.stringContaining('received version'), remediation: expect.any(String) }],
+    });
+
+    const archiveCard = {
+      kind: 'archive' as const,
+      id: 'archive-1',
+      title: 'Archived',
+      archived: '2025-01-01',
+      tasks: { completed: 0, total: 0 },
+      position: 'active',
+      lifecycle: 'implementing',
+      diagnostics: 'not-an-array',
+    };
+    const invalidOptionalFields = {
+      ...model,
+      summary: { ...model.summary, lanes: { ...model.summary.lanes, archived: 1 } },
+      lanes: { ...model.lanes, archived: [archiveCard] },
+    };
+    expect(validateKanbanBoardSnapshot(invalidOptionalFields, KANBAN_BOARD_VERSION).valid).toBe(false);
+
+    const inconsistentSummary = {
+      ...model,
+      summary: { ...model.summary, openIdeas: 0 },
+    };
+    expect(validateKanbanBoardSnapshot(inconsistentSummary, KANBAN_BOARD_VERSION).valid).toBe(false);
+    expect(JSON.stringify(model)).toBe(before);
+  });
+
   it('automatically selects plain for either non-TTY and never launches', async () => {
     for (const [stdinTTY, stdoutTTY] of [[false, true], [true, false]]) {
       let output = '';

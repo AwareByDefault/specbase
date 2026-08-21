@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { deriveViewBoard } from '../../../src/core/view/model.js';
+import {
+  KANBAN_BOARD_VERSION,
+  deriveKanbanBoard,
+  deriveViewBoard,
+  type LifecycleSnapshotResult,
+} from '../../../src/core/view/model.js';
 import { renderViewJson, renderViewPlain } from '../../../src/core/view/projections.js';
 
 const roots: string[] = [];
@@ -40,8 +45,23 @@ describe('versioned lifecycle board model', () => {
     await write(root, 'specbase/specs/behavior/heavy/spec.md', '---\nid: behavior.heavy\n---\n### Requirement: One\n**ID:** one\nText.\n### Requirement: Two\n**ID:** two\nText.\n');
     await write(root, 'specbase/specs/behavior/light/spec.md', '---\nid: behavior.light\n---\n### Requirement: One\n**ID:** one\nText.\n');
 
-    const model = await deriveViewBoard(root);
-    expect(model.version).toBe(3);
+    const lifecycleSnapshot = (_root: string, id: string): LifecycleSnapshotResult => ({
+      version: 1,
+      snapshot: {
+        id,
+        position: id.startsWith('archive-') ? 'archived' : 'active',
+        lifecycle: id.startsWith('archive-') ? 'archived' : 'proposed',
+        artifacts: { complete: id === 'change-a' ? 0 : 1, total: 3 },
+        tasks: id === 'change-a' ? { complete: 0, total: 0 } : id === 'change-partial' || id === 'change-z' ? { complete: 1, total: id === 'change-partial' ? 3 : 2 } : { complete: 1, total: 1 },
+      },
+      diagnostics: [],
+    });
+    const model = await deriveViewBoard(root, {
+      readDir: (dir) => fs.readdir(dir, { withFileTypes: true }),
+      readFile: (file) => fs.readFile(file, 'utf8'),
+      lifecycleSnapshot,
+    });
+    expect(model.version).toBe(KANBAN_BOARD_VERSION);
     expect(model.project.name).toBe(path.basename(root));
     expect(model.lanes.ideas.map((card) => card.id)).toEqual(['idea-a', 'idea-b']);
     // Every fixture change uses a missing schema, so each resolves to a derived
@@ -69,6 +89,46 @@ describe('versioned lifecycle board model', () => {
     const zeroTask = model.lanes.proposed.filter((c) => c.tasks.total === 0);
     expect(zeroTask.length).toBe(1);
     expect(zeroTask[0].id).toBe('change-a');
+  });
+
+  it('composes active and archived cards from the lifecycle resolver without duplicating lifecycle facts', async () => {
+    const root = await project();
+    await write(root, 'specbase/changes/active/.openspec.yaml', 'id: immutable-active\ngoal: Active\ncreated: 2025-01-01\n');
+    await write(root, 'specbase/changes/archive/2025-02-03-archive/.openspec.yaml', 'id: immutable-archive\ngoal: Archive\n');
+    const calls: string[] = [];
+    const model = await deriveViewBoard(root, {
+      readDir: (dir) => fs.readdir(dir, { withFileTypes: true }),
+      readFile: (file) => fs.readFile(file, 'utf8'),
+      lifecycleSnapshot: (_root, id) => {
+        calls.push(id);
+        const archived = id === 'immutable-archive';
+        return {
+          version: 1,
+          snapshot: {
+            id,
+            position: archived ? 'archived' : 'active',
+            lifecycle: archived ? 'archived' : 'implementing',
+            artifacts: { complete: archived ? 4 : 2, total: 4 },
+            tasks: { complete: archived ? 5 : 1, total: 5 },
+          },
+          diagnostics: archived ? [{ code: 'lifecycle_snapshot_unresolved', id, message: 'Archived diagnostic', remediation: 'Restore it.' }] : [],
+        };
+      },
+    });
+    expect(calls.sort()).toEqual(['immutable-active', 'immutable-archive']);
+    expect(model.lanes.implementing[0]).toMatchObject({ id: 'immutable-active', position: 'active', lifecycle: 'implementing', artifacts: { completed: 2, total: 4 }, tasks: { completed: 1, total: 5 } });
+    expect(model.lanes.archived[0]).toMatchObject({ id: 'immutable-archive', position: 'archived', lifecycle: 'archived', artifacts: { completed: 4, total: 4 }, tasks: { completed: 5, total: 5 } });
+    expect(model.lanes.archived[0].diagnostics).toEqual([expect.objectContaining({ code: 'lifecycle_snapshot_unresolved', remediation: 'Restore it.' })]);
+    expect(model.diagnostics).toEqual([expect.objectContaining({ code: 'lifecycle_snapshot_unresolved', source: path.join('specbase', 'changes', 'archive', '2025-02-03-archive') })]);
+  });
+
+  it('derives the public headless snapshot without terminal imports', async () => {
+    const root = await project();
+    await write(root, 'specbase/changes/active/.openspec.yaml', 'schema: spec-driven\nid: public-active\n');
+    await write(root, 'specbase/changes/active/tasks.md', '- [x] done\n');
+    const board = await deriveKanbanBoard(root);
+    expect(board.version).toBe(KANBAN_BOARD_VERSION);
+    expect(board.lanes.implementing[0]).toMatchObject({ id: 'public-active', position: 'active' });
   });
 
   it('omits unreadable lifecycle entries, retains readable unparseable specs, and reports diagnostics', async () => {
@@ -126,7 +186,11 @@ describe('versioned lifecycle board model', () => {
     const model = await deriveViewBoard(root, {
       readDir: (dir) => fs.readdir(dir, { withFileTypes: true }),
       readFile: (file) => fs.readFile(file, 'utf8'),
-      lifecycleState: () => 'ready-to-apply',
+      lifecycleSnapshot: (_root, id) => ({
+        version: 1,
+        snapshot: { id, position: 'active', lifecycle: 'ready-to-apply', artifacts: { complete: 3, total: 3 }, tasks: { complete: 0, total: 0 } },
+        diagnostics: [],
+      }),
     });
     expect(model.lanes['ready-to-apply'].map((card) => card.id)).toEqual(['injected-change']);
     expect(model.lanes.proposed).toEqual([]);

@@ -27,6 +27,28 @@ export {
   type LifecycleSnapshotResult,
 } from './lifecycle-snapshot.js';
 export {
+  KANBAN_BOARD_VERSION,
+  deriveKanbanBoard,
+  deriveKanbanSnapshot,
+  validateKanbanBoardSnapshot,
+  validateKanbanSnapshot,
+  isKanbanBoardSnapshot,
+  type ArchiveCard,
+  type ChangeCard,
+  type IdeaCard,
+  type KanbanBoardSnapshot,
+  type KanbanBoardValidationResult,
+  type KanbanSnapshot,
+  type KanbanValidationResult,
+  type KanbanCard,
+  type KanbanColumn,
+  type KanbanDiagnostic,
+  type KanbanSummary,
+  type KanbanValidationDiagnostic,
+  type ProgressCount,
+  type SpecCard,
+} from './view/model.js';
+export {
   EnforcementTypeSchema,
   EnforcementStrengthSchema,
   EnforcementSourceKindSchema,

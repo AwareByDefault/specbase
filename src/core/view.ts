@@ -1,5 +1,5 @@
-import type { ViewBoardModel } from './view/model.js';
-import { deriveViewBoard } from './view/model.js';
+import type { KanbanBoardSnapshot, ViewBoardModel } from './view/model.js';
+import { deriveKanbanBoard, deriveViewBoard } from './view/model.js';
 import { launchInteractiveView, type ViewLauncherAdapters } from './view/launcher.js';
 import { renderViewJson, renderViewPlain } from './view/projections.js';
 
@@ -10,7 +10,7 @@ export interface ViewCommandOptions {
   stdoutTTY?: boolean;
   writeOut?: (text: string) => void;
   writeError?: (text: string) => void;
-  derive?: (root: string) => Promise<ViewBoardModel>;
+  derive?: (root: string) => Promise<KanbanBoardSnapshot>;
   launcher?: (model: ViewBoardModel, adapters?: Partial<ViewLauncherAdapters>) => Promise<{ code: number; error?: string }>;
   launcherAdapters?: Partial<ViewLauncherAdapters>;
 }
@@ -23,7 +23,7 @@ export class ViewCommand {
     const stdoutTTY = options.stdoutTTY ?? Boolean(process.stdout.isTTY);
     const interactive = !options.plain && !options.json && stdinTTY && stdoutTTY;
     if (interactive) writeError('Loading Specbase lifecycle board…\n');
-    const model = await (options.derive ?? deriveViewBoard)(targetPath);
+    const model = await (options.derive ?? deriveKanbanBoard)(targetPath);
 
     // Machine output always wins, including when --plain is also present.
     if (options.json) {
@@ -42,5 +42,5 @@ export class ViewCommand {
   }
 }
 
-export { deriveViewBoard, renderViewJson, renderViewPlain };
-export type { ViewBoardModel };
+export { deriveKanbanBoard, deriveViewBoard, renderViewJson, renderViewPlain };
+export type { KanbanBoardSnapshot, ViewBoardModel };

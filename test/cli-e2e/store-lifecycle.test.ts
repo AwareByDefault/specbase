@@ -121,6 +121,19 @@ async function writeLifecycleSnapshotFixture(root: string): Promise<void> {
   }
 }
 
+async function writeKanbanSnapshotFixture(root: string): Promise<void> {
+  await fs.mkdir(path.join(root, 'specbase', 'ideas', 'idea'), { recursive: true });
+  await fs.mkdir(path.join(root, 'specbase', 'changes', 'active'), { recursive: true });
+  await fs.mkdir(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived'), { recursive: true });
+  await fs.mkdir(path.join(root, 'specbase', 'specs', 'behavior', 'sample'), { recursive: true });
+  await fs.writeFile(path.join(root, 'specbase', 'ideas', 'idea', '.openspec.yaml'), 'id: idea-id\nsummary: A board idea\ncreated: 2025-01-01\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'active', '.openspec.yaml'), 'schema: spec-driven\nid: board-active\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'active', 'tasks.md'), '- [x] done\n- [ ] next\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived', '.openspec.yaml'), 'schema: spec-driven\nid: board-archived\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived', 'tasks.md'), '- [x] done\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'specs', 'behavior', 'sample', 'spec.md'), '---\nid: behavior.sample\n---\n### Requirement: Sample\n**ID:** sample\nText.\n', 'utf8');
+}
+
 async function writeCompletedChangeArtifacts(
   changeDir: string,
   capability: string
@@ -256,6 +269,37 @@ describe('standalone store lifecycle journey', () => {
     expect(archivedStatus.exitCode).toBe(0);
     const archivedStatusJson = JSON.parse(archivedStatus.stdout);
     expect(archivedStatusJson.lifecycleSnapshot).toEqual(archived.result);
+  }, JOURNEY_TIMEOUT_MS);
+
+  it('installed package derives and validates the same public kanban snapshot as view JSON', async () => {
+    const fixtureRoot = path.join(base, 'kanban-api-store');
+    const consumerRoot = path.join(base, 'kanban-api-consumer');
+    const packedRoot = path.join(base, 'kanban-packed');
+    await writeKanbanSnapshotFixture(fixtureRoot);
+    await fs.mkdir(consumerRoot, { recursive: true });
+    await fs.mkdir(packedRoot, { recursive: true });
+
+    await execFileAsync('pnpm', ['run', 'build'], { cwd: path.resolve('.') });
+    await execFileAsync('pnpm', ['pack', '--pack-destination', packedRoot], { cwd: path.resolve('.') });
+    const tarball = path.join(packedRoot, (await fs.readdir(packedRoot)).find((entry) => entry.endsWith('.tgz'))!);
+    await execFileAsync('npm', ['install', '--ignore-scripts', '--no-package-lock', tarball], { cwd: consumerRoot });
+
+    const script = [
+      "import { KANBAN_BOARD_VERSION, deriveKanbanBoard, validateKanbanBoardSnapshot } from '@awarebydefault/specbase';",
+      'const board = await deriveKanbanBoard(process.argv[1]);',
+      'const validation = validateKanbanBoardSnapshot(board, KANBAN_BOARD_VERSION);',
+      'console.log(JSON.stringify({ version: KANBAN_BOARD_VERSION, board, validation }));',
+    ].join(' ');
+    const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '--eval', script, fixtureRoot], { cwd: consumerRoot });
+    const packageResult = JSON.parse(stdout) as { version: number; board: unknown; validation: { valid: boolean; snapshot: unknown } };
+    expect(packageResult.version).toBe(3);
+    expect(packageResult.validation).toMatchObject({ valid: true, snapshot: packageResult.board });
+    expect(JSON.parse(JSON.stringify(packageResult.board))).toEqual(packageResult.board);
+
+    const cli = await runCLI(['view', '--json'], { cwd: fixtureRoot });
+    expect(cli.exitCode).toBe(0);
+    expect(JSON.parse(cli.stdout)).toEqual(packageResult.board);
+    await expect(fs.access(path.join(consumerRoot, 'node_modules', '@awarebydefault', 'specbase', 'dist', 'tui'))).rejects.toThrow();
   }, JOURNEY_TIMEOUT_MS);
 
   it('machine A: setup produces a committed, clonable repo', async () => {
