@@ -26,6 +26,11 @@ The direct action boundary SHALL return only canonical typed dispatch descriptor
 - **WHEN** the action boundary accepts an exact intent
 - **THEN** it returns the canonical dispatch descriptor without starting its target
 
+#### Scenario: External adapter binds a capability
+**ID:** `external-adapter-binds-capability`
+- **WHEN** an accepted descriptor names a closed external capability
+- **THEN** Specbase leaves capability installation, confirmation, workflow selection, credentials, Git operations, and execution to the external adapter
+
 #### Scenario: Arbitrary executable text is supplied
 **ID:** `arbitrary-execution-is-rejected`
 - **WHEN** an intent supplies a command, skill, workflow, or Git operation outside the canonical descriptor

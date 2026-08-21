@@ -5,9 +5,9 @@ External boards can show lifecycle truth but still have to guess which Specbase 
 ## What Changes
 
 - Expose a versioned package API that returns canonical available and blocked direct actions for one immutable work-item ID.
-- Give every action stable identity, availability, blocker, remediation, and typed dispatch-context values.
+- Give every action stable identity, availability, blocker, remediation, and typed dispatch-context values, including closed external capability IDs for locally delivering a change and opening a draft PR.
 - Expose an intent validator that re-resolves current store state and accepts or rejects one exact target/action intent with stable machine diagnostics.
-- Restrict dispatch context to the closed Specbase action vocabulary; never expose arbitrary shell, Git, skill, or workflow text.
+- Restrict dispatch context to exact Specbase skill routes or closed transport-neutral capability IDs; never expose arbitrary shell, Git, skill, or workflow text.
 - Stop at a validated dispatch descriptor: Specbase does not execute Pi skills or RPIV workflows, persist a delivery queue, or own approval leases.
 
 ## Planes

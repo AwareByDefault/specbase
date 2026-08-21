@@ -24,6 +24,12 @@ The supported package API SHALL return a versioned, deterministic action catalog
 - **THEN** the catalog marks that action blocked
 - **AND** it supplies a stable blocker code and concrete remediation
 
+#### Scenario: Autonomous action names a capability
+**ID:** `autonomous-action-names-capability`
+- **WHEN** current work-item state allows a separately owned autonomous delivery action
+- **THEN** the catalog returns a closed transport-neutral capability identity and structured target arguments
+- **AND** it does not expose an RPIV workflow name, command, or executable text
+
 ### Requirement: Consumers can validate one exact action intent
 **ID:** `validate-direct-action-intent`
 The supported package API SHALL validate one intent that exactly identifies the selected store, immutable work item, catalog version, action, and dispatch kind against freshly resolved Specbase state, returning either the canonical dispatch descriptor or stable rejection diagnostics.

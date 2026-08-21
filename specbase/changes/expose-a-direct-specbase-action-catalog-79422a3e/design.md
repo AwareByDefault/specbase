@@ -46,10 +46,12 @@ The initial registry uses stable action IDs for the existing direct workflow sta
 | `explore-enforcement` | `specbase-explore-enforce` | `{ changeId, storeId? }` | feature artifacts complete, enforcement pending |
 | `propose-enforcement` | `specbase-propose-enforce` | `{ changeId, storeId? }` | feature artifacts complete and apply gate incomplete |
 | `apply` | `specbase-apply-change` | `{ changeId, storeId? }` | apply requirements complete, or implementation remains in progress |
+| `deliver-local` | capability `specbase.local-delivery` | `{ changeId, storeId? }` | governed feature/enforcement planning complete and local implementation remains |
 | `review` | `specbase-review-panel` | `{ changeId, storeId? }` | implementation tasks complete and deterministic gates ready |
+| `open-draft-pr` | capability `specbase.draft-pr-delivery` | `{ changeId, storeId? }` | implementation tasks complete and deterministic gates ready for external remote preflight |
 | `archive` | `specbase-archive-change` | `{ changeId, storeId? }` | ordinary archive prerequisites and stack predecessor order satisfied |
 
-Canonical routes use the exact installed skill identity plus typed argument fields, never shell syntax or a pre-rendered `/skill:` message. The dispatch context carries `kind: "skill"`, the canonical skill identity, immutable target fields, and optional resolved store identity; the external Pi adapter alone renders those fields into its host invocation format. A future governed catalogue version may add `kind: "workflow"` for a separately owned autonomous route without weakening intent validation. This slice does not invent such a workflow or expose arbitrary workflow names.
+Canonical skill routes use the exact installed skill identity plus typed argument fields, never shell syntax or a pre-rendered `/skill:` message. Autonomous routes use `kind: "capability"` plus a closed, transport-neutral capability ID; Specbase validates only its domain prerequisites, while the separately installed adapter decides whether that capability is installed and owns workflow name, confirmation, Git, credentials, and execution. The catalog never exposes an arbitrary workflow name.
 
 Blocked known actions remain in the catalogue with one highest-priority blocker. Deterministic policy order chooses identity/store failures, stack predecessor gates, artifact/task gates, validation gates, and terminal-state blockers before lower-priority guidance.
 

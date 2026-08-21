@@ -49,6 +49,28 @@ export {
   type SpecCard,
 } from './view/model.js';
 export {
+  DIRECT_ACTION_CATALOG_VERSION,
+  getDirectActions,
+  validateDirectActionIntent,
+  type DirectActionAvailability,
+  type DirectActionBlocker,
+  type CapabilityDispatchContext,
+  type DirectActionCapabilityId,
+  type DirectActionCatalog,
+  type DirectActionDescriptor,
+  type DirectActionDiagnostic,
+  type DirectActionDispatchContext,
+  type DirectActionDispatchKind,
+  type DirectActionId,
+  type DirectActionIntent,
+  type DirectActionIntentValidation,
+  type DirectActionSkillId,
+  type DirectActionTarget,
+  type DirectActionTargetPosition,
+  type GetDirectActionsOptions,
+  type SkillDispatchContext,
+} from './direct-actions.js';
+export {
   EnforcementTypeSchema,
   EnforcementStrengthSchema,
   EnforcementSourceKindSchema,

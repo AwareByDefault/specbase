@@ -121,6 +121,21 @@ async function writeLifecycleSnapshotFixture(root: string): Promise<void> {
   }
 }
 
+async function writeDirectActionFixture(root: string): Promise<void> {
+  const idea = path.join(root, 'specbase', 'ideas', 'catalog-idea-directory');
+  const active = path.join(root, 'specbase', 'changes', 'catalog-active-directory');
+  const archived = path.join(root, 'specbase', 'changes', 'archive', '2025-01-02-catalog-archived-directory');
+  await fs.mkdir(idea, { recursive: true });
+  await fs.mkdir(active, { recursive: true });
+  await fs.mkdir(archived, { recursive: true });
+  await fs.writeFile(path.join(idea, '.openspec.yaml'), 'id: catalog-idea\nsummary: Catalog fixture\ncreated: 2025-01-01\n', 'utf8');
+  await fs.writeFile(path.join(idea, 'notes.md'), 'A fixture.\n', 'utf8');
+  await fs.writeFile(path.join(active, '.openspec.yaml'), 'schema: spec-driven\nid: catalog-active\n', 'utf8');
+  await fs.writeFile(path.join(active, 'tasks.md'), '- [x] done\n- [ ] pending\n', 'utf8');
+  await fs.writeFile(path.join(archived, '.openspec.yaml'), 'schema: spec-driven\nid: catalog-archived\n', 'utf8');
+  await fs.writeFile(path.join(archived, 'tasks.md'), '- [x] done\n', 'utf8');
+}
+
 async function writeKanbanSnapshotFixture(root: string): Promise<void> {
   await fs.mkdir(path.join(root, 'specbase', 'ideas', 'idea'), { recursive: true });
   await fs.mkdir(path.join(root, 'specbase', 'changes', 'active'), { recursive: true });
@@ -269,6 +284,75 @@ describe('standalone store lifecycle journey', () => {
     expect(archivedStatus.exitCode).toBe(0);
     const archivedStatusJson = JSON.parse(archivedStatus.stdout);
     expect(archivedStatusJson.lifecycleSnapshot).toEqual(archived.result);
+  }, JOURNEY_TIMEOUT_MS);
+
+  it('installed package exposes deterministic read-only direct actions and rejects tampered intent', async () => {
+    const fixtureRoot = path.join(base, 'direct-action-api-store');
+    const consumerRoot = path.join(base, 'direct-action-api-consumer');
+    const packedRoot = path.join(base, 'direct-action-packed');
+    await writeDirectActionFixture(fixtureRoot);
+    const before = await snapshotDirectory(fixtureRoot);
+    await fs.mkdir(consumerRoot, { recursive: true });
+    await fs.mkdir(packedRoot, { recursive: true });
+
+    await execFileAsync('pnpm', ['run', 'build'], { cwd: path.resolve('.') });
+    await execFileAsync('pnpm', ['pack', '--pack-destination', packedRoot], { cwd: path.resolve('.') });
+    const tarball = path.join(packedRoot, (await fs.readdir(packedRoot)).find((entry) => entry.endsWith('.tgz'))!);
+    await execFileAsync('npm', ['install', '--ignore-scripts', '--no-package-lock', tarball], { cwd: consumerRoot });
+
+    const script = [
+      "import { readFileSync, writeFileSync } from 'node:fs';",
+      "import { join } from 'node:path';",
+      "import { DIRECT_ACTION_CATALOG_VERSION, getDirectActions, validateDirectActionIntent } from '@awarebydefault/specbase';",
+      'const root = process.argv[1];',
+      "const catalog = await getDirectActions({ root, workItemId: 'catalog-idea' });",
+      "const active = await getDirectActions({ root, workItemId: 'catalog-active' });",
+      "const archived = await getDirectActions({ root, workItemId: 'catalog-archived' });",
+      "const accepted = await validateDirectActionIntent({ version: DIRECT_ACTION_CATALOG_VERSION, storeId: null, workItemId: 'catalog-idea', actionId: 'explore', dispatchKind: 'skill' }, { root });",
+      "const rejected = await validateDirectActionIntent({ version: DIRECT_ACTION_CATALOG_VERSION, storeId: null, workItemId: 'catalog-idea', actionId: 'explore', dispatchKind: 'skill', workflow: 'untrusted' }, { root });",
+      "const applyIntent = { version: DIRECT_ACTION_CATALOG_VERSION, storeId: null, workItemId: 'catalog-active', actionId: 'apply', dispatchKind: 'skill' };",
+      "const acceptedApply = await validateDirectActionIntent(applyIntent, { root });",
+      "const tasks = join(root, 'specbase', 'changes', 'catalog-active-directory', 'tasks.md');",
+      'const originalTasks = readFileSync(tasks, \"utf8\");',
+      "writeFileSync(tasks, originalTasks.replace('- [ ] pending', '- [x] pending'));",
+      'const staleApply = await validateDirectActionIntent(applyIntent, { root });',
+      'writeFileSync(tasks, originalTasks);',
+      "const unsupported = await validateDirectActionIntent({ ...applyIntent, version: 99 }, { root });",
+      'console.log(JSON.stringify({ catalog, active, archived, accepted, rejected, acceptedApply, staleApply, unsupported }));',
+    ].join(' ');
+    const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '--eval', script, fixtureRoot], { cwd: consumerRoot });
+    const result = JSON.parse(stdout) as {
+      catalog: { actions: Array<{ actionId: string; availability: string; blocker: unknown }> };
+      active: { actions: Array<{ actionId: string; availability: string; blocker: { code: string } | null }> };
+      archived: { target: { position: string }; actions: Array<{ availability: string; blocker: { code: string } | null }> };
+      accepted: { accepted: boolean };
+      rejected: { accepted: boolean; descriptor: unknown; diagnostics: Array<{ code: string; target: { workItemId: string }; actionId?: string }> };
+      acceptedApply: { accepted: boolean };
+      staleApply: { accepted: boolean; diagnostics: Array<{ code: string }> };
+      unsupported: { accepted: boolean; diagnostics: Array<{ code: string }> };
+    };
+
+    expect(result.catalog.actions.map((action) => action.actionId)).toEqual([
+      'explore', 'propose-feature', 'explore-enforcement', 'propose-enforcement', 'apply', 'deliver-local', 'review', 'open-draft-pr', 'archive',
+    ]);
+    expect(result.catalog.actions.slice(0, 2)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ actionId: 'explore', availability: 'available', blocker: null }),
+      expect.objectContaining({ actionId: 'propose-feature', availability: 'available', blocker: null }),
+    ]));
+    expect(result.active.actions.find((action) => action.actionId === 'apply')).toMatchObject({ availability: 'available', blocker: null });
+    expect(result.active.actions.find((action) => action.actionId === 'explore-enforcement')).toMatchObject({ availability: 'blocked', blocker: { code: 'direct_action_governed_required' } });
+    expect(result.archived.target.position).toBe('archived');
+    expect(result.archived.actions.every((action) => action.availability === 'blocked' && action.blocker?.code === 'direct_action_terminal')).toBe(true);
+    expect(result.accepted.accepted).toBe(true);
+    expect(result.acceptedApply.accepted).toBe(true);
+    expect(result.staleApply).toMatchObject({ accepted: false, diagnostics: [{ code: 'direct_action_apply_complete' }] });
+    expect(result.unsupported).toMatchObject({ accepted: false, diagnostics: [{ code: 'direct_action_unsupported_version' }] });
+    expect(result.rejected).toMatchObject({
+      accepted: false,
+      descriptor: null,
+      diagnostics: [{ code: 'direct_action_intent_executable_field', target: { workItemId: 'catalog-idea' }, actionId: 'explore' }],
+    });
+    expect(await snapshotDirectory(fixtureRoot)).toEqual(before);
   }, JOURNEY_TIMEOUT_MS);
 
   it('installed package derives and validates the same public kanban snapshot as view JSON', async () => {
