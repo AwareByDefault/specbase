@@ -4,7 +4,7 @@ import { createTestRenderer } from '@opentui/core/testing';
 import { BoxRenderable, type Renderable } from '@opentui/core';
 import { createViewBoard, type ViewBoardController } from '../../src/tui/view/board.js';
 import type { ViewBoardModel, LifecycleState } from '../../src/core/view/model.js';
-import { VIEW_PANES } from '../../src/core/view/commands.js';
+import { BOARD_PANES, MINIMUM_BOARD_COLUMN_WIDTH, VIEW_PANES, boardColumnCapacity, visibleBoardPaneWindow } from '../../src/core/view/commands.js';
 
 const cleanups: Array<() => void> = [];
 afterEach(() => { while (cleanups.length) cleanups.pop()?.(); });
@@ -58,6 +58,73 @@ function center(item: Renderable): [number, number] {
 }
 
 describe('OpenTUI lifecycle board', () => {
+  test('projects a pure contiguous lifecycle window at complete-column thresholds', () => {
+    const exactTwoColumnWidth = MINIMUM_BOARD_COLUMN_WIDTH * 2 + 1;
+    expect(boardColumnCapacity(exactTwoColumnWidth - 1)).toBe(1);
+    expect(boardColumnCapacity(exactTwoColumnWidth)).toBe(2);
+    expect(visibleBoardPaneWindow(MINIMUM_BOARD_COLUMN_WIDTH * 3 + 2, 'ideas')).toEqual(BOARD_PANES.slice(0, 3));
+    expect(visibleBoardPaneWindow(MINIMUM_BOARD_COLUMN_WIDTH * 3 + 2, 'ready-to-apply')).toEqual(['proposed', 'enforcement', 'ready-to-apply']);
+    expect(visibleBoardPaneWindow(MINIMUM_BOARD_COLUMN_WIDTH * 3 + 2, 'archived')).toEqual(['implementing', 'reviewing', 'archived']);
+    expect(visibleBoardPaneWindow(MINIMUM_BOARD_COLUMN_WIDTH * 3 + 2, 'specs')).toEqual([]);
+  });
+
+  test('renders equal-width adjacent panes with isolated pointer and keyboard state', async () => {
+    const model = fixture(12);
+    const before = structuredClone(model);
+    const app = await setup(160, 22, 12, model);
+    const visible = ['ideas', 'proposed', 'enforcement', 'ready-to-apply'] as const;
+    const panes = visible.map((pane) => target(app.renderer, `pane:${pane}`));
+    expect(new Set(panes.map((pane) => pane.width)).size).toBe(1);
+    for (let index = 1; index < panes.length; index++) expect(panes[index].screenX).toBeGreaterThan(panes[index - 1].screenX + panes[index - 1].width - 1);
+    expect((panes[0] as BoxRenderable).borderStyle).toBe('double');
+    expect((panes[1] as BoxRenderable).borderStyle).toBe('single');
+    expect(app.captureCharFrame()).toContain('▶ First idea');
+
+    const readyPane = target(app.renderer, 'pane:ready-to-apply');
+    await app.mockMouse.scroll(...center(readyPane), 'down');
+    await app.flush();
+    expect(app.controller.state.pane).toBe('ideas');
+    expect(app.controller.state.scroll['ready-to-apply']).toBeGreaterThan(0);
+    expect(app.controller.state.scroll.ideas).toBe(0);
+
+    const readyFocusTarget = target(app.renderer, 'pane:ready-to-apply');
+    await app.mockMouse.click(readyFocusTarget.screenX + 1, readyFocusTarget.screenY + 1);
+    await app.flush();
+    const readySelectionBeforeKey = app.controller.state.selected['ready-to-apply'];
+    app.mockInput.pressArrow('down');
+    await app.flush();
+    expect(app.controller.state.pane).toBe('ready-to-apply');
+    expect(app.controller.state.selected['ready-to-apply']).toBe(readySelectionBeforeKey + 1);
+    expect(app.controller.state.selected.ideas).toBe(0);
+
+    const selectedReady = target(app.renderer, `card:ready-to-apply:ready-${readySelectionBeforeKey + 1}`) as BoxRenderable;
+    expect(selectedReady.borderStyle).toBe('double');
+    expect((target(app.renderer, 'pane:proposed') as BoxRenderable).borderStyle).toBe('single');
+    for (const label of ['[◀ Prev]', '[Next ▶]', '[Details Enter]', '[Help ?]', '[Quit q]']) expect(app.captureCharFrame().split(label).length - 1).toBe(1);
+    expect(model).toEqual(before);
+  });
+
+  test('preserves focused context, overlays, and per-pane memory across a wide-narrow-wide resize', async () => {
+    const app = await setup(160, 22, 12);
+    await app.mockMouse.click(...center(target(app.renderer, 'pane:ready-to-apply')));
+    await app.flush();
+    app.mockInput.pressArrow('down');
+    app.controller.dispatch({ type: 'open-help' });
+    await app.flush();
+    app.resize(60, 22);
+    app.controller.resize(60, 22);
+    await app.renderOnce();
+    expect(app.controller.state.pane).toBe('ready-to-apply');
+    expect(app.controller.state.selected['ready-to-apply']).toBe(1);
+    expect(app.controller.state.overlay).toBe('help');
+    app.resize(160, 22);
+    app.controller.resize(160, 22);
+    await app.renderOnce();
+    expect(app.controller.state.selected['ready-to-apply']).toBe(1);
+    expect(app.controller.state.overlay).toBe('help');
+    expect(app.captureCharFrame()).toContain('Keyboard help');
+  });
+
   test('renders lifecycle lanes, labelled progress, controls, warnings, and non-color focus cues', async () => {
     const app = await setup();
     app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
@@ -65,7 +132,7 @@ describe('OpenTUI lifecycle board', () => {
     const frame = app.captureCharFrame();
     expect(frame).toContain('sample-project');
     expect(frame).toContain('Lifecycle Board');
-    for (const label of ['Ideas 2', 'Proposed 0', 'Enforcement 0', 'Ready 8', 'Implementing 2', 'Reviewing 1', 'Archived 1', 'Specs 1']) {
+    for (const label of ['Ideas 2', 'Proposed 0', 'Enforce 0', 'Ready 8', 'Doing 2', 'Review 1', 'Archived 1', 'Specs 1']) {
       expect(frame).toContain(label);
     }
     expect(frame).toContain('Ready to Apply');
@@ -75,13 +142,15 @@ describe('OpenTUI lifecycle board', () => {
     expect(frame).toContain('[Quit q]');
     expect(frame).toContain('▶');
     expect(frame).toContain('◉ Tasks:');
-    expect(frame.indexOf('Ready 0')).toBeLessThan(frame.indexOf('Ready 1'));
+    expect(frame).toContain('Ready 0');
     expect(frame).toContain('READ ONLY');
   });
 
   test('parses real mouse down/up clicks for selection and visible detail open/close controls', async () => {
     const app = await setup();
     app.controller.dispatch({ type: 'select-pane', pane: 'ready-to-apply' });
+    await app.flush();
+    app.controller.dispatch({ type: 'scroll-pane', pane: 'ready-to-apply', delta: 1 });
     await app.flush();
     const second = target(app.renderer, 'card:ready-to-apply:ready-1');
     await app.mockMouse.click(...center(second));
@@ -115,11 +184,12 @@ describe('OpenTUI lifecycle board', () => {
     await app.flush();
     expect(app.controller.state.scroll['ready-to-apply']).toBeGreaterThan(0);
     expect(app.controller.state.scroll.ideas).toBe(beforeIdeas);
+    const selectionAfterWheel = app.controller.state.selected['ready-to-apply'];
     for (let index = 0; index < 8; index++) app.mockInput.pressArrow('down');
     await app.flush();
-    expect(app.controller.state.selected['ready-to-apply']).toBe(8);
+    expect(app.controller.state.selected['ready-to-apply']).toBe(Math.min(11, selectionAfterWheel + 8));
     expect(app.controller.state.scroll['ready-to-apply']).toBeGreaterThan(0);
-    expect(app.captureCharFrame()).toContain('Ready 8');
+    expect(app.captureCharFrame()).toContain(`Ready ${app.controller.state.selected['ready-to-apply']}`);
   });
 
   test('keyboard reaches pane, selection, detail, close, and quit outcomes', async () => {
@@ -166,20 +236,21 @@ describe('OpenTUI lifecycle board', () => {
     expect(frame).not.toContain('Archived A');
   });
 
-  test('switches to one-lane mode before the full lifecycle strip would clip', async () => {
+  test('uses adjacent complete columns before falling back to focused-column recovery', async () => {
     const app = await setup(86, 20, 1);
-    expect(app.controller.state.narrow).toBe(true);
-    const frame = app.captureCharFrame();
-    expect(frame).not.toContain('[Archive 1]');
-    expect(frame).toContain('First idea');
-    expect(frame).toContain('[Help]');
+    expect(app.controller.state.narrow).toBe(false);
+    expect(() => target(app.renderer, 'board-column-window')).not.toThrow();
+    expect(() => target(app.renderer, 'pane:ideas')).not.toThrow();
+    expect(() => target(app.renderer, 'pane:proposed')).not.toThrow();
+    expect(app.captureCharFrame()).toContain('First idea');
+    expect(app.captureCharFrame()).toContain('[Details Enter]');
   });
 
-  test('uses one-lane mode when multi-digit counts make the full strip too wide', async () => {
+  test('keeps wide capacity independent of lane counts and global control width', async () => {
     const app = await setup(120, 20, 1000);
     expect(app.controller.state.narrow).toBe(false);
     expect(() => target(app.renderer, 'lane-nav')).toThrow();
-    expect(app.captureCharFrame()).toContain('[Details]');
+    expect(app.captureCharFrame()).toContain('[Details Enter]');
   });
 
   test('wraps labelled controls at very narrow supported widths without clipping them', async () => {
@@ -232,18 +303,17 @@ describe('OpenTUI lifecycle board', () => {
   });
 
   test('actual mouse and keyboard routes produce equivalent pane, item, and detail state', async () => {
-    const mouse = await setup();
-    const keyboard = await setup();
+    const mouse = await setup(160);
+    const keyboard = await setup(160);
 
-    await mouse.mockMouse.click(...center(target(mouse.renderer, 'lane:ready-to-apply')));
+    await mouse.mockMouse.click(...center(target(mouse.renderer, 'pane:ready-to-apply')));
     await mouse.flush();
-    await mouse.mockMouse.click(...center(target(mouse.renderer, 'card:ready-to-apply:ready-1')));
+    await mouse.mockMouse.click(...center(target(mouse.renderer, 'card:ready-to-apply:ready-0')));
     await mouse.flush();
     await mouse.mockMouse.click(...center(target(mouse.renderer, 'details-control')));
     await mouse.flush();
 
     for (let index = 0; index < 3; index++) keyboard.mockInput.pressArrow('right');
-    keyboard.mockInput.pressArrow('down');
     keyboard.mockInput.pressEnter();
     await keyboard.flush();
 
@@ -459,7 +529,7 @@ describe('OpenTUI lifecycle board', () => {
     expect(frame).toContain('sample-project');
     expect(frame).toContain('READ ONLY');
     expect(frame).toContain('Ideas 1/8');
-    expect(frame).toContain('item 1/2');
+    expect(frame).toContain('Ideas: item 1 of 2.');
     expect(frame).toContain('▶ First idea');
     expect(frame).toContain('[Details]');
     expect(frame).toContain('[Help]');

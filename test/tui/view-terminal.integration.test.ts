@@ -17,7 +17,7 @@ beforeAll(async () => {
 });
 afterAll(async () => fs.rm(projectRoot, { recursive: true, force: true }));
 
-type Action = 'quit-key' | 'quit-mouse' | 'sigint' | 'sigterm' | 'sighup' | 'none';
+type Action = 'quit-key' | 'quit-mouse' | 'wide-resize-quit' | 'sigint' | 'sigterm' | 'sighup' | 'none';
 
 async function projectSnapshot(): Promise<string[]> {
   const result: string[] = [];
@@ -36,6 +36,7 @@ async function runPty(action: Action, extraEnv: Record<string, string> = {}) {
   let output = '';
   const filesBefore = await projectSnapshot();
   let acted = false;
+  let resized = false;
   let processRef: ReturnType<typeof Bun.spawn> | undefined;
   const terminal = new Bun.Terminal({
     cols: 100,
@@ -43,12 +44,18 @@ async function runPty(action: Action, extraEnv: Record<string, string> = {}) {
     name: 'xterm-256color',
     data(_term, data) {
       output += new TextDecoder().decode(data);
-      if (acted || !output.includes('Lifecycle Board')) return;
+      if (!output.includes('Lifecycle Board')) return;
+      if (action === 'wide-resize-quit' && !resized) {
+        resized = true;
+        terminal.resize(160, 28);
+        return;
+      }
+      if (acted) return;
       acted = true;
-      if (action === 'quit-key') terminal.write('q');
+      if (action === 'quit-key' || action === 'wide-resize-quit') terminal.write('q');
       if (action === 'quit-mouse') {
         // Real SGR mouse down/up on the visible footer Quit control.
-        terminal.write('\u001b[<0;41;27M\u001b[<0;41;27m');
+        terminal.write('\u001b[<0;55;27M\u001b[<0;55;27m');
       }
       if (action === 'sigint') processRef?.kill('SIGINT');
       if (action === 'sigterm') processRef?.kill('SIGTERM');
@@ -75,7 +82,7 @@ async function runPty(action: Action, extraEnv: Record<string, string> = {}) {
     local: terminal.localFlags,
   };
   terminal.close();
-  return { code, output, acted, before, after, filesBefore, filesAfter: await projectSnapshot() };
+  return { code, output, acted, resized, before, after, filesBefore, filesAfter: await projectSnapshot() };
 }
 
 async function malformedFrame(payload: Uint8Array): Promise<{ code: number | null; stdout: string; stderr: string }> {
@@ -101,6 +108,18 @@ describe('real PTY parent/child terminal lifecycle', () => {
     expect(result.output).toContain('\u001b[?1049h');
     expect(result.output).toContain('\u001b[?1049l');
     expect(result.output).toContain('\u001b[?25l');
+    expect(result.output).toContain('\u001b[?25h');
+    expect(result.after).toEqual(result.before);
+    expect(result.filesAfter).toEqual(result.filesBefore);
+  }, 30_000);
+
+  test('a wide resize and keyboard quit preserve adjacent columns, exact outcome, and terminal cleanup', async () => {
+    const result = await runPty('wide-resize-quit');
+    expect(result.resized).toBe(true);
+    expect(result.acted).toBe(true);
+    expect(result.code).toBe(0);
+    for (const label of ['Ideas', 'Proposed']) expect(result.output).toContain(label);
+    expect(result.output).toContain('\u001b[?1049l');
     expect(result.output).toContain('\u001b[?25h');
     expect(result.after).toEqual(result.before);
     expect(result.filesAfter).toEqual(result.filesBefore);

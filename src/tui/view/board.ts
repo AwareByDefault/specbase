@@ -9,12 +9,15 @@ import {
 import type { ViewBoardModel } from '../../core/view/model.js';
 import {
   VIEW_PANES,
+  boardColumnCapacity,
   createViewerState,
   keyboardCommand,
   mouseSelectCommand,
   mouseWheelCommand,
   paneLength,
   reduceViewerState,
+  visibleBoardPaneWindow,
+  visiblePaneItemCapacity,
   type ViewCommand,
   type ViewerState,
   type ViewPane,
@@ -27,22 +30,16 @@ export interface ViewBoardController {
   destroy(): void;
 }
 
+function truncatePlain(text: string, width: number): string {
+  if (text.length <= width) return text;
+  return width <= 1 ? '…' : `${text.slice(0, width - 1)}…`;
+}
+
 const LABELS: Record<ViewPane, string> = {
   ideas: 'Ideas',
   proposed: 'Proposed',
   enforcement: 'Enforcement',
   'ready-to-apply': 'Ready to Apply',
-  implementing: 'Implementing',
-  reviewing: 'Reviewing',
-  archived: 'Archived',
-  specs: 'Specs',
-};
-
-const NAV_LABELS: Record<ViewPane, string> = {
-  ideas: 'Ideas',
-  proposed: 'Proposed',
-  enforcement: 'Enforcement',
-  'ready-to-apply': 'Ready',
   implementing: 'Implementing',
   reviewing: 'Reviewing',
   archived: 'Archived',
@@ -181,6 +178,8 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
   const addPane = (parent: BoxRenderable, pane: ViewPane, width: number | `${number}%`) => {
     const focused = state.pane === pane;
     const items = paneItems(model, pane);
+    const paneWidth = typeof width === 'number' ? width : Math.max(8, state.width - 4);
+    const title = truncatePlain(`${focused ? '▶ ' : ''}${LABELS[pane]} (${items.length})`, Math.max(8, paneWidth - 6));
     const paneBox = new ScrollBoxRenderable(renderer, {
       id: `pane:${pane}`,
       width,
@@ -188,7 +187,7 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       border: true,
       borderStyle: focused ? 'double' : 'single',
       borderColor: focused ? '#ffffff' : '#64748b',
-      title: `${focused ? '▶ ' : ''}${LABELS[pane]} (${items.length}) • ${items.length ? `item ${state.selected[pane] + 1}/${items.length}` : 'empty'}`,
+      title,
       titleColor: '#ffffff',
       flexDirection: 'column',
       scrollY: true,
@@ -205,9 +204,8 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       },
     });
     const start = state.scroll[pane];
-    const reservedRows = state.height < 15 ? 6 : state.height < 20 ? 8 : 12;
-    const visibleRows = Math.max(1, state.height - reservedRows);
-    const visible = items.slice(start, start + visibleRows);
+    const visibleItems = visiblePaneItemCapacity(state.height);
+    const visible = items.slice(start, start + visibleItems);
     if (!visible.length) {
       paneBox.add(new TextRenderable(renderer, {
         content: `No items in ${LABELS[pane]}.\nUse ←/→ or Prev/Next to choose another lane.`,
@@ -222,7 +220,7 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       if (state.height < 15) {
         paneBox.add(new TextRenderable(renderer, {
           id: `card-label:${pane}:${item.id}`,
-          content: `${selected ? '▶' : ' '} ${item.title}`,
+          content: `${selected ? '▶' : ' '} ${truncatePlain(item.title, Math.max(4, paneWidth - 5))}`,
           selectable: false,
           height: 1,
         }));
@@ -246,7 +244,7 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       });
       const progressLines = details.filter((line) => line.startsWith('○ Artifacts:') || line.startsWith('◉ Tasks:') || line.startsWith('✓ Tasks:') || line.startsWith('Requirements:') || line.startsWith('Created:') || line.startsWith('Archived:') || line.startsWith('⚠'));
       const progressStr = progressLines.map((line) => `  ${line}`).join('\n');
-      card.add(new TextRenderable(renderer, { id: `card-label:${pane}:${item.id}`, content: `${selected ? '▶' : ' '} ${item.title}\n${progressStr}`, selectable: false }));
+      card.add(new TextRenderable(renderer, { id: `card-label:${pane}:${item.id}`, content: `${selected ? '▶' : ' '} ${truncatePlain(item.title, Math.max(4, paneWidth - 7))}\n${progressStr}`, selectable: false }));
       paneBox.add(card);
     });
     parent.add(paneBox);
@@ -306,13 +304,9 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
     const terminalTooSmall = state.width < 30 || state.height < 12 || (state.width < 48 && state.height < 14);
     const innerWidth = Math.max(8, state.width - 4);
     const fit = (text: string, width = innerWidth) => text.length <= width ? text : `${text.slice(0, Math.max(1, width - 1))}…`;
-    const navItems = VIEW_PANES.map((pane) => {
-      const count = pane === 'specs' ? model.specs.length : model.lanes[pane].length;
-      const label = `[${NAV_LABELS[pane]} ${count}]`;
-      return { pane, label, width: label.length + 2 };
-    });
-    const requiredNavWidth = navItems.reduce((sum, item) => sum + item.width, 0) + navItems.length - 1;
-    const singleLane = state.narrow || requiredNavWidth > state.width;
+    const usableBodyWidth = Math.max(0, state.width - 4);
+    const visiblePanes = visibleBoardPaneWindow(usableBodyWidth, state.pane);
+    const singleLane = state.pane === 'specs' || visiblePanes.length < 2;
     const header = new BoxRenderable(renderer, {
       id: 'board-context', width: '100%', height: short ? 4 : 5, border: true, borderStyle: 'double', borderColor: '#ffffff',
       flexDirection: 'column', paddingLeft: 1,
@@ -343,18 +337,17 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       return;
     }
 
-    if (singleLane || state.pane === 'specs') {
+    if (singleLane) {
       const body = new BoxRenderable(renderer, { width: '100%', flexGrow: 1 });
       addPane(body, state.pane, '100%');
       app.add(body);
     } else {
-      const nav = new BoxRenderable(renderer, { id: 'lane-nav', width: '100%', height: 3, flexDirection: 'row', gap: 1 });
-      for (const item of navItems) {
-        addControl(nav, `lane:${item.pane}`, item.label, { type: 'select-pane', pane: item.pane }, item.width);
-      }
-      app.add(nav);
-      const body = new BoxRenderable(renderer, { width: '100%', flexGrow: 1 });
-      addPane(body, state.pane, '100%');
+      const gapWidth = visiblePanes.length - 1;
+      const columnWidth = Math.floor((usableBodyWidth - gapWidth) / visiblePanes.length);
+      const body = new BoxRenderable(renderer, {
+        id: 'board-column-window', width: '100%', flexGrow: 1, flexDirection: 'row', gap: 1,
+      });
+      for (const pane of visiblePanes) addPane(body, pane, columnWidth);
       app.add(body);
     }
 
@@ -364,7 +357,7 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
       id: 'board-controls', width: '100%', height: footerHeight, flexDirection: 'row', flexWrap: veryNarrow ? 'wrap' : 'no-wrap',
       border: !short && !veryNarrow, borderColor: '#64748b', padding: !short && !veryNarrow ? 1 : 0,
     });
-    const compact = singleLane;
+    const compact = singleLane || boardColumnCapacity(usableBodyWidth) < 2;
     addControl(footer, 'lane-prev', compact ? '[Prev]' : '[◀ Prev]', { type: 'focus-next', direction: -1 }, compact ? 8 : 10);
     addControl(footer, 'lane-next', compact ? '[Next]' : '[Next ▶]', { type: 'focus-next', direction: 1 }, compact ? 8 : 10);
     addControl(footer, 'details-control', compact ? '[Details]' : '[Details Enter]', { type: 'open-detail' }, compact ? 11 : 17);

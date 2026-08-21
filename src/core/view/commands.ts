@@ -4,6 +4,45 @@ export const VIEW_PANES = ['ideas', 'proposed', 'enforcement', 'ready-to-apply',
 export type ViewPane = (typeof VIEW_PANES)[number];
 export type ViewerOverlay = 'help' | 'diagnostics';
 
+/** Lifecycle panes that can share the standalone board body. Specifications has a dedicated reference view. */
+export const BOARD_PANES = ['ideas', 'proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const satisfies readonly Exclude<ViewPane, 'specs'>[];
+export const MINIMUM_BOARD_COLUMN_WIDTH = 34;
+export const BOARD_COLUMN_GAP = 1;
+
+export function boardColumnCapacity(usableWidth: number, minimumColumnWidth = MINIMUM_BOARD_COLUMN_WIDTH): number {
+  return Math.max(0, Math.floor((Math.max(0, usableWidth) + BOARD_COLUMN_GAP) / (minimumColumnWidth + BOARD_COLUMN_GAP)));
+}
+
+/** Number of whole card rows that remain visible inside one board pane. */
+export function visiblePaneItemCapacity(height: number): number {
+  const reservedRows = height < 15 ? 6 : 20;
+  const availableRows = Math.max(1, height - reservedRows);
+  // OpenTUI's bordered ScrollBox reserves more vertical chrome than the outer
+  // body calculation exposes. Stay conservative so every materialized card is
+  // fully visible and mouse-hit-testable instead of partially clipped.
+  return height < 15 ? availableRows : Math.max(1, Math.floor(availableRows / 6));
+}
+
+/**
+ * Projects a stable contiguous lifecycle window around focus without retaining
+ * renderer state. The focused pane stays at the trailing edge until the final
+ * window, so neighbouring lanes change only when focus crosses an edge.
+ */
+export function visibleBoardPaneWindow(
+  usableWidth: number,
+  focusedPane: ViewPane,
+  panes: readonly Exclude<ViewPane, 'specs'>[] = BOARD_PANES,
+  minimumColumnWidth = MINIMUM_BOARD_COLUMN_WIDTH,
+): Exclude<ViewPane, 'specs'>[] {
+  if (focusedPane === 'specs') return [];
+  const capacity = Math.min(panes.length, boardColumnCapacity(usableWidth, minimumColumnWidth));
+  if (capacity < 2) return [];
+  const focusedIndex = panes.indexOf(focusedPane);
+  if (focusedIndex < 0) return [];
+  const start = Math.min(Math.max(0, focusedIndex - capacity + 1), panes.length - capacity);
+  return panes.slice(start, start + capacity);
+}
+
 const PANE_LABELS: Record<ViewPane, string> = {
   ideas: 'Ideas',
   proposed: 'Proposed',
@@ -58,10 +97,10 @@ function location(model: ViewBoardModel, pane: ViewPane, index: number): string 
 }
 
 function reconcileVisibility(state: ViewerState, model: ViewBoardModel): ViewerState {
-  const viewportRows = Math.max(1, Math.floor((state.height - 12) / 5));
+  const visibleItems = visiblePaneItemCapacity(state.height);
   const index = state.selected[state.pane];
   const current = state.scroll[state.pane];
-  const next = index < current ? index : index >= current + viewportRows ? index - viewportRows + 1 : current;
+  const next = index < current ? index : index >= current + visibleItems ? index - visibleItems + 1 : current;
   return { ...state, scroll: { ...state.scroll, [state.pane]: Math.max(0, next) } };
 }
 
@@ -77,7 +116,7 @@ export function createViewerState(model: ViewBoardModel, width = 120, height = 3
     announcement: location(model, first, 0),
     width,
     height,
-    narrow: width < 104,
+    narrow: boardColumnCapacity(width - 4) < 2,
     quit: false,
   };
 }
@@ -121,17 +160,23 @@ export function reduceViewerState(state: ViewerState, command: ViewCommand, mode
       break;
     }
     case 'scroll-pane': {
-      const maximum = Math.max(0, paneLength(model, command.pane) - 1);
+      const count = paneLength(model, command.pane);
+      const capacity = visiblePaneItemCapacity(state.height);
+      const maximum = Math.max(0, count - capacity);
       const current = state.scroll[command.pane];
       const offset = Math.max(0, Math.min(maximum, current + command.delta));
       const boundary = offset === current
         ? `${command.delta < 0 ? 'Start' : 'End'} of ${PANE_LABELS[command.pane]} list.`
         : `${PANE_LABELS[command.pane]} list scrolled.`;
+      const selected = { ...state.selected };
+      if (command.pane === state.pane && count > 0) {
+        selected[command.pane] = Math.max(offset, Math.min(offset + capacity - 1, selected[command.pane]));
+      }
       next = {
         ...state,
-        pane: command.pane,
+        selected,
         scroll: { ...state.scroll, [command.pane]: offset },
-        announcement: paneLength(model, command.pane) === 0
+        announcement: count === 0
           ? `${PANE_LABELS[command.pane]} has no items. Use left or right to choose another lane.`
           : boundary,
       };
@@ -174,7 +219,7 @@ export function reduceViewerState(state: ViewerState, command: ViewCommand, mode
     case 'resize': {
       const selected = { ...state.selected };
       for (const pane of VIEW_PANES) selected[pane] = clampedIndex(model, pane, selected[pane]);
-      next = { ...state, width: command.width, height: command.height, narrow: command.width < 104, selected };
+      next = { ...state, width: command.width, height: command.height, narrow: boardColumnCapacity(command.width - 4) < 2, selected };
       break;
     }
     case 'quit':
