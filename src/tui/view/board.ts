@@ -43,34 +43,32 @@ const LABELS: Record<ViewPane, string> = {
   implementing: 'Implementing',
   reviewing: 'Reviewing',
   archived: 'Archived',
-  specs: 'Specs',
 };
 
+function stackDescription(stack: { id: string; position: number; total: number } | undefined): string[] {
+  return stack ? [`Stack: ${stack.id} (${stack.position}/${stack.total})`] : [];
+}
+
 function paneItems(model: ViewBoardModel, pane: ViewPane): Array<{ id: string; title: string }> {
-  if (pane === 'specs') return model.specs.map((spec) => ({ id: spec.id, title: spec.locator }));
   return model.lanes[pane].map((card) => ({ id: card.id, title: card.title }));
 }
 
 function cardDescription(model: ViewBoardModel, pane: ViewPane, index: number): string[] {
   if (pane === 'ideas') {
     const card = model.lanes.ideas[index];
-    return card ? [`○ Idea: ${card.title}`, `ID: ${card.id}`, `Created: ${card.created ?? 'unknown'}`, `Files: ${card.members.join(', ') || 'none'}`] : [];
+    return card ? [`○ Idea: ${card.title}`, `ID: ${card.id}`, `Created: ${card.created ?? 'unknown'}`, `Files: ${card.members.join(', ') || 'none'}`, ...stackDescription(card.stack)] : [];
   }
   if (pane === 'archived') {
     const card = model.lanes.archived[index];
-    return card ? [`✓ Archived change: ${card.title}`, `ID: ${card.id}`, `Archived: ${card.archived ?? 'unknown'}`, `✓ Tasks: ${card.tasks.completed}/${card.tasks.total}`] : [];
-  }
-  if (pane === 'specs') {
-    const spec = model.specs[index];
-    return spec ? [`▪ Specification: ${spec.locator}`, `ID: ${spec.id}`, `Requirements: ${spec.requirementCount}`, ...spec.requirements.map((title) => `• ${title}`), ...(spec.diagnostic ? [`⚠ ${spec.diagnostic}`] : [])] : [];
+    return card ? [`✓ Archived change: ${card.title}`, `ID: ${card.id}`, `Archived: ${card.archived ?? 'unknown'}`, `✓ Tasks: ${card.tasks.completed}/${card.tasks.total}`, ...stackDescription(card.stack)] : [];
   }
   const card = model.lanes[pane][index];
-  return card ? [`◉ ${LABELS[pane]} change: ${card.title}`, `ID: ${card.id}`, `Lifecycle: ${card.lifecycle}`, `○ Artifacts: ${card.artifacts.completed}/${card.artifacts.total}`, `◉ Tasks: ${card.tasks.completed}/${card.tasks.total}`] : [];
+  return card ? [`◉ ${LABELS[pane]} change: ${card.title}`, `ID: ${card.id}`, `Lifecycle: ${card.lifecycle}`, `○ Artifacts: ${card.artifacts.completed}/${card.artifacts.total}`, `◉ Tasks: ${card.tasks.completed}/${card.tasks.total}`, ...stackDescription(card.stack)] : [];
 }
 
 function summaryText(model: ViewBoardModel): string {
   const s = model.summary;
-  return `Specs ${s.acceptedSpecs} • Reqs ${s.requirements} • Ideas ${s.openIdeas} • Proposed ${s.lanes.proposed} • Enforce ${s.lanes.enforcement} • Ready ${s.lanes['ready-to-apply']} • Doing ${s.lanes.implementing} • Review ${s.lanes.reviewing} • Archived ${s.lanes.archived} • Tasks ${s.completedTasks}/${s.totalTasks}`;
+  return `Ideas ${s.openIdeas} • Proposed ${s.lanes.proposed} • Enforce ${s.lanes.enforcement} • Ready ${s.lanes['ready-to-apply']} • Doing ${s.lanes.implementing} • Review ${s.lanes.reviewing} • Archived ${s.lanes.archived} • Tasks ${s.completedTasks}/${s.totalTasks}`;
 }
 
 function diagnosticDescription(model: ViewBoardModel): string[] {
@@ -242,7 +240,7 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
           }
         },
       });
-      const progressLines = details.filter((line) => line.startsWith('○ Artifacts:') || line.startsWith('◉ Tasks:') || line.startsWith('✓ Tasks:') || line.startsWith('Requirements:') || line.startsWith('Created:') || line.startsWith('Archived:') || line.startsWith('⚠'));
+      const progressLines = details.filter((line) => line.startsWith('○ Artifacts:') || line.startsWith('◉ Tasks:') || line.startsWith('✓ Tasks:') || line.startsWith('Created:') || line.startsWith('Archived:') || line.startsWith('Stack:') || line.startsWith('⚠'));
       const progressStr = progressLines.map((line) => `  ${line}`).join('\n');
       card.add(new TextRenderable(renderer, { id: `card-label:${pane}:${item.id}`, content: `${selected ? '▶' : ' '} ${truncatePlain(item.title, Math.max(4, paneWidth - 7))}\n${progressStr}`, selectable: false }));
       paneBox.add(card);
@@ -306,7 +304,7 @@ export function createViewBoard(renderer: CliRenderer, model: ViewBoardModel, on
     const fit = (text: string, width = innerWidth) => text.length <= width ? text : `${text.slice(0, Math.max(1, width - 1))}…`;
     const usableBodyWidth = Math.max(0, state.width - 4);
     const visiblePanes = visibleBoardPaneWindow(usableBodyWidth, state.pane);
-    const singleLane = state.pane === 'specs' || visiblePanes.length < 2;
+    const singleLane = visiblePanes.length < 2;
     const header = new BoxRenderable(renderer, {
       id: 'board-context', width: '100%', height: short ? 4 : 5, border: true, borderStyle: 'double', borderColor: '#ffffff',
       flexDirection: 'column', paddingLeft: 1,

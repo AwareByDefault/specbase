@@ -1,4 +1,4 @@
-import type { ArchiveCard, ChangeCard, IdeaCard, SpecCard, ViewBoardModel } from './model.js';
+import type { ArchiveCard, ChangeCard, IdeaCard, KanbanStackContext, ViewBoardModel } from './model.js';
 import type { LifecycleState } from '../work-item-lifecycle.js';
 export type { LifecycleState } from '../work-item-lifecycle.js';
 
@@ -6,21 +6,20 @@ function progress(completed: number, total: number): string {
   return `${completed}/${total}`;
 }
 
+function stackContext(stack: KanbanStackContext | undefined): string {
+  return stack ? ` | stack ${stack.id} ${stack.position}/${stack.total}` : '';
+}
+
 function ideaLine(card: IdeaCard): string {
-  return `  ○ ${card.title} [${card.id}]${card.created ? ` created ${card.created}` : ''}`;
+  return `  ○ ${card.title} [${card.id}]${card.created ? ` created ${card.created}` : ''}${stackContext(card.stack)}`;
 }
 
 function changeLine(card: ChangeCard): string {
-  return `  ◉ ${card.title} [${card.id}] artifacts ${progress(card.artifacts.completed, card.artifacts.total)} | tasks ${progress(card.tasks.completed, card.tasks.total)}`;
+  return `  ◉ ${card.title} [${card.id}] artifacts ${progress(card.artifacts.completed, card.artifacts.total)} | tasks ${progress(card.tasks.completed, card.tasks.total)}${stackContext(card.stack)}`;
 }
 
 function archiveLine(card: ArchiveCard): string {
-  return `  ✓ ${card.title} [${card.id}]${card.archived ? ` archived ${card.archived}` : ''} | tasks ${progress(card.tasks.completed, card.tasks.total)}`;
-}
-
-function specLine(card: SpecCard): string {
-  const diag = card.diagnostic ? ` ⚠ ${card.diagnostic.length > 50 ? card.diagnostic.slice(0, 50) + '…' : card.diagnostic}` : '';
-  return `  ▪ ${card.locator} [${card.id}] ${card.requirementCount} requirement${card.requirementCount === 1 ? '' : 's'}${diag}`;
+  return `  ✓ ${card.title} [${card.id}]${card.archived ? ` archived ${card.archived}` : ''} | tasks ${progress(card.tasks.completed, card.tasks.total)}${stackContext(card.stack)}`;
 }
 
 function section(title: string, lines: string[]): string[] {
@@ -46,7 +45,6 @@ export function renderViewPlain(model: ViewBoardModel): string {
     `Project: ${model.project.name} • Snapshot • Read only`,
     '═'.repeat(60),
     'Summary',
-    `  Specifications: ${summary.acceptedSpecs} | Requirements: ${summary.requirements}`,
     `  Open ideas: ${summary.openIdeas}`,
     `  Lane counts: ${laneCounts} | Archived: ${summary.lanes.archived}`,
     `  Active task progress: ${progress(summary.completedTasks, summary.totalTasks)}`,
@@ -55,8 +53,6 @@ export function renderViewPlain(model: ViewBoardModel): string {
     '',
     ...CHANGE_LANES.flatMap((lane) => [section(`${LANE_LABELS[lane]} (${summary.lanes[lane]})`, model.lanes[lane].map(changeLine)), '']),
     ...section('Archived', model.lanes.archived.map(archiveLine)),
-    '',
-    ...section('Specifications', model.specs.map(specLine)),
   ];
   if (model.diagnostics.length) {
     lines.push('', ...section('Diagnostics', model.diagnostics.flatMap((item) => [

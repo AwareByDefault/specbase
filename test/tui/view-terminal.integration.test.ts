@@ -165,7 +165,7 @@ describe('real PTY parent/child terminal lifecycle', () => {
   }, 30_000);
 
   test('empty, malformed, trailing, unsupported, invalid UTF-8, and schema-invalid fd 3 frames fail 65 before takeover', async () => {
-    const validShape = { version: 3, project: { name: 'pty-project' }, summary: {}, lanes: {}, specs: [], diagnostics: [] };
+    const validShape = { version: 4, project: { name: 'pty-project' }, summary: {}, lanes: {}, diagnostics: [] };
     for (const payload of [new Uint8Array(), Buffer.from('{'), Buffer.from('{} trailing'), Buffer.from(JSON.stringify({ ...validShape, version: 4 })), Uint8Array.from([0xff]), Buffer.from(JSON.stringify(validShape))]) {
       const result = await malformedFrame(payload);
       expect(result.code).toBe(65);

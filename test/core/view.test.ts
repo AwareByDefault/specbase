@@ -9,9 +9,9 @@ const roots: string[] = [];
 afterEach(async () => Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true }))));
 
 const commandModel: ViewBoardModel = {
-  version: 3,
+  version: 4,
   project: { name: 'command-project' },
-  summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 0, completedTasks: 0, totalTasks: 12, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 12, implementing: 0, reviewing: 0, archived: 0 } },
+  summary: { openIdeas: 0, completedTasks: 0, totalTasks: 12, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 12, implementing: 0, reviewing: 0, archived: 0 } },
   lanes: {
     ideas: [], proposed: [], enforcement: [],
     'ready-to-apply': Array.from({ length: 12 }, (_, index) => ({
@@ -20,7 +20,7 @@ const commandModel: ViewBoardModel = {
     })),
     implementing: [], reviewing: [], archived: [],
   },
-  specs: [], diagnostics: [],
+  diagnostics: [],
 };
 
 describe('viewer command feedback', () => {

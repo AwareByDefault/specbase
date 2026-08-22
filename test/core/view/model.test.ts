@@ -73,9 +73,8 @@ describe('versioned lifecycle board model', () => {
     expect(model.lanes.proposed.find((card) => card.id === 'change-z')?.artifacts).toBeDefined();
     expect(model.lanes.proposed.find((card) => card.id === 'change-a')?.artifacts).toBeDefined();
     expect(model.lanes.archived.map((card) => card.id)).toEqual(['archive-z', 'archive-a']);
-    expect(model.specs.map((spec) => spec.id)).toEqual(['behavior.heavy', 'behavior.light']);
-    expect(model.specs[0].requirements).toEqual(['One', 'Two']);
-    expect(model.summary).toMatchObject({ acceptedSpecs: 2, requirements: 3, openIdeas: 2, completedTasks: 3, totalTasks: 6 });
+    expect(Object.hasOwn(model, 'specs')).toBe(false);
+    expect(model.summary).toMatchObject({ openIdeas: 2, completedTasks: 3, totalTasks: 6 });
     expect(model.summary.lanes).toEqual({ proposed: 4, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 2 });
     expect(JSON.parse(renderViewJson(model))).toEqual(model);
     expect(renderViewPlain(model)).not.toMatch(/\u001b\[/);
@@ -187,17 +186,79 @@ describe('versioned lifecycle board model', () => {
     });
   });
 
-  it('omits unreadable lifecycle entries, retains readable unparseable specs, and reports diagnostics', async () => {
+  it('preserves readable cards and emits ordered diagnostics for malformed stack metadata', async () => {
+    const root = await project();
+    await write(root, 'specbase/ideas/good/.openspec.yaml', 'id: good-idea\nsummary: Good\ncreated: 2025-01-01\n');
+    await write(root, 'specbase/changes/good/.openspec.yaml', 'id: good-change\n');
+    await write(root, 'specbase/stacks/unrelated/.openspec.yaml', '[not valid');
+    await write(root, 'specbase/stacks/member/.openspec.yaml', 'id: member\ncreated: 2025-01-01\nmembers:\n  - good-idea\n  - good-change\n');
+    const model = await deriveViewBoard(root, {
+      readDir: (dir) => fs.readdir(dir, { withFileTypes: true }),
+      readFile: (file) => fs.readFile(file, 'utf8'),
+      lifecycleSnapshot: (_root, id) => ({
+        version: 1,
+        snapshot: { id, position: 'active', lifecycle: 'implementing', artifacts: { complete: 0, total: 1 }, tasks: { complete: 0, total: 1 } },
+        diagnostics: [],
+      }),
+    });
+    expect(model.lanes.ideas.map((card) => card.id)).toEqual(['good-idea']);
+    expect(model.lanes.implementing.map((card) => card.id)).toEqual(['good-change']);
+    expect(model.lanes.ideas[0].stack).toBeUndefined();
+    expect(model.lanes.implementing[0].stack).toBeUndefined();
+    expect(model.diagnostics.map((item) => item.code)).toEqual(['invalid_stack_manifest', 'invalid_stack_manifest']);
+    expect(model.diagnostics.map((item) => item.source)).toEqual([...model.diagnostics.map((item) => item.source)].sort());
+  });
+
+  it('builds stack membership once per snapshot', async () => {
+    const root = await project();
+    await write(root, 'specbase/ideas/one/.openspec.yaml', 'id: one\nsummary: One\ncreated: 2025-01-01\n');
+    await write(root, 'specbase/changes/two/.openspec.yaml', 'id: two\n');
+    let stackReads = 0;
+    let readableIds: string[] = [];
+    const model = await deriveViewBoard(root, {
+      readDir: (dir) => fs.readdir(dir, { withFileTypes: true }),
+      readFile: (file) => fs.readFile(file, 'utf8'),
+      lifecycleSnapshot: (_root, id) => ({
+        version: 1,
+        snapshot: { id, position: 'active', lifecycle: 'implementing', artifacts: { complete: 0, total: 1 }, tasks: { complete: 0, total: 1 } },
+        diagnostics: [],
+      }),
+      stackMembershipIndex: async (_root, members) => {
+        stackReads++;
+        readableIds = [...members].sort();
+        return { members: new Map([['one', { id: 'delivery', position: 1, total: 2 }], ['two', { id: 'delivery', position: 2, total: 2 }]]), diagnostics: [] };
+      },
+    });
+    expect(stackReads).toBe(1);
+    expect(readableIds).toEqual(['one', 'two']);
+    expect(model.lanes.ideas[0].stack).toEqual({ id: 'delivery', position: 1, total: 2 });
+    expect(model.lanes.implementing[0].stack).toEqual({ id: 'delivery', position: 2, total: 2 });
+  });
+
+  it('reports an unreadable stack directory without hiding readable work', async () => {
+    const root = await project();
+    await write(root, 'specbase/ideas/good/.openspec.yaml', 'id: good-idea\nsummary: Good\ncreated: 2025-01-01\n');
+    await fs.writeFile(path.join(root, 'specbase', 'stacks'), 'not a directory');
+    const model = await deriveViewBoard(root);
+    expect(model.lanes.ideas.map((card) => card.id)).toEqual(['good-idea']);
+    expect(model.lanes.ideas[0].stack).toBeUndefined();
+    expect(model.diagnostics).toContainEqual(expect.objectContaining({
+      code: 'invalid_stack_manifest',
+      source: path.join('specbase', 'stacks'),
+      message: expect.stringContaining('Could not read the stack directory'),
+    }));
+  });
+
+  it('omits unreadable lifecycle entries while ignoring accepted specifications', async () => {
     const root = await project();
     await write(root, 'specbase/ideas/bad/.openspec.yaml', '[invalid');
     await write(root, 'specbase/ideas/good/.openspec.yaml', 'id: good-id\nsummary: Good\ncreated: 2025-01-01\n');
     await write(root, 'specbase/specs/behavior/broken/spec.md', 'readable but not a governed specification');
     const model = await deriveViewBoard(root);
     expect(model.lanes.ideas.map((card) => card.id)).toEqual(['good-id']);
-    expect(model.specs[0]).toMatchObject({ locator: 'behavior/broken', requirementCount: 0 });
-    expect(model.specs[0].diagnostic).toBeTruthy();
+    expect(Object.hasOwn(model, 'specs')).toBe(false);
     expect(model.diagnostics.some((item) => item.source.includes('ideas'))).toBe(true);
-    expect(model.diagnostics.some((item) => item.source.includes(path.join('specs', 'behavior', 'broken', 'spec.md')))).toBe(true);
+    expect(model.diagnostics.some((item) => item.source.includes(path.join('specs', 'behavior', 'broken', 'spec.md')))).toBe(false);
   });
 
   it('reports non-optional section read failures instead of presenting a confident empty lane', async () => {
@@ -217,7 +278,7 @@ describe('versioned lifecycle board model', () => {
     }));
   });
 
-  it('reports specification subtree read failures while retaining readable siblings', async () => {
+  it('does not scan accepted specification subtrees', async () => {
     const root = await project();
     await write(root, 'specbase/specs/behavior/good/spec.md', '---\nid: behavior.good\n---\n### Requirement: Good\n**ID:** good\nText.\n');
     await fs.mkdir(path.join(root, 'specbase', 'specs', 'behavior', 'blocked'), { recursive: true });
@@ -229,11 +290,8 @@ describe('versioned lifecycle board model', () => {
       },
       readFile: (file) => fs.readFile(file, 'utf8'),
     });
-    expect(model.specs.map((spec) => spec.id)).toEqual(['behavior.good']);
-    expect(model.diagnostics).toContainEqual(expect.objectContaining({
-      source: path.relative(root, blocked),
-      message: expect.stringContaining('permission denied'),
-    }));
+    expect(Object.hasOwn(model, 'specs')).toBe(false);
+    expect(model.diagnostics).not.toContainEqual(expect.objectContaining({ source: path.relative(root, blocked) }));
   });
 
   it('derives lifecycle through the injected model boundary when provided', async () => {
@@ -254,8 +312,8 @@ describe('versioned lifecycle board model', () => {
 
   it('reports an all-zero empty summary', async () => {
     const model = await deriveViewBoard(await project());
-    expect(model.summary.acceptedSpecs).toBe(0);
-    expect(model.summary.requirements).toBe(0);
+    expect(Object.hasOwn(model.summary, 'acceptedSpecs')).toBe(false);
+    expect(Object.hasOwn(model.summary, 'requirements')).toBe(false);
     expect(model.summary.openIdeas).toBe(0);
     expect(model.summary.completedTasks).toBe(0);
     expect(model.summary.totalTasks).toBe(0);

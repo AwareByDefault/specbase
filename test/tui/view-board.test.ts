@@ -15,9 +15,9 @@ function changeCard(id: string, title: string, lifecycle: LifecycleState, tasks 
 
 function fixture(readyCount = 8): ViewBoardModel {
   return {
-    version: 3,
+    version: 4,
     project: { name: 'sample-project' },
-    summary: { acceptedSpecs: 1, requirements: 2, openIdeas: 2, completedTasks: 3, totalTasks: 10, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': readyCount, implementing: 2, reviewing: 1, archived: 1 } },
+    summary: { openIdeas: 2, completedTasks: 3, totalTasks: 10, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': readyCount, implementing: 2, reviewing: 1, archived: 1 } },
     lanes: {
       ideas: [
         { kind: 'idea', id: 'idea-a', title: 'First idea', created: '2025-01-01', members: ['notes.md'] },
@@ -33,7 +33,6 @@ function fixture(readyCount = 8): ViewBoardModel {
       reviewing: [changeCard('rev-a', 'Reviewing A', 'reviewing', { completed: 3, total: 3 })],
       archived: [{ kind: 'archive', id: 'archived-a', title: 'Archived A', archived: '2025-01-03', tasks: { completed: 2, total: 2 } }],
     },
-    specs: [{ kind: 'spec', id: 'behavior.sample', locator: 'behavior/sample', title: 'behavior/sample', requirementCount: 2, requirements: ['First outcome', 'Second outcome'], diagnostic: 'sample warning' }],
     diagnostics: [],
   };
 }
@@ -65,7 +64,6 @@ describe('OpenTUI lifecycle board', () => {
     expect(visibleBoardPaneWindow(MINIMUM_BOARD_COLUMN_WIDTH * 3 + 2, 'ideas')).toEqual(BOARD_PANES.slice(0, 3));
     expect(visibleBoardPaneWindow(MINIMUM_BOARD_COLUMN_WIDTH * 3 + 2, 'ready-to-apply')).toEqual(['proposed', 'enforcement', 'ready-to-apply']);
     expect(visibleBoardPaneWindow(MINIMUM_BOARD_COLUMN_WIDTH * 3 + 2, 'archived')).toEqual(['implementing', 'reviewing', 'archived']);
-    expect(visibleBoardPaneWindow(MINIMUM_BOARD_COLUMN_WIDTH * 3 + 2, 'specs')).toEqual([]);
   });
 
   test('renders equal-width adjacent panes with isolated pointer and keyboard state', async () => {
@@ -132,7 +130,7 @@ describe('OpenTUI lifecycle board', () => {
     const frame = app.captureCharFrame();
     expect(frame).toContain('sample-project');
     expect(frame).toContain('Lifecycle Board');
-    for (const label of ['Ideas 2', 'Proposed 0', 'Enforce 0', 'Ready 8', 'Doing 2', 'Review 1', 'Archived 1', 'Specs 1']) {
+    for (const label of ['Ideas 2', 'Proposed 0', 'Enforce 0', 'Ready 8', 'Doing 2', 'Review 1', 'Archived 1']) {
       expect(frame).toContain(label);
     }
     expect(frame).toContain('Ready to Apply');
@@ -226,7 +224,7 @@ describe('OpenTUI lifecycle board', () => {
     expect(frame).toContain('[Help]');
     expect(frame).toContain('sample-project');
     expect(frame).toContain('READ ONLY');
-    expect(frame).toContain('Implementing 5/8');
+    expect(frame).toContain('Implementing 5/7');
     expect(frame).toContain('item 1/2');
     expect(frame).toContain('Implementing A');
     for (const label of ['[Prev]', '[Next]', '[Details]', '[Help]', '[Quit]']) {
@@ -290,18 +288,6 @@ describe('OpenTUI lifecycle board', () => {
     expect(frame).toContain('READ ONLY • Project');
   });
 
-  test('opens specification identity, titles, and non-color warning detail', async () => {
-    const app = await setup();
-    app.controller.dispatch({ type: 'select-pane', pane: 'specs' });
-    app.controller.dispatch({ type: 'open-detail' });
-    await app.flush();
-    const frame = app.captureCharFrame();
-    expect(frame).toContain('▪ Specification: behavior/sample');
-    expect(frame).toContain('ID: behavior.sample');
-    expect(frame).toContain('First outcome');
-    expect(frame).toContain('⚠ sample warning');
-  });
-
   test('actual mouse and keyboard routes produce equivalent pane, item, and detail state', async () => {
     const mouse = await setup(160);
     const keyboard = await setup(160);
@@ -343,27 +329,9 @@ describe('OpenTUI lifecycle board', () => {
     expect(keyboard.quit).toBe(true);
   });
 
-  test('mouse wheel and keyboard keys produce equivalent detail scrolling', async () => {
-    const model = fixture(1);
-    model.specs[0].requirements = Array.from({ length: 30 }, (_, index) => `Requirement ${index + 1}`);
-    model.specs[0].requirementCount = 30;
-    const mouse = await setup(80, 20, 1, model);
-    const keyboard = await setup(80, 20, 1, model);
-    for (const app of [mouse, keyboard]) {
-      app.controller.dispatch({ type: 'select-pane', pane: 'specs' });
-      app.controller.dispatch({ type: 'open-detail' });
-      await app.flush();
-    }
-    await mouse.mockMouse.scroll(...center(target(mouse.renderer, 'detail-overlay')), 'down');
-    for (let index = 0; index < 3; index++) keyboard.mockInput.pressArrow('down');
-    await mouse.flush();
-    await keyboard.flush();
-    expect(mouse.controller.state.detailScroll).toBe(keyboard.controller.state.detailScroll);
-  });
-
   test('opens and closes details for every work-item kind without losing origin selection', async () => {
     const app = await setup(120, 30, 2);
-    for (const [pane, index] of [['ideas', 1], ['ready-to-apply', 1], ['archived', 0], ['specs', 0]] as const) {
+    for (const [pane, index] of [['ideas', 1], ['ready-to-apply', 1], ['archived', 0]] as const) {
       app.controller.dispatch({ type: 'select-pane', pane });
       app.controller.dispatch({ type: 'select-item', pane, index });
       app.controller.dispatch({ type: 'open-detail' });
@@ -414,10 +382,9 @@ describe('OpenTUI lifecycle board', () => {
     expect(app.controller.state.selected['ready-to-apply']).toBe(1);
   });
 
-  test('mouse clicks a lane and card; wheel scrolls only the detail pane when open', async () => {
+  test('mouse clicks a lane and card; wheel scrolls only the diagnostics pane when open', async () => {
     const model = fixture();
-    model.specs[0].requirements = Array.from({ length: 30 }, (_, index) => `Requirement ${index + 1}`);
-    model.specs[0].requirementCount = 30;
+    model.diagnostics = Array.from({ length: 30 }, (_, index) => ({ source: `changes/${index}`, message: `Diagnostic ${index + 1}` }));
     const app = await setup(120, 30, 8, model);
     app.controller.dispatch({ type: 'select-pane', pane: 'implementing' });
     await app.flush();
@@ -437,14 +404,13 @@ describe('OpenTUI lifecycle board', () => {
     await app.flush();
     expect(app.controller.state.selected.implementing).toBe(0);
 
-    // Wheel scrolls long detail content without changing the prior lane scroll.
+    // Wheel scrolls long diagnostic content without changing the prior lane scroll.
     const laneScrollBefore = app.controller.state.scroll.implementing;
-    app.controller.dispatch({ type: 'select-pane', pane: 'specs' });
-    app.controller.dispatch({ type: 'open-detail' });
+    app.controller.dispatch({ type: 'open-diagnostics' });
     await app.flush();
-    expect(app.controller.state.detail).toBeDefined();
+    expect(app.controller.state.overlay).toBe('diagnostics');
     const detailScrollBefore = app.controller.state.detailScroll;
-    const detailOverlay = target(app.renderer, 'detail-overlay');
+    const detailOverlay = target(app.renderer, 'diagnostics-overlay');
     await app.mockMouse.scroll(...center(detailOverlay), 'down');
     await app.flush();
     expect(app.controller.state.detailScroll).toBeGreaterThan(detailScrollBefore);
@@ -508,19 +474,17 @@ describe('OpenTUI lifecycle board', () => {
     expect(frame).toContain('Next step: Run specbase validate');
   });
 
-  test('applies stored detail offset to visibly long detail content', async () => {
+  test('applies stored detail offset to visibly long diagnostic content', async () => {
     const model = fixture(1);
-    model.specs[0].requirements = Array.from({ length: 30 }, (_, index) => `Requirement ${index + 1}`);
-    model.specs[0].requirementCount = 30;
+    model.diagnostics = Array.from({ length: 30 }, (_, index) => ({ source: `changes/${index}`, message: `Diagnostic ${index + 1}` }));
     const app = await setup(80, 20, 1, model);
-    app.controller.dispatch({ type: 'select-pane', pane: 'specs' });
-    app.controller.dispatch({ type: 'open-detail' });
+    app.controller.dispatch({ type: 'open-diagnostics' });
     await app.flush();
-    expect(app.captureCharFrame()).toContain('Requirement 1');
+    expect(app.captureCharFrame()).toContain('Diagnostic 1');
     for (let index = 0; index < 8; index++) app.controller.dispatch({ type: 'scroll-detail', delta: 1 });
     await app.flush();
     expect(app.controller.state.detailScroll).toBeGreaterThan(0);
-    expect(app.captureCharFrame()).not.toContain('Requirement 1\n');
+    expect(app.captureCharFrame()).not.toContain('Diagnostic 1\n');
   });
 
   test('short layout keeps identity, focused content, help, and quit recovery', async () => {
@@ -528,13 +492,13 @@ describe('OpenTUI lifecycle board', () => {
     const frame = app.captureCharFrame();
     expect(frame).toContain('sample-project');
     expect(frame).toContain('READ ONLY');
-    expect(frame).toContain('Ideas 1/8');
+    expect(frame).toContain('Ideas 1/7');
     expect(frame).toContain('Ideas: item 1 of 2.');
     expect(frame).toContain('▶ First idea');
     expect(frame).toContain('[Details]');
     expect(frame).toContain('[Help]');
     expect(frame).toContain('[Quit]');
-    expect(frame).not.toContain('Specs 1 • Reqs');
+    expect(frame).not.toContain('Specs');
     app.controller.dispatch({ type: 'open-detail' });
     await app.flush();
     const detail = app.captureCharFrame();

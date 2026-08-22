@@ -1,11 +1,10 @@
 import type { ViewBoardModel } from './model.js';
 
-export const VIEW_PANES = ['ideas', 'proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived', 'specs'] as const;
+export const VIEW_PANES = ['ideas', 'proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const;
 export type ViewPane = (typeof VIEW_PANES)[number];
 export type ViewerOverlay = 'help' | 'diagnostics';
 
-/** Lifecycle panes that can share the standalone board body. Specifications has a dedicated reference view. */
-export const BOARD_PANES = ['ideas', 'proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const satisfies readonly Exclude<ViewPane, 'specs'>[];
+export const BOARD_PANES = VIEW_PANES;
 export const MINIMUM_BOARD_COLUMN_WIDTH = 34;
 export const BOARD_COLUMN_GAP = 1;
 
@@ -17,24 +16,16 @@ export function boardColumnCapacity(usableWidth: number, minimumColumnWidth = MI
 export function visiblePaneItemCapacity(height: number): number {
   const reservedRows = height < 15 ? 6 : 20;
   const availableRows = Math.max(1, height - reservedRows);
-  // OpenTUI's bordered ScrollBox reserves more vertical chrome than the outer
-  // body calculation exposes. Stay conservative so every materialized card is
-  // fully visible and mouse-hit-testable instead of partially clipped.
   return height < 15 ? availableRows : Math.max(1, Math.floor(availableRows / 6));
 }
 
-/**
- * Projects a stable contiguous lifecycle window around focus without retaining
- * renderer state. The focused pane stays at the trailing edge until the final
- * window, so neighbouring lanes change only when focus crosses an edge.
- */
+/** Projects a stable contiguous lifecycle window around focus. */
 export function visibleBoardPaneWindow(
   usableWidth: number,
   focusedPane: ViewPane,
-  panes: readonly Exclude<ViewPane, 'specs'>[] = BOARD_PANES,
+  panes: readonly ViewPane[] = BOARD_PANES,
   minimumColumnWidth = MINIMUM_BOARD_COLUMN_WIDTH,
-): Exclude<ViewPane, 'specs'>[] {
-  if (focusedPane === 'specs') return [];
+): ViewPane[] {
   const capacity = Math.min(panes.length, boardColumnCapacity(usableWidth, minimumColumnWidth));
   if (capacity < 2) return [];
   const focusedIndex = panes.indexOf(focusedPane);
@@ -51,7 +42,6 @@ const PANE_LABELS: Record<ViewPane, string> = {
   implementing: 'Implementing',
   reviewing: 'Reviewing',
   archived: 'Archived',
-  specs: 'Specifications',
 };
 
 export type ViewCommand =
@@ -84,7 +74,7 @@ export interface ViewerState {
 }
 
 export function paneLength(model: ViewBoardModel, pane: ViewPane): number {
-  return pane === 'specs' ? model.specs.length : model.lanes[pane].length;
+  return model.lanes[pane].length;
 }
 
 function clampedIndex(model: ViewBoardModel, pane: ViewPane, index: number): number {
@@ -135,12 +125,7 @@ export function reduceViewerState(state: ViewerState, command: ViewCommand, mode
       break;
     case 'select-item': {
       const index = clampedIndex(model, command.pane, command.index);
-      next = {
-        ...state,
-        pane: command.pane,
-        selected: { ...state.selected, [command.pane]: index },
-        announcement: location(model, command.pane, index),
-      };
+      next = { ...state, pane: command.pane, selected: { ...state.selected, [command.pane]: index }, announcement: location(model, command.pane, index) };
       break;
     }
     case 'move-item':
@@ -153,9 +138,7 @@ export function reduceViewerState(state: ViewerState, command: ViewCommand, mode
       const step = command.type === 'page-item' ? 10 : 1;
       const current = state.selected[state.pane];
       const index = clampedIndex(model, state.pane, current + command.direction * step);
-      const announcement = index === current
-        ? `${current === 0 ? 'Start' : 'End'} of ${PANE_LABELS[state.pane]}; item ${current + 1} of ${count}.`
-        : location(model, state.pane, index);
+      const announcement = index === current ? `${current === 0 ? 'Start' : 'End'} of ${PANE_LABELS[state.pane]}; item ${current + 1} of ${count}.` : location(model, state.pane, index);
       next = { ...state, selected: { ...state.selected, [state.pane]: index }, announcement };
       break;
     }
@@ -165,44 +148,21 @@ export function reduceViewerState(state: ViewerState, command: ViewCommand, mode
       const maximum = Math.max(0, count - capacity);
       const current = state.scroll[command.pane];
       const offset = Math.max(0, Math.min(maximum, current + command.delta));
-      const boundary = offset === current
-        ? `${command.delta < 0 ? 'Start' : 'End'} of ${PANE_LABELS[command.pane]} list.`
-        : `${PANE_LABELS[command.pane]} list scrolled.`;
+      const boundary = offset === current ? `${command.delta < 0 ? 'Start' : 'End'} of ${PANE_LABELS[command.pane]} list.` : `${PANE_LABELS[command.pane]} list scrolled.`;
       const selected = { ...state.selected };
-      if (command.pane === state.pane && count > 0) {
-        selected[command.pane] = Math.max(offset, Math.min(offset + capacity - 1, selected[command.pane]));
-      }
-      next = {
-        ...state,
-        selected,
-        scroll: { ...state.scroll, [command.pane]: offset },
-        announcement: count === 0
-          ? `${PANE_LABELS[command.pane]} has no items. Use left or right to choose another lane.`
-          : boundary,
-      };
+      if (command.pane === state.pane && count > 0) selected[command.pane] = Math.max(offset, Math.min(offset + capacity - 1, selected[command.pane]));
+      next = { ...state, selected, scroll: { ...state.scroll, [command.pane]: offset }, announcement: count === 0 ? `${PANE_LABELS[command.pane]} has no items. Use left or right to choose another lane.` : boundary };
       break;
     }
     case 'scroll-detail': {
       const maximum = Math.max(0, command.maximum ?? Number.MAX_SAFE_INTEGER);
       const offset = Math.max(0, Math.min(maximum, state.detailScroll + command.delta));
-      next = {
-        ...state,
-        detailScroll: offset,
-        announcement: offset === state.detailScroll
-          ? `${command.delta < 0 ? 'Start' : 'End'} of details.`
-          : 'Details scrolled.',
-      };
+      next = { ...state, detailScroll: offset, announcement: offset === state.detailScroll ? `${command.delta < 0 ? 'Start' : 'End'} of details.` : 'Details scrolled.' };
       break;
     }
     case 'open-detail':
       next = paneLength(model, state.pane) > 0
-        ? {
-            ...state,
-            detail: { pane: state.pane, index: state.selected[state.pane] },
-            overlay: null,
-            detailScroll: 0,
-            announcement: `Details opened for ${PANE_LABELS[state.pane]} item ${state.selected[state.pane] + 1}.`,
-          }
+        ? { ...state, detail: { pane: state.pane, index: state.selected[state.pane] }, overlay: null, detailScroll: 0, announcement: `Details opened for ${PANE_LABELS[state.pane]} item ${state.selected[state.pane] + 1}.` }
         : { ...state, announcement: `${PANE_LABELS[state.pane]} has no item to inspect.` };
       break;
     case 'open-help':

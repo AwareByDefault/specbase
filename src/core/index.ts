@@ -38,6 +38,7 @@ export {
   type IdeaCard,
   type KanbanBoardSnapshot,
   type KanbanBoardValidationResult,
+  type LegacyKanbanBoardSnapshot,
   type KanbanSnapshot,
   type KanbanValidationResult,
   type KanbanCard,
@@ -45,6 +46,7 @@ export {
   type KanbanDiagnostic,
   type KanbanSummary,
   type KanbanValidationDiagnostic,
+  type KanbanStackContext,
   type ProgressCount,
   type SpecCard,
 } from './view/model.js';

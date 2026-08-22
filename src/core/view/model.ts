@@ -2,7 +2,8 @@ import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { planningDir } from '../planning-dir.js';
-import { parseGovernedSpec } from '../governed/spec-parser.js';
+import { buildStackMembershipIndex, type StackMembershipContext } from '../change-stacks/store.js';
+import type { StackDiagnostic } from '../change-stacks/model.js';
 import { type LifecycleState } from '../work-item-lifecycle.js';
 import { getLifecycleSnapshot, type LifecycleSnapshotResult } from '../lifecycle-snapshot.js';
 import { KANBAN_BOARD_VERSION } from './version.js';
@@ -26,12 +27,20 @@ export interface ProgressCount {
   total: number;
 }
 
+/** Canonical membership position for a work item in a valid delivery stack. */
+export interface KanbanStackContext {
+  id: string;
+  position: number;
+  total: number;
+}
+
 export interface IdeaCard {
   kind: 'idea';
   id: string;
   title: string;
   created: string | null;
   members: string[];
+  stack?: KanbanStackContext;
 }
 
 export interface ChangeCard {
@@ -49,6 +58,7 @@ export interface ChangeCard {
   draftPullRequest?: { number: number; url: string; repository: string; base: string; head: string; headSha: string; runId: string };
   /** Lifecycle-resolver diagnostics; additive for renderer compatibility. */
   diagnostics?: KanbanDiagnostic[];
+  stack?: KanbanStackContext;
 }
 
 export interface ArchiveCard {
@@ -62,8 +72,10 @@ export interface ArchiveCard {
   lifecycle?: 'archived';
   position?: 'archived';
   diagnostics?: KanbanDiagnostic[];
+  stack?: KanbanStackContext;
 }
 
+/** @deprecated Kanban v3 accepted-specification card retained for source compatibility. */
 export interface SpecCard {
   kind: 'spec';
   id: string;
@@ -74,6 +86,7 @@ export interface SpecCard {
   diagnostic: string | null;
 }
 
+/** The current work-only, serializable Kanban board contract. */
 export interface ViewBoardModel {
   version: typeof KANBAN_BOARD_VERSION;
   project: {
@@ -81,8 +94,6 @@ export interface ViewBoardModel {
     name: string;
   };
   summary: {
-    acceptedSpecs: number;
-    requirements: number;
     openIdeas: number;
     /** Per-lifecycle-lane counts for the six derived states. */
     lanes: Record<LifecycleState, number>;
@@ -99,7 +110,6 @@ export interface ViewBoardModel {
     reviewing: ChangeCard[];
     archived: ArchiveCard[];
   };
-  specs: SpecCard[];
   diagnostics: ViewDiagnostic[];
 }
 
@@ -108,12 +118,15 @@ export interface ViewModelPorts {
   readFile(file: string): Promise<string>;
   /** The single authoritative lifecycle source for active and archived cards. */
   lifecycleSnapshot?(root: string, id: string): LifecycleSnapshotResult;
+  /** Builds canonical stack membership once for the whole snapshot. */
+  stackMembershipIndex?(root: string, readableMemberIds: ReadonlySet<string>): Promise<{ members: Map<string, StackMembershipContext>; diagnostics: StackDiagnostic[] }>;
 }
 
 const defaultPorts: ViewModelPorts = {
   readDir: (dir) => fs.readdir(dir, { withFileTypes: true }),
   readFile: (file) => fs.readFile(file, 'utf8'),
   lifecycleSnapshot: (root, id) => getLifecycleSnapshot({ root, id }),
+  stackMembershipIndex: buildStackMembershipIndex,
 };
 
 async function safeDirectories(
@@ -175,6 +188,15 @@ function progressRatio(progress: ProgressCount): number {
 
 function lifecycleDiagnostics(result: LifecycleSnapshotResult, source: string): KanbanDiagnostic[] {
   return result.diagnostics.map((item) => ({ source, code: item.code, message: item.message, remediation: item.remediation }));
+}
+
+function stackDiagnostics(root: string, diagnostics: StackDiagnostic[]): KanbanDiagnostic[] {
+  return diagnostics.map((item) => ({
+    source: item.path ? path.relative(root, item.path) : path.join('specbase', 'stacks'),
+    code: item.code,
+    message: item.message,
+    ...(item.fix ? { remediation: item.fix } : {}),
+  }));
 }
 
 function unreadableDiagnostic(source: string, error: unknown): KanbanDiagnostic {
@@ -286,63 +308,11 @@ async function collectArchives(root: string, store: string, ports: ViewModelPort
   });
 }
 
-async function walkSpecFiles(
-  ports: ViewModelPorts,
-  dir: string,
-  root: string,
-  diagnostics: ViewDiagnostic[],
-  relative: string[] = []
-): Promise<Array<{ file: string; parts: string[] }>> {
-  let entries: import('node:fs').Dirent[];
-  try {
-    entries = await ports.readDir(dir);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-      diagnostics.push({
-        source: path.relative(root, dir),
-        code: 'kanban_board_section_unreadable',
-        message: `Could not read this specification section: ${error instanceof Error ? error.message : String(error)}`,
-        remediation: 'Restore access to this specification section, then derive the board again.',
-      });
-    }
-    return [];
-  }
-  const found: Array<{ file: string; parts: string[] }> = [];
-  if (entries.some((entry) => entry.isFile() && entry.name === 'spec.md')) found.push({ file: path.join(dir, 'spec.md'), parts: relative });
-  for (const entry of entries.filter((item) => item.isDirectory() && !item.name.startsWith('.')).sort((a, b) => a.name.localeCompare(b.name))) {
-    found.push(...await walkSpecFiles(ports, path.join(dir, entry.name), root, diagnostics, [...relative, entry.name]));
-  }
-  return found;
-}
-
-async function collectSpecs(root: string, store: string, ports: ViewModelPorts, diagnostics: ViewDiagnostic[]): Promise<SpecCard[]> {
-  const cards: SpecCard[] = [];
-  for (const item of await walkSpecFiles(ports, path.join(store, 'specs'), root, diagnostics)) {
-    const locator = item.parts.join('/');
-    try {
-      const content = await ports.readFile(item.file);
-      const parsed = parseGovernedSpec(content);
-      const structural = parsed.issues.map((issue) => issue.message).join('; ');
-      if (structural) {
-        diagnostics.push({
-          source: path.relative(root, item.file),
-          code: 'kanban_board_invalid_specification',
-          message: structural,
-          remediation: 'Repair the specification structure, then derive the board again.',
-        });
-      }
-      if (parsed.id) {
-        cards.push({ kind: 'spec', id: parsed.id, locator, title: locator, requirementCount: parsed.requirements.length, requirements: parsed.requirements.map((r) => r.title), diagnostic: structural || null });
-      } else {
-        // A readable but unparseable specification remains visible at zero weight.
-        const legacyId = locator.replaceAll('/', '.');
-        cards.push({ kind: 'spec', id: legacyId, locator, title: locator, requirementCount: 0, requirements: [], diagnostic: structural || 'Specification could not be parsed as a governed spec' });
-      }
-    } catch (error) {
-      diagnostics.push(unreadableDiagnostic(path.relative(root, item.file), error));
-    }
-  }
-  return cards.sort((a, b) => b.requirementCount - a.requirementCount || a.locator.localeCompare(b.locator));
+function annotateStack<T extends IdeaCard | ChangeCard | ArchiveCard>(cards: T[], members: Map<string, StackMembershipContext>): T[] {
+  return cards.map((card) => {
+    const stack = members.get(card.id);
+    return stack ? { ...card, stack } : card;
+  });
 }
 
 async function deriveBoard(root: string, ports: ViewModelPorts): Promise<KanbanBoardSnapshot> {
@@ -353,15 +323,21 @@ async function deriveBoard(root: string, ports: ViewModelPorts): Promise<KanbanB
     throw new Error(`No specbase directory found under ${path.resolve(root)}. Run 'specbase init' first.`);
   }
   const diagnostics: ViewDiagnostic[] = [];
-  const [ideas, changes, archives, specs] = await Promise.all([
+  const [ideaCards, changeCards, archiveCards] = await Promise.all([
     collectIdeas(root, store, ports, diagnostics),
     collectChanges(root, store, ports, diagnostics),
     collectArchives(root, store, ports, diagnostics),
-    collectSpecs(root, store, ports, diagnostics),
   ]);
-  // Distribute every change card into the lane for its derived lifecycle state.
-  // `changes` is already sorted by progress then immutable ID; distributing a
-  // sorted list preserves that per-lane ordering (progress then ID) for each lane.
+  const readableMemberIds = new Set([
+    ...ideaCards.map((card) => card.id),
+    ...changeCards.map((card) => card.id),
+    ...archiveCards.map((card) => card.id),
+  ]);
+  const stackIndex = await (ports.stackMembershipIndex ?? defaultPorts.stackMembershipIndex!)(root, readableMemberIds);
+  diagnostics.push(...stackDiagnostics(root, stackIndex.diagnostics));
+  const ideas = annotateStack(ideaCards, stackIndex.members);
+  const changes = annotateStack(changeCards, stackIndex.members);
+  const archives = annotateStack(archiveCards, stackIndex.members);
   const changeLanes: Record<Exclude<LifecycleState, 'archived'>, ChangeCard[]> = {
     proposed: [],
     enforcement: [],
@@ -369,9 +345,7 @@ async function deriveBoard(root: string, ports: ViewModelPorts): Promise<KanbanB
     implementing: [],
     reviewing: [],
   };
-  for (const card of changes) {
-    changeLanes[card.lifecycle].push(card);
-  }
+  for (const card of changes) changeLanes[card.lifecycle].push(card);
   const lanes: ViewBoardModel['lanes'] = { ideas, ...changeLanes, archived: archives };
   const completedTasks = changes.reduce((sum, card) => sum + card.tasks.completed, 0);
   const totalTasks = changes.reduce((sum, card) => sum + card.tasks.total, 0);
@@ -383,8 +357,6 @@ async function deriveBoard(root: string, ports: ViewModelPorts): Promise<KanbanB
     version: KANBAN_BOARD_VERSION,
     project: { name: path.basename(resolvedRoot) || resolvedRoot },
     summary: {
-      acceptedSpecs: specs.length,
-      requirements: specs.reduce((sum, spec) => sum + spec.requirementCount, 0),
       openIdeas: ideas.length,
       lanes: {
         proposed: lanes.proposed.length,
@@ -398,7 +370,6 @@ async function deriveBoard(root: string, ports: ViewModelPorts): Promise<KanbanB
       totalTasks,
     },
     lanes,
-    specs,
     diagnostics,
   };
 }
@@ -418,7 +389,7 @@ export async function deriveViewBoard(root = '.', ports: ViewModelPorts = defaul
 
 export type KanbanBoardSnapshot = ViewBoardModel;
 export type KanbanSnapshot = KanbanBoardSnapshot;
-export type KanbanCard = IdeaCard | ChangeCard | ArchiveCard | SpecCard;
+export type KanbanCard = IdeaCard | ChangeCard | ArchiveCard;
 export type KanbanColumn = keyof KanbanBoardSnapshot['lanes'];
 export type KanbanSummary = KanbanBoardSnapshot['summary'];
 
@@ -428,12 +399,35 @@ export interface KanbanValidationDiagnostic {
   remediation: string;
 }
 
+export interface LegacyKanbanBoardSnapshot {
+  version: 3;
+  project: { name: string };
+  summary: { acceptedSpecs: number; requirements: number; openIdeas: number; completedTasks: number; totalTasks: number; lanes: Record<LifecycleState, number> };
+  lanes: {
+    ideas: IdeaCard[];
+    proposed: ChangeCard[];
+    enforcement: ChangeCard[];
+    'ready-to-apply': ChangeCard[];
+    implementing: ChangeCard[];
+    reviewing: ChangeCard[];
+    archived: ArchiveCard[];
+  };
+  specs: SpecCard[];
+  diagnostics: KanbanDiagnostic[];
+}
+
+type ValidatedKanbanSnapshot = KanbanBoardSnapshot | LegacyKanbanBoardSnapshot;
+
 export type KanbanBoardValidationResult =
-  | { valid: true; snapshot: KanbanBoardSnapshot; diagnostics: [] }
+  | { valid: true; snapshot: ValidatedKanbanSnapshot; diagnostics: [] }
   | { valid: false; snapshot: null; diagnostics: KanbanValidationDiagnostic[] };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
 }
 
 function isProgress(value: unknown): boolean {
@@ -453,25 +447,38 @@ function isOptionalDiagnosticList(value: unknown): boolean {
   return value === undefined || (Array.isArray(value) && value.every(isKanbanDiagnostic));
 }
 
-const LIFECYCLE_KEYS = ['proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const;
+function isStackContext(value: unknown): value is KanbanStackContext {
+  return isRecord(value)
+    && typeof value.id === 'string' && value.id.trim().length > 0
+    && Number.isInteger(value.position) && Number(value.position) > 0
+    && Number.isInteger(value.total) && Number(value.total) > 0
+    && Number(value.position) <= Number(value.total)
+    && hasOnlyKeys(value, ['id', 'position', 'total']);
+}
 
-/** True only for a value compatible with the supported kanban snapshot schema. */
+const LIFECYCLE_KEYS = ['proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const;
+const CURRENT_BOARD_KEYS = ['version', 'project', 'summary', 'lanes', 'diagnostics'] as const;
+const CURRENT_SUMMARY_KEYS = ['openIdeas', 'lanes', 'completedTasks', 'totalTasks'] as const;
+const CURRENT_LANE_KEYS = ['ideas', ...LIFECYCLE_KEYS] as const;
+
+/** True only for a value compatible with the current work-only kanban snapshot schema. */
 export function isKanbanBoardSnapshot(value: unknown): value is KanbanBoardSnapshot {
   if (!isRecord(value) || value.version !== KANBAN_BOARD_VERSION || !isRecord(value.project) || !isRecord(value.summary) || !isRecord(value.lanes)) return false;
-  if (typeof value.project.name !== 'string' || !value.project.name.trim()) return false;
+  if (!hasOnlyKeys(value, CURRENT_BOARD_KEYS) || typeof value.project.name !== 'string' || !value.project.name.trim()) return false;
   const { summary, lanes } = value;
-  if (!Number.isInteger(summary.acceptedSpecs) || Number(summary.acceptedSpecs) < 0
-    || !Number.isInteger(summary.requirements) || Number(summary.requirements) < 0
+  if (!hasOnlyKeys(summary, CURRENT_SUMMARY_KEYS)
     || !Number.isInteger(summary.openIdeas) || Number(summary.openIdeas) < 0
     || !Number.isInteger(summary.completedTasks) || Number(summary.completedTasks) < 0
     || !Number.isInteger(summary.totalTasks) || Number(summary.totalTasks) < 0
     || !isRecord(summary.lanes)) return false;
   const summaryLanes = summary.lanes;
-  if (!LIFECYCLE_KEYS.every((key) => Number.isInteger(summaryLanes[key]) && Number(summaryLanes[key]) >= 0)) return false;
-  if (!Array.isArray(lanes.ideas) || !Array.isArray(lanes.proposed) || !Array.isArray(lanes.enforcement)
+  if (!hasOnlyKeys(summaryLanes, LIFECYCLE_KEYS) || !LIFECYCLE_KEYS.every((key) => Number.isInteger(summaryLanes[key]) && Number(summaryLanes[key]) >= 0)) return false;
+  if (!hasOnlyKeys(lanes, CURRENT_LANE_KEYS)
+    || !Array.isArray(lanes.ideas) || !Array.isArray(lanes.proposed) || !Array.isArray(lanes.enforcement)
     || !Array.isArray(lanes['ready-to-apply']) || !Array.isArray(lanes.implementing) || !Array.isArray(lanes.reviewing)
-    || !Array.isArray(lanes.archived) || !Array.isArray(value.specs) || !Array.isArray(value.diagnostics)) return false;
-  const card = (entry: unknown, kind: string) => isRecord(entry) && entry.kind === kind && typeof entry.id === 'string' && typeof entry.title === 'string';
+    || !Array.isArray(lanes.archived) || !Array.isArray(value.diagnostics)) return false;
+  const card = (entry: unknown, kind: string) => isRecord(entry) && entry.kind === kind && typeof entry.id === 'string' && typeof entry.title === 'string'
+    && (entry.stack === undefined || isStackContext(entry.stack));
   if (!lanes.ideas.every((entry) => card(entry, 'idea') && Array.isArray(entry.members)
     && entry.members.every((member: unknown) => typeof member === 'string') && (entry.created === null || typeof entry.created === 'string'))) return false;
   const changeLanes = [['proposed', lanes.proposed], ['enforcement', lanes.enforcement], ['ready-to-apply', lanes['ready-to-apply']], ['implementing', lanes.implementing], ['reviewing', lanes.reviewing]] as const;
@@ -486,30 +493,16 @@ export function isKanbanBoardSnapshot(value: unknown): value is KanbanBoardSnaps
     && (entry.position === undefined || entry.position === 'archived')
     && isOptionalDiagnosticList(entry.diagnostics)
     && (entry.archived === null || typeof entry.archived === 'string'))) return false;
-  if (!value.specs.every((entry) => card(entry, 'spec') && typeof entry.locator === 'string'
-    && Number.isInteger(entry.requirementCount) && Number(entry.requirementCount) >= 0
-    && Array.isArray(entry.requirements) && entry.requirements.every((requirement: unknown) => typeof requirement === 'string')
-    && (entry.diagnostic === null || typeof entry.diagnostic === 'string'))) return false;
 
-  // Board task totals intentionally describe active work only; archived cards
-  // retain their own progress but do not inflate the active-work summary.
-  const allWorkCards = [
-    ...lanes.proposed,
-    ...lanes.enforcement,
-    ...lanes['ready-to-apply'],
-    ...lanes.implementing,
-    ...lanes.reviewing,
-  ];
-  const taskTotals = allWorkCards.reduce(
+  const activeCards = [...lanes.proposed, ...lanes.enforcement, ...lanes['ready-to-apply'], ...lanes.implementing, ...lanes.reviewing];
+  const taskTotals = activeCards.reduce(
     (totals, entry) => ({
       completed: totals.completed + Number((entry.tasks as Record<string, unknown>).completed),
       total: totals.total + Number((entry.tasks as Record<string, unknown>).total),
     }),
     { completed: 0, total: 0 }
   );
-  if (summary.acceptedSpecs !== value.specs.length
-    || summary.requirements !== value.specs.reduce((total, entry) => total + Number((entry as Record<string, unknown>).requirementCount), 0)
-    || summary.openIdeas !== lanes.ideas.length
+  if (summary.openIdeas !== lanes.ideas.length
     || summary.completedTasks !== taskTotals.completed
     || summary.totalTasks !== taskTotals.total
     || !LIFECYCLE_KEYS.every((key) => summaryLanes[key] === (lanes[key] as unknown[]).length)) return false;
@@ -517,35 +510,88 @@ export function isKanbanBoardSnapshot(value: unknown): value is KanbanBoardSnaps
   return value.diagnostics.every(isKanbanDiagnostic);
 }
 
+/** Recognizes complete v3 values only when callers explicitly request the legacy version. */
+function isLegacyKanbanBoardSnapshot(value: unknown): value is LegacyKanbanBoardSnapshot {
+  if (!isRecord(value) || value.version !== 3 || !isRecord(value.project) || !isRecord(value.summary) || !isRecord(value.lanes)
+    || !Array.isArray(value.specs) || !Array.isArray(value.diagnostics)) return false;
+  const summary = value.summary;
+  const lanes = value.lanes;
+  if (typeof value.project.name !== 'string' || !value.project.name.trim()
+    || !Number.isInteger(summary.acceptedSpecs) || Number(summary.acceptedSpecs) < 0
+    || !Number.isInteger(summary.requirements) || Number(summary.requirements) < 0
+    || !Number.isInteger(summary.openIdeas) || Number(summary.openIdeas) < 0
+    || !Number.isInteger(summary.completedTasks) || Number(summary.completedTasks) < 0
+    || !Number.isInteger(summary.totalTasks) || Number(summary.totalTasks) < 0
+    || !isRecord(summary.lanes)) return false;
+  const summaryLanes = summary.lanes;
+  if (!LIFECYCLE_KEYS.every((key) => Number.isInteger(summaryLanes[key]) && Number(summaryLanes[key]) >= 0)
+    || !Array.isArray(lanes.ideas) || !Array.isArray(lanes.proposed) || !Array.isArray(lanes.enforcement)
+    || !Array.isArray(lanes['ready-to-apply']) || !Array.isArray(lanes.implementing) || !Array.isArray(lanes.reviewing)
+    || !Array.isArray(lanes.archived)) return false;
+  const card = (entry: unknown, kind: string) => isRecord(entry)
+    && entry.kind === kind && typeof entry.id === 'string' && typeof entry.title === 'string';
+  if (!lanes.ideas.every((entry) => card(entry, 'idea') && Array.isArray(entry.members)
+    && entry.members.every((member: unknown) => typeof member === 'string')
+    && (entry.created === null || typeof entry.created === 'string'))) return false;
+  const changeLanes = [['proposed', lanes.proposed], ['enforcement', lanes.enforcement], ['ready-to-apply', lanes['ready-to-apply']], ['implementing', lanes.implementing], ['reviewing', lanes.reviewing]] as const;
+  if (!changeLanes.every(([lifecycle, entries]) => entries.every((entry) => card(entry, 'change')
+    && isProgress(entry.artifacts) && isProgress(entry.tasks) && entry.lifecycle === lifecycle
+    && (entry.created === null || typeof entry.created === 'string')))) return false;
+  if (!lanes.archived.every((entry) => card(entry, 'archive') && isProgress(entry.tasks)
+    && (entry.archived === null || typeof entry.archived === 'string'))) return false;
+  if (!value.specs.every((entry) => card(entry, 'spec') && typeof entry.locator === 'string'
+    && Number.isInteger(entry.requirementCount) && Number(entry.requirementCount) >= 0
+    && Array.isArray(entry.requirements) && entry.requirements.every((requirement: unknown) => typeof requirement === 'string')
+    && (entry.diagnostic === null || typeof entry.diagnostic === 'string'))) return false;
+  const activeCards = [...lanes.proposed, ...lanes.enforcement, ...lanes['ready-to-apply'], ...lanes.implementing, ...lanes.reviewing];
+  const taskTotals = activeCards.reduce(
+    (totals, entry) => ({
+      completed: totals.completed + Number((entry.tasks as Record<string, unknown>).completed),
+      total: totals.total + Number((entry.tasks as Record<string, unknown>).total),
+    }),
+    { completed: 0, total: 0 }
+  );
+  return summary.acceptedSpecs === value.specs.length
+    && summary.requirements === value.specs.reduce((total, entry) => total + Number((entry as Record<string, unknown>).requirementCount), 0)
+    && summary.openIdeas === lanes.ideas.length
+    && summary.completedTasks === taskTotals.completed
+    && summary.totalTasks === taskTotals.total
+    && LIFECYCLE_KEYS.every((key) => summaryLanes[key] === (lanes[key] as unknown[]).length)
+    && value.diagnostics.every(isKanbanDiagnostic);
+}
+
 /**
- * Validate an unknown value against a requested board version without exposing
- * renderer framing or process-protocol semantics.
+ * Validate an unknown board value against an explicitly requested version.
+ * V4 is the only current type; v3 remains a validation-only compatibility path.
  */
 export function validateKanbanBoardSnapshot(value: unknown, requestedVersion: number): KanbanBoardValidationResult {
-  if (requestedVersion !== KANBAN_BOARD_VERSION) {
-    return {
-      valid: false,
-      snapshot: null,
-      diagnostics: [{
-        code: 'kanban_board_unsupported_version',
-        message: `Unsupported kanban board version ${requestedVersion}; supported version is ${KANBAN_BOARD_VERSION}.`,
-        remediation: `Request kanban board version ${KANBAN_BOARD_VERSION}.`,
-      }],
-    };
-  }
-  if (!isKanbanBoardSnapshot(value)) {
+  const invalid = (): KanbanBoardValidationResult => {
     const receivedVersion = isRecord(value) && 'version' in value ? String(value.version) : 'none';
     return {
       valid: false,
       snapshot: null,
       diagnostics: [{
         code: 'kanban_board_invalid_shape',
-        message: `Kanban board value does not match supported version ${KANBAN_BOARD_VERSION} (received version ${receivedVersion}).`,
+        message: `Kanban board value does not match requested version ${requestedVersion} (received version ${receivedVersion}).`,
         remediation: 'Derive a new snapshot with deriveKanbanBoard, or provide a complete supported snapshot.',
       }],
     };
+  };
+  if (requestedVersion === KANBAN_BOARD_VERSION) {
+    return isKanbanBoardSnapshot(value) ? { valid: true, snapshot: value, diagnostics: [] } : invalid();
   }
-  return { valid: true, snapshot: value, diagnostics: [] };
+  if (requestedVersion === 3) {
+    return isLegacyKanbanBoardSnapshot(value) ? { valid: true, snapshot: value, diagnostics: [] } : invalid();
+  }
+  return {
+    valid: false,
+    snapshot: null,
+    diagnostics: [{
+      code: 'kanban_board_unsupported_version',
+      message: `Unsupported kanban board version ${requestedVersion}; supported versions are 3 and ${KANBAN_BOARD_VERSION}.`,
+      remediation: `Request kanban board version ${KANBAN_BOARD_VERSION}.`,
+    }],
+  };
 }
 
 /** Concise supported alias for validateKanbanBoardSnapshot. */

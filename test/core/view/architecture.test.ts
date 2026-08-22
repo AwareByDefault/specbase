@@ -7,13 +7,13 @@ import type { ViewBoardModel } from '../../../src/core/view/model.js';
 const root = process.cwd();
 const source = (relative: string) => fs.readFile(path.join(root, ...relative.split('/')), 'utf8');
 const model: ViewBoardModel = {
-  version: 3,
+  version: 4,
   project: { name: 'architecture-project' },
-  summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 2, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+  summary: { openIdeas: 2, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
   lanes: { ideas: [
     { kind: 'idea', id: 'a', title: 'A', created: null, members: [] },
     { kind: 'idea', id: 'b', title: 'B', created: null, members: [] },
-  ], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] }, specs: [], diagnostics: [],
+  ], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] }, diagnostics: [],
 };
 
 describe('view architecture boundaries', () => {

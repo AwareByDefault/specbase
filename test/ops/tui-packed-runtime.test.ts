@@ -69,11 +69,11 @@ describe('packed consumer OpenTUI runtime', () => {
 
     // Exercise the packed private application itself, not only Core testing.
     const model = {
-      version: 3,
+      version: 4,
       project: { name: 'packed-project' },
-      summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 0, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+      summary: { openIdeas: 0, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
       lanes: { ideas: [], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] },
-      specs: [], diagnostics: [],
+      diagnostics: [],
     };
     const applicationCode = await new Promise<number | null>((resolve, reject) => {
       const child = spawn(process.execPath, [privateEntry], {
@@ -103,11 +103,11 @@ describe('packed consumer OpenTUI runtime', () => {
     const privateEntry = path.join(process.cwd(), 'dist', 'internal', 'view-tui.mjs');
     expect((await fs.stat(privateEntry)).isFile()).toBe(true);
     const model = {
-      version: 3,
+      version: 4,
       project: { name: 'packed-project' },
-      summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 0, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+      summary: { openIdeas: 0, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
       lanes: { ideas: [], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] },
-      specs: [], diagnostics: [],
+      diagnostics: [],
     };
     const node = process.platform === 'win32' ? 'node.exe' : 'node';
     const result = await new Promise<{ code: number | null; stderr: string }>((resolve, reject) => {

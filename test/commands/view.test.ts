@@ -9,11 +9,11 @@ import { discoverBun } from '../../src/core/view/launcher.js';
 import type { ViewBoardModel } from '../../src/core/view/model.js';
 
 const model: ViewBoardModel = {
-  version: 3,
+  version: 4,
   project: { name: 'sample-project' },
-  summary: { acceptedSpecs: 0, requirements: 0, openIdeas: 1, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+  summary: { openIdeas: 1, completedTasks: 0, totalTasks: 0, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
   lanes: { ideas: [{ kind: 'idea', id: 'idea-1', title: 'Idea', created: '2025-01-01', members: [] }], proposed: [], enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [], archived: [] },
-  specs: [], diagnostics: [],
+  diagnostics: [],
 };
 
 async function snapshot(dir: string): Promise<string[]> {
@@ -78,6 +78,19 @@ describe('view command modes and protocol', () => {
     expect(JSON.stringify(model)).toBe(before);
   });
 
+  it('validates complete legacy v3 snapshots and rejects malformed compatibility values', () => {
+    const v3 = {
+      ...model,
+      version: 3,
+      summary: { acceptedSpecs: 0, requirements: 0, ...model.summary },
+      specs: [],
+    };
+    expect(validateKanbanBoardSnapshot(v3, 3)).toMatchObject({ valid: true, snapshot: v3, diagnostics: [] });
+    expect(validateKanbanBoardSnapshot({ ...v3, summary: { ...v3.summary, acceptedSpecs: -1 } }, 3).valid).toBe(false);
+    expect(validateKanbanBoardSnapshot({ ...v3, summary: { ...v3.summary, lanes: { ...v3.summary.lanes, reviewing: 1 } } }, 3).valid).toBe(false);
+    expect(validateKanbanBoardSnapshot({ ...v3, lanes: { ...v3.lanes, proposed: [{ kind: 'change', id: 'broken' }] } }, 3).valid).toBe(false);
+  });
+
   it.each([
     ['accepted-spec count', (board: Record<string, unknown>) => ({ ...board, summary: { ...(board.summary as Record<string, unknown>), acceptedSpecs: 0 } })],
     ['accepted requirement count', (board: Record<string, unknown>) => ({ ...board, summary: { ...(board.summary as Record<string, unknown>), requirements: 0 } })],
@@ -85,7 +98,6 @@ describe('view command modes and protocol', () => {
     ['zero stack position', (board: Record<string, unknown>) => ({ ...board, lanes: { ...(board.lanes as Record<string, unknown>), ideas: [{ ...((board.lanes as Record<string, unknown[]>).ideas[0] as Record<string, unknown>), stack: { id: 'delivery', position: 0, total: 2 } }] } })],
     ['position beyond stack total', (board: Record<string, unknown>) => ({ ...board, lanes: { ...(board.lanes as Record<string, unknown>), ideas: [{ ...((board.lanes as Record<string, unknown[]>).ideas[0] as Record<string, unknown>), stack: { id: 'delivery', position: 3, total: 2 } }] } })],
   ])('rejects v4 work-only board with legacy or invalid stack data: %s', (_label, mutate) => {
-    // Keep v4 test values outside the current v3 declarations until production advances.
     const legacy = model as unknown as Record<string, unknown>;
     const summary = { ...(legacy.summary as Record<string, unknown>) };
     delete summary.acceptedSpecs;
@@ -150,7 +162,7 @@ describe('view command modes and protocol', () => {
 
   it('accepts exactly one EOF-delimited JSON model and rejects malformed, empty, version, and schema failures', () => {
     expect(decodeViewModelFrame(Buffer.from(JSON.stringify(model)))).toEqual(model);
-    for (const invalid of [Buffer.alloc(0), Buffer.from('{'), Buffer.from(`${JSON.stringify(model)} trailing`), Buffer.from(JSON.stringify({ ...model, version: 4 })), Buffer.from(JSON.stringify({ version: 1 }))]) {
+    for (const invalid of [Buffer.alloc(0), Buffer.from('{'), Buffer.from(`${JSON.stringify(model)} trailing`), Buffer.from(JSON.stringify({ ...model, version: 3 })), Buffer.from(JSON.stringify({ version: 1 }))]) {
       expect(() => decodeViewModelFrame(invalid)).toThrow();
     }
     const wrongLane = {
@@ -181,9 +193,9 @@ describe('view command modes and protocol', () => {
 
   it('renders complete plain projection with every section, ordering, IDs, progress, warnings, and parity with JSON', async () => {
     const rich: ViewBoardModel = {
-      version: 3,
+      version: 4,
       project: { name: 'rich-project' },
-      summary: { acceptedSpecs: 2, requirements: 3, openIdeas: 1, completedTasks: 3, totalTasks: 10, lanes: { proposed: 2, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 1 } },
+      summary: { openIdeas: 1, completedTasks: 3, totalTasks: 10, lanes: { proposed: 2, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 1 } },
       lanes: {
         ideas: [{ kind: 'idea', id: 'idea-a', title: 'Alpha idea', created: '2025-01-01', members: ['notes.md'] }],
         proposed: [
@@ -196,10 +208,6 @@ describe('view command modes and protocol', () => {
         reviewing: [],
         archived: [{ kind: 'archive', id: 'archive-old', title: 'Old archive', archived: '2025-01-03', tasks: { completed: 5, total: 5 } }],
       },
-      specs: [
-        { kind: 'spec', id: 'behavior.sample', locator: 'behavior/sample', title: 'behavior/sample', requirementCount: 2, requirements: ['First', 'Second'], diagnostic: 'parse warning' },
-        { kind: 'spec', id: 'behavior.unparseable', locator: 'behavior/unparseable', title: 'behavior/unparseable', requirementCount: 0, requirements: [], diagnostic: 'expected frontmatter' },
-      ],
       diagnostics: [{ source: 'ideas/bad', message: 'missing .openspec.yaml' }],
     };
     let output = '';
@@ -212,8 +220,7 @@ describe('view command modes and protocol', () => {
     expect(output).toContain('◉ High progress [change-high] artifacts 3/3 | tasks 2/10');
     expect(output.indexOf('change-low')).toBeLessThan(output.indexOf('change-high'));
     expect(output).toContain('✓ Old archive [archive-old]');
-    expect(output).toContain('behavior/sample');
-    expect(output).toContain('behavior/unparseable');
+    expect(output).not.toContain('Specifications');
     expect(output).toContain('⚠');
     expect(output).toContain('Diagnostics');
     expect(output).toContain('Problem: missing .openspec.yaml');
@@ -227,7 +234,7 @@ describe('view command modes and protocol', () => {
     expect(json.lanes.proposed.map((card: { id: string }) => card.id)).toEqual(['change-low', 'change-high']);
     expect(json.lanes.proposed.map((card: { tasks: unknown }) => card.tasks)).toEqual(rich.lanes.proposed.map((card) => card.tasks));
     expect(json.lanes.archived.length).toBe(rich.lanes.archived.length);
-    expect(json.specs.length).toBe(rich.specs.length);
+    expect(Object.hasOwn(json, 'specs')).toBe(false);
     expect(json.diagnostics.length).toBe(rich.diagnostics.length);
   });
 
@@ -242,16 +249,15 @@ describe('view command modes and protocol', () => {
       await fs.writeFile(path.join(root, 'specbase', 'specs', 'behavior', 'test', 'spec.md'), '---\nid: behavior.test\n---\n### Requirement: One\n**ID:** one\nText.\n');
       // Construct a model that has items to select and scroll
       const interactiveModel: ViewBoardModel = {
-        version: 3,
+        version: 4,
         project: { name: path.basename(root) },
-        summary: { acceptedSpecs: 1, requirements: 1, openIdeas: 1, completedTasks: 0, totalTasks: 0, lanes: { proposed: 1, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
+        summary: { openIdeas: 1, completedTasks: 0, totalTasks: 0, lanes: { proposed: 1, enforcement: 0, 'ready-to-apply': 0, implementing: 0, reviewing: 0, archived: 0 } },
         lanes: {
           ideas: [{ kind: 'idea', id: 'idea-one', title: 'First idea', created: '2025-01-01', members: [] }],
           proposed: [{ kind: 'change', id: 'change-a', title: 'Change A', created: null, artifacts: { completed: 0, total: 3 }, tasks: { completed: 0, total: 0 }, lifecycle: 'proposed' }],
           enforcement: [], 'ready-to-apply': [], implementing: [], reviewing: [],
           archived: [],
         },
-        specs: [{ kind: 'spec', id: 'behavior.test', locator: 'behavior/test', title: 'behavior/test', requirementCount: 1, requirements: ['One'], diagnostic: null }],
         diagnostics: [],
       };
       let interactions = 0;

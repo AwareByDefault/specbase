@@ -254,7 +254,7 @@ program
 
 program
   .command('view')
-  .description('Inspect ideas, changes, archives, and specs in a viewer-only board')
+  .description('Inspect ideas, changes, and archives in a viewer-only board')
   .option('--plain', 'Force deterministic non-interactive text output')
   .option('--json', 'Output the versioned board model as JSON')
   .action(async (options: { plain?: boolean; json?: boolean }) => {

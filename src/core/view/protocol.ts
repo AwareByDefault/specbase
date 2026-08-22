@@ -15,32 +15,57 @@ function array(value: unknown): value is unknown[] {
   return Array.isArray(value);
 }
 
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key));
+}
+
 function progress(value: unknown): boolean {
   return isRecord(value) && Number.isInteger(value.completed) && Number.isInteger(value.total) && Number(value.completed) >= 0 && Number(value.total) >= Number(value.completed);
 }
 
-const LIFECYCLE_KEYS = ['proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const;
+function stack(value: unknown): boolean {
+  return isRecord(value)
+    && hasOnlyKeys(value, ['id', 'position', 'total'])
+    && typeof value.id === 'string' && value.id.trim().length > 0
+    && Number.isInteger(value.position) && Number(value.position) > 0
+    && Number.isInteger(value.total) && Number(value.total) > 0
+    && Number(value.position) <= Number(value.total);
+}
 
+const LIFECYCLE_KEYS = ['proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const;
+const BOARD_KEYS = ['version', 'project', 'summary', 'lanes', 'diagnostics'] as const;
+const SUMMARY_KEYS = ['openIdeas', 'lanes', 'completedTasks', 'totalTasks'] as const;
+const LANE_KEYS = ['ideas', ...LIFECYCLE_KEYS] as const;
+
+/** Validate the isolated fd-3 renderer payload without importing headless store code. */
 export function validateViewBoardModel(value: unknown): value is ViewBoardModel {
-  if (!isRecord(value) || value.version !== VIEW_BOARD_VERSION || !isRecord(value.project) || !isRecord(value.summary) || !isRecord(value.lanes)) return false;
+  if (!isRecord(value) || value.version !== VIEW_BOARD_VERSION || !hasOnlyKeys(value, BOARD_KEYS)
+    || !isRecord(value.project) || !isRecord(value.summary) || !isRecord(value.lanes)) return false;
   if (typeof value.project.name !== 'string' || !value.project.name.trim()) return false;
   const summary = value.summary;
   const lanes = value.lanes;
-  if (!Number.isInteger(summary.acceptedSpecs) || Number(summary.acceptedSpecs) < 0) return false;
-  if (!Number.isInteger(summary.requirements) || Number(summary.requirements) < 0) return false;
-  if (!Number.isInteger(summary.openIdeas) || Number(summary.openIdeas) < 0) return false;
-  if (!Number.isInteger(summary.completedTasks) || Number(summary.completedTasks) < 0) return false;
-  if (!Number.isInteger(summary.totalTasks) || Number(summary.totalTasks) < 0) return false;
+  if (!hasOnlyKeys(summary, SUMMARY_KEYS)
+    || !Number.isInteger(summary.openIdeas) || Number(summary.openIdeas) < 0
+    || !Number.isInteger(summary.completedTasks) || Number(summary.completedTasks) < 0
+    || !Number.isInteger(summary.totalTasks) || Number(summary.totalTasks) < 0) return false;
   const laneSummary = summary.lanes;
-  if (!isRecord(laneSummary) || !LIFECYCLE_KEYS.every((key) => Number.isInteger(laneSummary[key]) && Number(laneSummary[key]) >= 0)) return false;
-  if (!array(lanes.ideas) || !array(lanes.proposed) || !array(lanes.enforcement) || !array(lanes['ready-to-apply']) || !array(lanes.implementing) || !array(lanes.reviewing) || !array(lanes.archived) || !array(value.specs) || !array(value.diagnostics)) return false;
-  const base = (card: unknown, kind: string) => isRecord(card) && card.kind === kind && typeof card.id === 'string' && typeof card.title === 'string';
+  if (!isRecord(laneSummary) || !hasOnlyKeys(laneSummary, LIFECYCLE_KEYS)
+    || !LIFECYCLE_KEYS.every((key) => Number.isInteger(laneSummary[key]) && Number(laneSummary[key]) >= 0)) return false;
+  if (!hasOnlyKeys(lanes, LANE_KEYS)
+    || !array(lanes.ideas) || !array(lanes.proposed) || !array(lanes.enforcement)
+    || !array(lanes['ready-to-apply']) || !array(lanes.implementing) || !array(lanes.reviewing)
+    || !array(lanes.archived) || !array(value.diagnostics)) return false;
+  const base = (card: unknown, kind: string) => isRecord(card)
+    && card.kind === kind
+    && typeof card.id === 'string'
+    && typeof card.title === 'string'
+    && (card.stack === undefined || stack(card.stack));
   if (!lanes.ideas.every((card) => {
     if (!base(card, 'idea')) return false;
     const c = card as Record<string, unknown>;
-    if (!array(c.members)) return false;
-    if (c.created !== null && typeof c.created !== 'string') return false;
-    return (c.members as unknown[]).every((m: unknown) => typeof m === 'string');
+    return array(c.members)
+      && (c.created === null || typeof c.created === 'string')
+      && c.members.every((member: unknown) => typeof member === 'string');
   })) return false;
   const changeLanes = [
     ['proposed', lanes.proposed],
@@ -52,22 +77,12 @@ export function validateViewBoardModel(value: unknown): value is ViewBoardModel 
   if (!changeLanes.every(([expectedLifecycle, lane]) => lane.every((card) => {
     if (!base(card, 'change') || !progress((card as Record<string, unknown>).artifacts) || !progress((card as Record<string, unknown>).tasks)) return false;
     const c = card as Record<string, unknown>;
-    if (c.created !== null && typeof c.created !== 'string') return false;
-    return c.lifecycle === expectedLifecycle;
+    return (c.created === null || typeof c.created === 'string') && c.lifecycle === expectedLifecycle;
   }))) return false;
   if (!lanes.archived.every((card) => {
     if (!base(card, 'archive') || !progress((card as Record<string, unknown>).tasks)) return false;
     const c = card as Record<string, unknown>;
-    if (c.archived !== null && typeof c.archived !== 'string') return false;
-    return true;
-  })) return false;
-  if (!value.specs.every((card) => {
-    if (!base(card, 'spec') || typeof (card as Record<string, unknown>).locator !== 'string') return false;
-    const c = card as Record<string, unknown>;
-    if (!Number.isInteger(c.requirementCount) || Number(c.requirementCount) < 0) return false;
-    if (!array(c.requirements) || !c.requirements.every((r: unknown) => typeof r === 'string')) return false;
-    if (c.diagnostic !== null && typeof c.diagnostic !== 'string') return false;
-    return true;
+    return c.archived === null || typeof c.archived === 'string';
   })) return false;
   return value.diagnostics.every((diagnostic) => isRecord(diagnostic) && typeof diagnostic.source === 'string' && typeof diagnostic.message === 'string');
 }

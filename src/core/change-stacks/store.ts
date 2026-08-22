@@ -174,6 +174,110 @@ export async function listStackManifests(root: string): Promise<StackManifest[]>
   return manifests.sort((a, b) => a.created.localeCompare(b.created) || a.id.localeCompare(b.id));
 }
 
+/** Lightweight, stable stack context suitable for read-only work-item projections. */
+export interface StackMembershipContext {
+  id: string;
+  position: number;
+  total: number;
+}
+
+/**
+ * Build membership once for a snapshot consumer. Every stack manifest is read
+ * at most once; invalid stacks add diagnostics and never hide readable work.
+ */
+export async function buildStackMembershipIndex(
+  root: string,
+  readableMemberIds?: ReadonlySet<string>
+): Promise<{ members: Map<string, StackMembershipContext>; diagnostics: StackDiagnostic[] }> {
+  const members = new Map<string, StackMembershipContext>();
+  const diagnostics: StackDiagnostic[] = [];
+  const manifests: StackManifest[] = [];
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = (await fs.readdir(stacksHome(root), { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { members, diagnostics };
+    diagnostics.push({
+      severity: 'error',
+      code: 'invalid_stack_manifest',
+      message: `Could not read the stack directory: ${error instanceof Error ? error.message : String(error)}`,
+      path: stacksHome(root),
+      fix: 'Restore access to the stacks directory, then derive the board again.',
+    });
+    return { members, diagnostics };
+  }
+
+  for (const entry of entries) {
+    try {
+      manifests.push(await readStackManifest(root, entry.name));
+    } catch (error) {
+      if (error instanceof StackValidationError) diagnostics.push(...error.diagnostics);
+      else diagnostics.push({
+        severity: 'error',
+        code: 'invalid_stack_manifest',
+        message: error instanceof Error ? error.message : String(error),
+        path: path.join(stacksHome(root), entry.name, STACK_MANIFEST_FILENAME),
+        fix: 'Repair the stack manifest, then derive the board again.',
+      });
+    }
+  }
+
+  const stackIds = new Set(manifests.map((manifest) => manifest.id));
+  const owners = new Map<string, string[]>();
+  for (const manifest of manifests) {
+    for (const member of manifest.members) owners.set(member, [...(owners.get(member) ?? []), manifest.id]);
+  }
+  const invalidStacks = new Set<string>();
+  for (const manifest of manifests) {
+    for (const member of manifest.members) {
+      if (stackIds.has(member)) {
+        invalidStacks.add(manifest.id);
+        diagnostics.push({
+          severity: 'error',
+          code: 'nested_stack',
+          member,
+          message: `Member '${member}' identifies a stack; nested stacks are not supported.`,
+          path: path.join(stackDir(root, manifest.id), STACK_MANIFEST_FILENAME),
+          fix: 'Name ordinary idea/change IDs only.',
+        });
+      }
+      const memberOwners = owners.get(member) ?? [];
+      if (memberOwners.length > 1) {
+        for (const owner of memberOwners) invalidStacks.add(owner);
+        if (manifest.id === memberOwners[0]) diagnostics.push({
+          severity: 'error',
+          code: 'multiple_stack_membership',
+          member,
+          message: `Member '${member}' belongs to multiple stacks: ${memberOwners.join(', ')}.`,
+          path: path.join(stackDir(root, manifest.id), STACK_MANIFEST_FILENAME),
+          fix: 'Keep the member in exactly one manifest.',
+        });
+      }
+      if (readableMemberIds && !readableMemberIds.has(member)) {
+        invalidStacks.add(manifest.id);
+        diagnostics.push({
+          severity: 'error',
+          code: 'missing_member',
+          member,
+          message: `Stack '${manifest.id}' member '${member}' is not a readable work item.`,
+          path: path.join(stackDir(root, manifest.id), STACK_MANIFEST_FILENAME),
+          fix: 'Restore the member or remove it from the stack manifest.',
+        });
+      }
+    }
+  }
+
+  for (const manifest of manifests) {
+    if (invalidStacks.has(manifest.id)) continue;
+    for (const [index, member] of manifest.members.entries()) {
+      members.set(member, { id: manifest.id, position: index + 1, total: manifest.members.length });
+    }
+  }
+  return { members, diagnostics };
+}
+
 /**
  * Membership lookup is deliberately tolerant of unrelated malformed stacks so
  * ordinary unstacked workflows remain isolated. A malformed manifest that can
