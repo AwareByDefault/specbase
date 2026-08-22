@@ -78,6 +78,28 @@ describe('view command modes and protocol', () => {
     expect(JSON.stringify(model)).toBe(before);
   });
 
+  it.each([
+    ['accepted-spec count', (board: Record<string, unknown>) => ({ ...board, summary: { ...(board.summary as Record<string, unknown>), acceptedSpecs: 0 } })],
+    ['accepted requirement count', (board: Record<string, unknown>) => ({ ...board, summary: { ...(board.summary as Record<string, unknown>), requirements: 0 } })],
+    ['accepted-spec pane', (board: Record<string, unknown>) => ({ ...board, specs: [] })],
+    ['zero stack position', (board: Record<string, unknown>) => ({ ...board, lanes: { ...(board.lanes as Record<string, unknown>), ideas: [{ ...((board.lanes as Record<string, unknown[]>).ideas[0] as Record<string, unknown>), stack: { id: 'delivery', position: 0, total: 2 } }] } })],
+    ['position beyond stack total', (board: Record<string, unknown>) => ({ ...board, lanes: { ...(board.lanes as Record<string, unknown>), ideas: [{ ...((board.lanes as Record<string, unknown[]>).ideas[0] as Record<string, unknown>), stack: { id: 'delivery', position: 3, total: 2 } }] } })],
+  ])('rejects v4 work-only board with legacy or invalid stack data: %s', (_label, mutate) => {
+    // Keep v4 test values outside the current v3 declarations until production advances.
+    const legacy = model as unknown as Record<string, unknown>;
+    const summary = { ...(legacy.summary as Record<string, unknown>) };
+    delete summary.acceptedSpecs;
+    delete summary.requirements;
+    const v4 = { ...legacy, version: 4, summary };
+    delete v4.specs;
+
+    expect(validateKanbanBoardSnapshot(mutate(v4), 4)).toMatchObject({
+      valid: false,
+      snapshot: null,
+      diagnostics: [{ code: 'kanban_board_invalid_shape' }],
+    });
+  });
+
   it('automatically selects plain for either non-TTY and never launches', async () => {
     for (const [stdinTTY, stdoutTTY] of [[false, true], [true, false]]) {
       let output = '';

@@ -376,13 +376,13 @@ describe('standalone store lifecycle journey', () => {
     ].join(' ');
     const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '--eval', script, fixtureRoot], { cwd: consumerRoot });
     const packageResult = JSON.parse(stdout) as { version: number; board: unknown; validation: { valid: boolean; snapshot: unknown } };
-    expect(packageResult.version).toBe(3);
     expect(packageResult.validation).toMatchObject({ valid: true, snapshot: packageResult.board });
     expect(JSON.parse(JSON.stringify(packageResult.board))).toEqual(packageResult.board);
 
     const cli = await runCLI(['view', '--json'], { cwd: fixtureRoot });
     expect(cli.exitCode).toBe(0);
     expect(JSON.parse(cli.stdout)).toEqual(packageResult.board);
+    expect(packageResult.version).toBe(4);
     await expect(fs.access(path.join(consumerRoot, 'node_modules', '@awarebydefault', 'specbase', 'dist', 'tui'))).rejects.toThrow();
   }, JOURNEY_TIMEOUT_MS);
 

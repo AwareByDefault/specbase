@@ -131,6 +131,62 @@ describe('versioned lifecycle board model', () => {
     expect(board.lanes.implementing[0]).toMatchObject({ id: 'public-active', position: 'active' });
   });
 
+  it('derives the v4 work-only board with canonical stack context', async () => {
+    const root = await project();
+    await write(root, 'specbase/ideas/stacked/.openspec.yaml', 'id: stacked-idea\nsummary: Stacked idea\ncreated: 2025-01-01\n');
+    await write(root, 'specbase/ideas/loose/.openspec.yaml', 'id: loose-idea\nsummary: Loose idea\ncreated: 2025-01-02\n');
+    await write(root, 'specbase/changes/stacked/.openspec.yaml', 'id: stacked-change\n');
+    await write(root, 'specbase/changes/loose/.openspec.yaml', 'id: loose-change\n');
+    await write(root, 'specbase/changes/archive/2025-01-03-stacked/.openspec.yaml', 'id: stacked-archive\n');
+    await write(root, 'specbase/specs/behavior/accepted/spec.md', '---\nid: behavior.accepted\n---\n### Requirement: Accepted\n**ID:** accepted\nText.\n');
+    await write(root, 'specbase/stacks/delivery/.openspec.yaml', 'id: delivery\nsummary: Delivery\ncreated: 2025-01-01\nmembers:\n  - stacked-idea\n  - stacked-change\n  - stacked-archive\n');
+
+    const model = await deriveViewBoard(root, {
+      readDir: (dir) => fs.readdir(dir, { withFileTypes: true }),
+      readFile: (file) => fs.readFile(file, 'utf8'),
+      lifecycleSnapshot: (_root, id) => ({
+        version: 1,
+        snapshot: {
+          id,
+          position: id === 'stacked-archive' ? 'archived' : 'active',
+          lifecycle: id === 'stacked-archive' ? 'archived' : 'implementing',
+          artifacts: { complete: 0, total: 1 },
+          tasks: { complete: 0, total: 1 },
+        },
+        diagnostics: [],
+      }),
+    });
+    // v3 types deliberately remain in production during this RED stage.
+    const board = model as unknown as Record<string, unknown>;
+    const summary = board.summary as Record<string, unknown>;
+    const lanes = board.lanes as Record<string, unknown[]>;
+    const cards = Object.values(lanes).flat() as Array<Record<string, unknown>>;
+    const card = (id: string) => cards.find((entry) => entry.id === id)!;
+
+    expect({
+      version: board.version,
+      hasSpecs: Object.hasOwn(board, 'specs'),
+      hasAcceptedSpecs: Object.hasOwn(summary, 'acceptedSpecs'),
+      hasRequirements: Object.hasOwn(summary, 'requirements'),
+      stacks: ['stacked-idea', 'stacked-change', 'stacked-archive'].map((id) => ({ id, stack: card(id).stack })),
+      unstacked: ['loose-idea', 'loose-change'].map((id) => ({ id, hasStack: Object.hasOwn(card(id), 'stack') })),
+    }).toEqual({
+      version: 4,
+      hasSpecs: false,
+      hasAcceptedSpecs: false,
+      hasRequirements: false,
+      stacks: [
+        { id: 'stacked-idea', stack: { id: 'delivery', position: 1, total: 3 } },
+        { id: 'stacked-change', stack: { id: 'delivery', position: 2, total: 3 } },
+        { id: 'stacked-archive', stack: { id: 'delivery', position: 3, total: 3 } },
+      ],
+      unstacked: [
+        { id: 'loose-idea', hasStack: false },
+        { id: 'loose-change', hasStack: false },
+      ],
+    });
+  });
+
   it('omits unreadable lifecycle entries, retains readable unparseable specs, and reports diagnostics', async () => {
     const root = await project();
     await write(root, 'specbase/ideas/bad/.openspec.yaml', '[invalid');
