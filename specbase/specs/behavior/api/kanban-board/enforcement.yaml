@@ -13,3 +13,17 @@ bindings:
       - derive-kanban-snapshot
       - view-json-board-parity
     source: test/cli-e2e/store-lifecycle.test.ts
+  kanban-v4-model-tests:
+    type: test
+    covers:
+      - derive-kanban-snapshot
+      - work-card-stack-context
+    source: test/core/view/model.test.ts
+  kanban-v4-validation-tests:
+    type: test
+    covers: validate-work-only-kanban
+    source: test/commands/view.test.ts
+  kanban-v4-package-cli-parity:
+    type: test
+    covers: derive-kanban-snapshot
+    source: test/cli-e2e/store-lifecycle.test.ts
