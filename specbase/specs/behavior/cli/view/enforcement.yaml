@@ -29,3 +29,11 @@ bindings:
     type: test
     covers: viewer-terminal-lifecycle
     source: test/tui/view-terminal.integration.test.ts
+  view-wide-column-headless-tests:
+    type: test
+    covers: viewer-wide-columns
+    source: test/tui/view-board.test.ts
+  view-wide-column-pty-integration:
+    type: test
+    covers: viewer-wide-columns
+    source: test/tui/view-terminal.integration.test.ts

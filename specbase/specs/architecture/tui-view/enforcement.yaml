@@ -11,3 +11,7 @@ bindings:
     type: test
     covers: renderer-lifecycle-boundary
     source: test/tui/view-terminal.integration.test.ts
+  kanban-lifecycle-composition-tests:
+    type: test
+    covers: pure-board-model
+    source: test/core/view/model.test.ts

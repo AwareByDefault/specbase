@@ -1,0 +1,15 @@
+bindings:
+  kanban-board-model-tests:
+    type: test
+    covers: derive-kanban-snapshot
+    source: test/core/view/model.test.ts
+  kanban-board-validation-tests:
+    type: test
+    covers: validate-kanban-snapshot
+    source: test/commands/view.test.ts
+  kanban-package-cli-parity-tests:
+    type: test
+    covers:
+      - derive-kanban-snapshot
+      - view-json-board-parity
+    source: test/cli-e2e/store-lifecycle.test.ts

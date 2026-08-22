@@ -49,3 +49,19 @@ When the full board cannot fit, the presentation SHALL switch to one labelled li
 **ID:** narrow-mode-context
 - **WHEN** the terminal width triggers one-column mode
 - **THEN** the current lifecycle label, destination position, selected item, and switch/detail/quit controls remain visible
+
+### Requirement: Wide columns preserve comparison and focus hierarchy
+**ID:** `wide-column-layout`
+When multiple lifecycle columns fit, the terminal board SHALL compose them as aligned peer regions with distinct labels, boundaries, and scroll content, and SHALL distinguish the focused column and selected card without relying on color alone.
+
+#### Scenario: Adjacent columns remain scannable
+**ID:** `adjacent-columns-are-scannable`
+- **WHEN** the board presents multiple columns
+- **THEN** their headings and card regions align for comparison without overlap
+- **AND** each column's boundary, label, count, and focused state remain recognizable
+
+#### Scenario: Dense content does not erase column identity
+**ID:** `dense-column-content-keeps-identity`
+- **WHEN** adjacent columns contain more cards than their visible height
+- **THEN** each column preserves its own heading and scroll context
+- **AND** the focused column and selected card remain identifiable without color
