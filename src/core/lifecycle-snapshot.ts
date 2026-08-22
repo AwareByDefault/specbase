@@ -14,10 +14,10 @@ import type { PlanningHome } from './planning-home.js';
 import { ChangeMetadataError, readChangeMetadata } from '../utils/change-metadata.js';
 import { FileSystemUtils } from '../utils/file-system.js';
 import { countTaskCheckboxes } from './work-item-lifecycle.js';
-import type { DraftPullRequest } from './change-metadata/index.js';
+import type { PullRequestObservation } from './change-metadata/index.js';
 
 /** Version of the stable, serializable lifecycle snapshot contract. */
-export const LIFECYCLE_SNAPSHOT_VERSION = 1 as const;
+export const LIFECYCLE_SNAPSHOT_VERSION = 2 as const;
 
 export type LifecycleSnapshotPosition = 'active' | 'archived';
 
@@ -34,7 +34,7 @@ export interface LifecycleSnapshot {
   lifecycle: NonNullable<ChangeStatus['lifecycle']>;
   artifacts: { complete: number; total: number };
   tasks: { complete: number; total: number };
-  draftPullRequest?: DraftPullRequest;
+  pullRequest?: PullRequestObservation;
 }
 
 export interface LifecycleSnapshotResult {
@@ -64,7 +64,7 @@ interface Candidate {
   directoryName: string;
   id: string;
   position: LifecycleSnapshotPosition;
-  draftPullRequest?: DraftPullRequest;
+  pullRequest?: PullRequestObservation;
 }
 
 export interface ResolvedLifecycleSnapshot extends LifecycleSnapshotResult {
@@ -120,7 +120,7 @@ function findCandidates(root: string, id: string, allowDirectoryFallback: boolea
           directoryName,
           id: metadata?.id ?? fallbackId,
           position: location.position,
-          ...(metadata?.draftPullRequest ? { draftPullRequest: metadata.draftPullRequest } : {}),
+          ...(metadata?.pullRequest ? { pullRequest: metadata.pullRequest } : {}),
         });
       }
     }
@@ -222,7 +222,7 @@ export function resolveLifecycleSnapshot(
       lifecycle: status.lifecycle!,
       artifacts: { complete: status.artifacts.filter((artifact) => artifact.status === 'done').length, total: status.artifacts.length },
       tasks,
-      ...(candidate.draftPullRequest ? { draftPullRequest: candidate.draftPullRequest } : {}),
+      ...(candidate.pullRequest ? { pullRequest: candidate.pullRequest } : {}),
     },
     diagnostics: [],
     context,

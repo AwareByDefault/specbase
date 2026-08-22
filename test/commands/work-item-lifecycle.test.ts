@@ -18,7 +18,7 @@ import {
 
 /**
  * Behavior: a work item's lifecycle state is DERIVED from the artifact set,
- * task completion, a review footprint, and the archive location — never read
+ * task completion, pull-request readiness, and the archive location — never read
  * from a stored `state` field. These tests exercise the pure derivation across
  * every state.
  */
@@ -53,6 +53,34 @@ function lifecycleFixture(position: 'active' | 'archived', directoryName: string
   writeFileSync(path.join(changeDir, '.openspec.yaml'), `schema: spec-driven\nid: ${id}\n`, 'utf8');
   writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] verified\n- [ ] pending\n', 'utf8');
   return root;
+}
+
+function writeGovernedPlanning(root: string, directoryName: string, id: string, tasks: string): string {
+  const changeDir = path.join(root, 'specbase', 'changes', directoryName);
+  const specDir = path.join(changeDir, 'specs', 'behavior', 'sample');
+  mkdirSync(specDir, { recursive: true });
+  mkdirSync(path.join(root, 'test'), { recursive: true });
+  writeFileSync(path.join(changeDir, '.openspec.yaml'), `schema: spec-driven-governed\nid: ${id}\n`, 'utf8');
+  writeFileSync(path.join(changeDir, 'proposal.md'), '## Why\nNeeded.\n## What Changes\n- Add behavior.\n## Impact\n- Affected specs: behavior/sample\n', 'utf8');
+  writeFileSync(path.join(changeDir, 'design.md'), '## Context\nTest fixture.\n## Decisions\nUse the public boundary.\n', 'utf8');
+  writeFileSync(path.join(changeDir, 'tasks.md'), tasks, 'utf8');
+  writeFileSync(path.join(specDir, 'spec.md'), [
+    '---',
+    'id: behavior.sample',
+    '---',
+    '## ADDED Requirements',
+    '### Requirement: Sample outcome',
+    '**ID:** sample-outcome',
+    'The system SHALL produce a sample outcome.',
+    '#### Scenario: Outcome produced',
+    '**ID:** outcome-produced',
+    '- **WHEN** the sample runs',
+    '- **THEN** the outcome is produced',
+    '',
+  ].join('\n'), 'utf8');
+  writeFileSync(path.join(specDir, 'enforcement.yaml'), 'bindings:\n  sample-test:\n    type: test\n    covers: sample-outcome\n    source: test/evidence.test.ts\n', 'utf8');
+  writeFileSync(path.join(root, 'test', 'evidence.test.ts'), 'export {};\n', 'utf8');
+  return changeDir;
 }
 
 describe('deriveLifecycleState', () => {
@@ -113,7 +141,7 @@ describe('deriveLifecycleState', () => {
     ).toBe('implementing');
   });
 
-  it('tasks complete without a review footprint stays implementing (awaiting review)', () => {
+  it('tasks complete without a ready pull request stays implementing', () => {
     expect(
       deriveLifecycleState(
         baseInput({
@@ -290,6 +318,46 @@ describe('direct action catalog', () => {
     });
   });
 
+  it('offers composed delivery when governed planning is ready and human-review actions after a ready PR', async () => {
+    const root = lifecycleFixture('active', 'governed-change', 'governed-id');
+    const changeDir = writeGovernedPlanning(root, 'governed-change', 'governed-id', '- [ ] implement\n');
+
+    const ready = await getDirectActions({ root, workItemId: 'governed-id' });
+    expect(ready.actions.find((action) => action.actionId === 'ready-to-review')).toMatchObject({
+      availability: 'available',
+      dispatch: { kind: 'capability', capabilityId: 'specbase.ready-to-review', arguments: { changeId: 'governed-id' } },
+    });
+
+    writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] implement\n', 'utf8');
+    writeFileSync(path.join(changeDir, '.openspec.yaml'), [
+      'schema: spec-driven-governed',
+      'id: governed-id',
+      'pullRequest:',
+      '  number: 42',
+      '  url: https://github.com/acme/widget/pull/42',
+      '  repository: acme/widget',
+      '  base: main',
+      '  head: feature/governed-id',
+      `  headSha: ${'a'.repeat(40)}`,
+      '  runId: run-42',
+      '  state: ready',
+      '',
+    ].join('\n'), 'utf8');
+    const reviewing = await getDirectActions({ root, workItemId: 'governed-id' });
+    expect(reviewing.actions.find((action) => action.actionId === 'pr-feedback')).toMatchObject({
+      availability: 'available',
+      dispatch: { kind: 'capability', capabilityId: 'specbase.pr-feedback', arguments: { changeId: 'governed-id', pullRequest: { number: 42, state: 'ready' } } },
+    });
+    expect(reviewing.actions.find((action) => action.actionId === 'explore')).toMatchObject({
+      availability: 'available',
+      dispatch: { kind: 'skill', arguments: { workItemId: 'governed-id', pullRequest: { number: 42, state: 'ready' } } },
+    });
+    expect(reviewing.actions.find((action) => action.actionId === 'archive')).toMatchObject({
+      availability: 'available',
+      dispatch: { kind: 'skill', skillId: 'specbase-archive-change' },
+    });
+  });
+
   it('projects panel audit and legacy draft metadata without entering Reviewing, then retains ready PR state through archive', () => {
     const root = lifecycleFixture('active', 'change-directory', 'change-id');
     const changeDir = path.join(root, 'specbase', 'changes', 'change-directory');
@@ -343,10 +411,10 @@ describe('direct action catalog', () => {
 
   it('records only exact ready-to-review observations, allows immutable draft-to-ready promotion, and changes only metadata', async () => {
     const root = lifecycleFixture('active', 'change-directory', 'change-id');
-    const changeDir = path.join(root, 'specbase', 'changes', 'change-directory');
+    const changeDir = writeGovernedPlanning(root, 'change-directory', 'change-id', '- [x] verified\n- [x] complete\n');
     const tasksPath = path.join(changeDir, 'tasks.md');
-    writeFileSync(tasksPath, '- [x] verified\n- [x] complete\n', 'utf8');
     const tasksBefore = readFileSync(tasksPath, 'utf8');
+    const membersBefore = readdirSync(changeDir).sort();
     const intent = {
       version: 2,
       storeId: null,
@@ -384,8 +452,100 @@ describe('direct action catalog', () => {
       diagnostics: [{ code: 'direct_action_result_conflict' }],
     });
     expect(readFileSync(tasksPath, 'utf8')).toBe(tasksBefore);
-    expect(readdirSync(changeDir).sort()).toEqual(['.openspec.yaml', 'tasks.md']);
+    expect(readdirSync(changeDir).sort()).toEqual(membersBefore);
     expect(readFileSync(path.join(changeDir, '.openspec.yaml'), 'utf8')).toContain('pullRequest:');
+  });
+
+  it('rejects a ready-to-review result before mutating metadata when tasks are incomplete', async () => {
+    const root = lifecycleFixture('active', 'change-directory', 'change-id');
+    const changeDir = path.join(root, 'specbase', 'changes', 'change-directory');
+    const metadataPath = path.join(changeDir, '.openspec.yaml');
+    const before = readFileSync(metadataPath, 'utf8');
+    const intent = {
+      version: DIRECT_ACTION_CATALOG_VERSION,
+      storeId: null,
+      workItemId: 'change-id',
+      actionId: 'ready-to-review',
+      dispatchKind: 'capability',
+    };
+    const result = {
+      number: 42,
+      url: 'https://github.com/acme/widget/pull/42',
+      repository: 'acme/widget',
+      base: 'main',
+      head: 'feature/change-id',
+      headSha: 'a'.repeat(40),
+      runId: 'incomplete-tasks',
+      state: 'ready',
+    };
+
+    await expect(recordDirectActionResult(intent, result, { root })).resolves.toMatchObject({
+      accepted: false,
+      diagnostics: [{ code: 'direct_action_tasks_incomplete' }],
+    });
+    expect(readFileSync(metadataPath, 'utf8')).toBe(before);
+  });
+
+  it('rejects a stale blocked result before metadata mutation', async () => {
+    const root = lifecycleFixture('active', 'change-directory', 'change-id');
+    const changeDir = writeGovernedPlanning(root, 'change-directory', 'change-id', '- [x] complete\n');
+    const metadataPath = path.join(changeDir, '.openspec.yaml');
+    const before = readFileSync(metadataPath, 'utf8');
+    rmSync(path.join(changeDir, 'design.md'));
+    const intent = {
+      version: DIRECT_ACTION_CATALOG_VERSION,
+      storeId: null,
+      workItemId: 'change-id',
+      actionId: 'ready-to-review',
+      dispatchKind: 'capability',
+    };
+    const result = {
+      number: 42,
+      url: 'https://github.com/acme/widget/pull/42',
+      repository: 'acme/widget',
+      base: 'main',
+      head: 'feature/change-id',
+      headSha: 'a'.repeat(40),
+      runId: 'stale-planning',
+      state: 'draft',
+    };
+    await expect(recordDirectActionResult(intent, result, { root })).resolves.toMatchObject({
+      accepted: false,
+      diagnostics: [{ code: 'direct_action_delivery_planning' }],
+    });
+    expect(readFileSync(metadataPath, 'utf8')).toBe(before);
+  });
+
+  it('serializes competing result submissions as one accepted observation and one conflict', async () => {
+    const root = lifecycleFixture('active', 'change-directory', 'change-id');
+    const changeDir = writeGovernedPlanning(root, 'change-directory', 'change-id', '- [x] complete\n');
+    const intent = {
+      version: DIRECT_ACTION_CATALOG_VERSION,
+      storeId: null,
+      workItemId: 'change-id',
+      actionId: 'ready-to-review',
+      dispatchKind: 'capability',
+    };
+    const base = {
+      repository: 'acme/widget',
+      base: 'main',
+      head: 'feature/change-id',
+      headSha: 'a'.repeat(40),
+      state: 'draft',
+    };
+    const first = { ...base, number: 41, url: 'https://github.com/acme/widget/pull/41', runId: 'race-one' };
+    const second = { ...base, number: 42, url: 'https://github.com/acme/widget/pull/42', runId: 'race-two' };
+    const results = await Promise.all([
+      recordDirectActionResult(intent, first, { root }),
+      recordDirectActionResult(intent, second, { root }),
+    ]);
+    expect(results.filter((result) => result.accepted)).toHaveLength(1);
+    expect(results.filter((result) => !result.accepted)).toEqual([
+      expect.objectContaining({ diagnostics: [expect.objectContaining({ code: 'direct_action_result_conflict' })] }),
+    ]);
+    const accepted = results.find((result) => result.accepted);
+    expect(resolveLifecycleSnapshot({ root, id: 'change-id' }).snapshot?.pullRequest).toEqual(accepted?.pullRequest);
+    expect(readdirSync(changeDir)).not.toContain('.openspec.action-result.lock');
   });
 
   it('uses ready-to-review and Reviewing policy without local/draft choreography', async () => {
@@ -411,10 +571,10 @@ describe('direct action catalog', () => {
     expect(catalog).toMatchObject({ version: 2, target: { workItemId: 'change-id' } });
     expect(actions.map((action) => action.actionId)).not.toEqual(expect.arrayContaining(['deliver-local', 'open-draft-pr']));
     expect(actions).toEqual(expect.arrayContaining([
-      expect.objectContaining({ actionId: 'ready-to-review', dispatch: { kind: 'capability', capabilityId: 'specbase.ready-to-review' } }),
-      expect.objectContaining({ actionId: 'pr-feedback', dispatch: { kind: 'capability', capabilityId: 'specbase.pr-feedback' } }),
-      expect.objectContaining({ actionId: 'explore', dispatch: { kind: 'skill', arguments: expect.objectContaining({ workItemId: 'change-id', pullRequest: expect.objectContaining({ number: 42 }) }) } }),
-      expect.objectContaining({ actionId: 'archive', dispatch: { kind: 'skill', skillId: 'specbase-archive-change' } }),
+      expect.objectContaining({ actionId: 'ready-to-review', dispatch: expect.objectContaining({ kind: 'capability', capabilityId: 'specbase.ready-to-review' }) }),
+      expect.objectContaining({ actionId: 'pr-feedback', dispatch: expect.objectContaining({ kind: 'capability', capabilityId: 'specbase.pr-feedback' }) }),
+      expect.objectContaining({ actionId: 'explore', dispatch: expect.objectContaining({ kind: 'skill', arguments: expect.objectContaining({ workItemId: 'change-id', pullRequest: expect.objectContaining({ number: 42 }) }) }) }),
+      expect.objectContaining({ actionId: 'archive', dispatch: expect.objectContaining({ kind: 'skill', skillId: 'specbase-archive-change' }) }),
     ]));
   });
 

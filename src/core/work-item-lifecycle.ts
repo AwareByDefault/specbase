@@ -3,15 +3,15 @@
  *
  * A change's position in the proposal -> enforcement -> ready-to-apply ->
  * implementing -> reviewing -> archived arc is COMPUTED on read from the
- * artifacts, task completion, a review-completion footprint, and the archive
- * location. The state is never stored as a `state` field that can drift from
+ * artifacts, task completion, a canonical pull-request observation, and the
+ * archive location. The state is never stored as a `state` field that can drift from
  * the artifacts that define it. The `proposed` / `enforcement` distinction is
  * the surfaced form of change A (split-enforcement-workflow): both mean
  * "feature artifacts present, enforcement not complete," and the distinguisher
  * is whether the enforcement write has begun (`enforcement` artifact present).
- * `reviewing` is the one state a pure file/artifact read cannot see, because
- * running the review panel may leave no artifact mark; it is derived from the
- * `lastReviewedAt` footprint the panel writes into `.openspec.yaml`.
+ * `reviewing` represents externally observed readiness for human review. It is
+ * derived from the canonical pull-request observation recorded in
+ * `.openspec.yaml`; the panel's separate audit timestamp is non-transitional.
  */
 
 import * as fs from 'node:fs';
@@ -39,8 +39,10 @@ export interface LifecycleInput {
   tasksChecked: number;
   /** Total task checkboxes read from the tracked tasks file (0 when none). */
   tasksTotal: number;
-  /** True when the review panel recorded a `lastReviewedAt` footprint. */
+  /** True when the review panel recorded a `lastReviewedAt` audit footprint. */
   reviewFootprint: boolean;
+  /** Readiness state of the canonical pull-request observation, when present. */
+  pullRequestState?: 'draft' | 'ready';
 }
 
 const DONE: ArtifactDisposition = 'done';
@@ -52,9 +54,9 @@ const DONE: ArtifactDisposition = 'done';
  * Decision order:
  * - `archived` -> terminal.
  * - All apply-required artifacts present, apply not yet started -> ready-to-apply.
- * - All tasks complete + review footprint -> reviewing.
- * - Apply started (any task progress), or tasks complete but not yet reviewed
- *   (no footprint) -> implementing (the "awaiting review" bucket).
+ * - All tasks complete + ready pull-request observation -> reviewing.
+ * - Apply started (any task progress), or tasks complete without a ready PR
+ *   -> implementing (the "awaiting human review" bucket).
  * - Enforcement write begun but the apply gate not met -> enforcement.
  * - Otherwise so far -> proposed (features drafted, enforcement pending).
  */
@@ -74,7 +76,7 @@ export function deriveLifecycleState(input: LifecycleInput): LifecycleState {
   if (allApplyDone && !applyStarted && !tasksDone) {
     return 'ready-to-apply';
   }
-  if (tasksDone && input.reviewFootprint) {
+  if (tasksDone && input.pullRequestState === 'ready') {
     return 'reviewing';
   }
   if (applyStarted || tasksDone) {
@@ -111,8 +113,8 @@ export interface GatherLifecycleInputOptions {
   changesDir?: string;
   /** Schema `apply.tracks` file, relative to changeDir (e.g. `tasks.md`). */
   tracksFile?: string | null;
-  /** Parsed change metadata (`.openspec.yaml`), for the review footprint. */
-  metadata?: { lastReviewedAt?: string } | null;
+  /** Parsed change metadata (`.openspec.yaml`), for audit and PR readiness. */
+  metadata?: { lastReviewedAt?: string; pullRequest?: { state: 'draft' | 'ready' } } | null;
   /** Dispositions produced by status for the change's artifacts. */
   artifactDispositions: Record<string, ArtifactDisposition>;
   /** Artifact ids the schema requires before apply. */
@@ -145,6 +147,7 @@ export function gatherLifecycleInput(
     tasksChecked,
     tasksTotal,
     reviewFootprint: Boolean(options.metadata?.lastReviewedAt),
+    ...(options.metadata?.pullRequest ? { pullRequestState: options.metadata.pullRequest.state } : {}),
   };
 }
 

@@ -187,7 +187,7 @@ export interface ChangeStatus {
   stack?: ChangeStackContext;
   /**
    * Derived lifecycle position (proposed/enforcement/ready-to-apply/implementing/reviewing/archived),
-   * computed on read from artifacts, tasks, review footprint, and archive location.
+   * computed on read from artifacts, tasks, pull-request readiness, and archive location.
    * Never read from a stored state field. Additive; the legacy per-artifact view is unchanged.
    */
   lifecycle?: LifecycleState;

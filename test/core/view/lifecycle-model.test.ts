@@ -19,8 +19,11 @@ async function write(root: string, relative: string, content: string): Promise<v
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, content);
 }
-async function change(root: string, name: string, opts: { meta?: string; artifacts?: string[]; tasks?: string; reviewed?: boolean } = {}): Promise<void> {
-  await write(root, `specbase/changes/${name}/.openspec.yaml`, opts.meta ?? `schema: spec-driven-governed\nid: ${name}\ncreated: 2025-01-01\n${opts.reviewed ? 'lastReviewedAt: 2025-02-01T00:00:00Z\n' : ''}`);
+async function change(root: string, name: string, opts: { meta?: string; artifacts?: string[]; tasks?: string; reviewed?: boolean; pullRequest?: 'draft' | 'ready' } = {}): Promise<void> {
+  const pullRequest = opts.pullRequest
+    ? `pullRequest:\n  number: 42\n  url: https://github.com/acme/widget/pull/42\n  repository: acme/widget\n  base: main\n  head: feature/${name}\n  headSha: ${'a'.repeat(40)}\n  runId: view-fixture\n  state: ${opts.pullRequest}\n`
+    : '';
+  await write(root, `specbase/changes/${name}/.openspec.yaml`, opts.meta ?? `schema: spec-driven-governed\nid: ${name}\ncreated: 2025-01-01\n${opts.reviewed ? 'lastReviewedAt: 2025-02-01T00:00:00Z\n' : ''}${pullRequest}`);
   for (const artifact of opts.artifacts ?? []) {
     await write(root, `specbase/changes/${name}/${artifact}`, `# ${artifact}\n`);
   }
@@ -46,8 +49,8 @@ describe('lifecycle-state board lanes', () => {
     await change(root, 'ready-d', { artifacts: ['proposal.md', 'design.md', 'specs/a/spec.md', 'specs/a/enforcement.yaml', 'tasks.md'] });
     // implementing: apply started (some task progress), no review footprint
     await change(root, 'implementing-e', { artifacts: ['proposal.md', 'design.md', 'specs/a/spec.md', 'specs/a/enforcement.yaml', 'tasks.md'], tasks: '- [x] a\n- [ ] b\n' });
-    // reviewing: all tasks done + review footprint
-    await change(root, 'reviewing-f', { artifacts: ['proposal.md', 'design.md', 'specs/a/spec.md', 'specs/a/enforcement.yaml', 'tasks.md'], tasks: '- [x] a\n- [x] b\n', reviewed: true });
+    // reviewing: all tasks done + a ready pull-request observation
+    await change(root, 'reviewing-f', { artifacts: ['proposal.md', 'design.md', 'specs/a/spec.md', 'specs/a/enforcement.yaml', 'tasks.md'], tasks: '- [x] a\n- [x] b\n', pullRequest: 'ready' });
 
     const model = await deriveViewBoard(root);
     expect(model.lanes.proposed.map((card) => card.id)).toEqual(['proposed-a']);
@@ -70,7 +73,7 @@ describe('lifecycle-state board lanes', () => {
     const root = await project();
     await change(root, 'zero-a', { artifacts: ['proposal.md', 'design.md', 'specs/a/spec.md', 'specs/a/enforcement.yaml', 'tasks.md'] });
     await change(root, 'partial-b', { artifacts: ['proposal.md', 'design.md', 'specs/a/spec.md', 'specs/a/enforcement.yaml', 'tasks.md'], tasks: '- [x] a\n- [ ] b\n' });
-    await change(root, 'done-c', { artifacts: ['proposal.md', 'design.md', 'specs/a/spec.md', 'specs/a/enforcement.yaml', 'tasks.md'], tasks: '- [x] a\n- [x] b\n', reviewed: true });
+    await change(root, 'done-c', { artifacts: ['proposal.md', 'design.md', 'specs/a/spec.md', 'specs/a/enforcement.yaml', 'tasks.md'], tasks: '- [x] a\n- [x] b\n', pullRequest: 'ready' });
     await write(root, 'specbase/ideas/older/.openspec.yaml', 'id: idea-old\nsummary: Old\ncreated: 2025-01-01\n');
     await write(root, 'specbase/ideas/newer/.openspec.yaml', 'id: idea-new\nsummary: New\ncreated: 2025-02-02\n');
 

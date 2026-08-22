@@ -32,6 +32,26 @@ function stack(value: unknown): boolean {
     && Number(value.position) <= Number(value.total);
 }
 
+function pullRequestIdentity(value: Record<string, unknown>): boolean {
+  return Number.isInteger(value.number) && Number(value.number) > 0
+    && typeof value.url === 'string' && URL.canParse(value.url)
+    && ['repository', 'base', 'head', 'runId'].every((key) => typeof value[key] === 'string' && String(value[key]).length > 0)
+    && typeof value.headSha === 'string' && /^[0-9a-f]{40}$/.test(value.headSha);
+}
+
+function pullRequest(value: unknown): boolean {
+  return isRecord(value)
+    && hasOnlyKeys(value, ['number', 'url', 'repository', 'base', 'head', 'headSha', 'runId', 'state'])
+    && pullRequestIdentity(value)
+    && (value.state === 'draft' || value.state === 'ready');
+}
+
+function legacyDraftPullRequest(value: unknown): boolean {
+  return isRecord(value)
+    && hasOnlyKeys(value, ['number', 'url', 'repository', 'base', 'head', 'headSha', 'runId'])
+    && pullRequestIdentity(value);
+}
+
 const LIFECYCLE_KEYS = ['proposed', 'enforcement', 'ready-to-apply', 'implementing', 'reviewing', 'archived'] as const;
 const BOARD_KEYS = ['version', 'project', 'summary', 'lanes', 'diagnostics'] as const;
 const SUMMARY_KEYS = ['openIdeas', 'lanes', 'completedTasks', 'totalTasks'] as const;
@@ -77,12 +97,20 @@ export function validateViewBoardModel(value: unknown): value is ViewBoardModel 
   if (!changeLanes.every(([expectedLifecycle, lane]) => lane.every((card) => {
     if (!base(card, 'change') || !progress((card as Record<string, unknown>).artifacts) || !progress((card as Record<string, unknown>).tasks)) return false;
     const c = card as Record<string, unknown>;
-    return (c.created === null || typeof c.created === 'string') && c.lifecycle === expectedLifecycle;
+    return (c.created === null || typeof c.created === 'string')
+      && c.lifecycle === expectedLifecycle
+      && (c.pullRequest === undefined || pullRequest(c.pullRequest))
+      && (c.draftPullRequest === undefined || legacyDraftPullRequest(c.draftPullRequest))
+      && !(c.pullRequest !== undefined && c.draftPullRequest !== undefined)
+      && (expectedLifecycle === 'reviewing'
+        ? (isRecord(c.pullRequest) && c.pullRequest.state === 'ready') || legacyDraftPullRequest(c.draftPullRequest)
+        : !isRecord(c.pullRequest) || c.pullRequest.state !== 'ready');
   }))) return false;
   if (!lanes.archived.every((card) => {
     if (!base(card, 'archive') || !progress((card as Record<string, unknown>).tasks)) return false;
     const c = card as Record<string, unknown>;
-    return c.archived === null || typeof c.archived === 'string';
+    return (c.archived === null || typeof c.archived === 'string')
+      && (c.pullRequest === undefined || pullRequest(c.pullRequest));
   })) return false;
   return value.diagnostics.every((diagnostic) => isRecord(diagnostic) && typeof diagnostic.source === 'string' && typeof diagnostic.message === 'string');
 }

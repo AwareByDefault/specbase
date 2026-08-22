@@ -13,6 +13,14 @@ export {
 } from './global-config.js';
 
 export * from './references.js';
+export {
+  PullRequestObservationSchema,
+  type PullRequestObservation,
+  /** @deprecated Legacy metadata source compatibility only. */
+  DraftPullRequestSchema,
+  /** @deprecated Use PullRequestObservation. */
+  type DraftPullRequest,
+} from './change-metadata/index.js';
 export * from './change-stacks/index.js';
 export * from './store/index.js';
 export * from './planning-home.js';

@@ -212,10 +212,10 @@ its verdicts do not gate archive, verification readiness, or \`--strict\`.**
 ## Step 7 — Record the review-completion footprint
 
 After emitting the report, record a **review-completion footprint** — this is
-the panel's ONE allowed write, and it is required so status can derive the
-\`reviewing\` lifecycle state (the only state pure artifact/task reads cannot
-see). It records that the panel RAN, **never that it approved** — the panel is
-not a gate. Write a \`lastReviewedAt: <ISO-8601 now>\` field into the change's
+the panel's ONE allowed write. It records that the panel RAN, **never that it
+approved**, and is audit data only: it does not transition lifecycle state. A
+change enters \`reviewing\` only when an external adapter records a pull request
+that is ready for human review. Write a \`lastReviewedAt: <ISO-8601 now>\` field into the change's
 \`.openspec.yaml\`, preserving every existing field unchanged:
 
 \`\`\`
@@ -254,9 +254,9 @@ automated): the tool shows the case, the person decides.
 
 **Panel scope (read-only).** The panel cannot be asked to change code; it can
 only apply these lens review runs in parallel and report. The sole write it
-makes is the review-completion \`lastReviewedAt\` footprint (Step 7) so status
-can derive the \`reviewing\` state; its verdicts do not enter the diff and never
-influence archive, verification readiness, or \`--strict\`.`;
+makes is the audit-only \`lastReviewedAt\` footprint (Step 7); its verdicts do
+not enter the diff and never influence lifecycle, archive, verification
+readiness, or \`--strict\`.`;
 }
 
 /**

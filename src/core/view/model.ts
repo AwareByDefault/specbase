@@ -7,6 +7,12 @@ import type { StackDiagnostic } from '../change-stacks/model.js';
 import { type LifecycleState } from '../work-item-lifecycle.js';
 import { getLifecycleSnapshot, type LifecycleSnapshotResult } from '../lifecycle-snapshot.js';
 import { KANBAN_BOARD_VERSION } from './version.js';
+import {
+  DraftPullRequestSchema,
+  PullRequestObservationSchema,
+  type DraftPullRequest,
+  type PullRequestObservation,
+} from '../change-metadata/index.js';
 
 export { KANBAN_BOARD_VERSION, VIEW_BOARD_VERSION } from './version.js';
 export type { LifecycleState } from '../work-item-lifecycle.js';
@@ -54,8 +60,10 @@ export interface ChangeCard {
   lifecycle: Exclude<LifecycleState, 'archived'>;
   /** Lifecycle-resolver position; additive for renderer compatibility. */
   position?: 'active';
-  /** Canonically recorded draft PR, present on Reviewing cards after remote delivery. */
-  draftPullRequest?: { number: number; url: string; repository: string; base: string; head: string; headSha: string; runId: string };
+  /** Canonically recorded PR observation, present when external delivery reports it. */
+  pullRequest?: PullRequestObservation;
+  /** @deprecated Kanban v4 source compatibility; current derivation uses pullRequest. */
+  draftPullRequest?: DraftPullRequest;
   /** Lifecycle-resolver diagnostics; additive for renderer compatibility. */
   diagnostics?: KanbanDiagnostic[];
   stack?: KanbanStackContext;
@@ -73,6 +81,8 @@ export interface ArchiveCard {
   position?: 'archived';
   diagnostics?: KanbanDiagnostic[];
   stack?: KanbanStackContext;
+  /** Canonically recorded PR observation retained after archive. */
+  pullRequest?: PullRequestObservation;
 }
 
 /** @deprecated Kanban v3 accepted-specification card retained for source compatibility. */
@@ -258,7 +268,7 @@ async function collectChanges(root: string, store: string, ports: ViewModelPorts
         tasks: { completed: resolved.snapshot.tasks.complete, total: resolved.snapshot.tasks.total },
         lifecycle: resolved.snapshot.lifecycle,
         position: resolved.snapshot.position,
-        ...(resolved.snapshot.draftPullRequest ? { draftPullRequest: resolved.snapshot.draftPullRequest } : {}),
+        ...(resolved.snapshot.pullRequest ? { pullRequest: resolved.snapshot.pullRequest } : {}),
         diagnostics: cardDiagnostics,
       });
     } catch (error) {
@@ -294,6 +304,7 @@ async function collectArchives(root: string, store: string, ports: ViewModelPort
         tasks: { completed: resolved.snapshot.tasks.complete, total: resolved.snapshot.tasks.total },
         lifecycle: resolved.snapshot.lifecycle,
         position: resolved.snapshot.position,
+        ...(resolved.snapshot.pullRequest ? { pullRequest: resolved.snapshot.pullRequest } : {}),
         diagnostics: cardDiagnostics,
       });
     } catch (error) {
@@ -435,6 +446,14 @@ function isProgress(value: unknown): boolean {
     && Number.isInteger(value.total) && Number(value.total) >= Number(value.completed);
 }
 
+function isPullRequestObservation(value: unknown): boolean {
+  return PullRequestObservationSchema.safeParse(value).success;
+}
+
+function isLegacyDraftPullRequest(value: unknown): boolean {
+  return DraftPullRequestSchema.safeParse(value).success;
+}
+
 function isKanbanDiagnostic(value: unknown): boolean {
   return isRecord(value)
     && typeof value.source === 'string'
@@ -485,12 +504,19 @@ export function isKanbanBoardSnapshot(value: unknown): value is KanbanBoardSnaps
   if (!changeLanes.every(([lifecycle, entries]) => entries.every((entry) => card(entry, 'change')
     && isProgress(entry.artifacts) && isProgress(entry.tasks) && entry.lifecycle === lifecycle
     && (entry.position === undefined || entry.position === 'active')
+    && (entry.pullRequest === undefined || isPullRequestObservation(entry.pullRequest))
+    && (entry.draftPullRequest === undefined || isLegacyDraftPullRequest(entry.draftPullRequest))
+    && !(entry.pullRequest !== undefined && entry.draftPullRequest !== undefined)
+    && (lifecycle === 'reviewing'
+      ? (isRecord(entry.pullRequest) && entry.pullRequest.state === 'ready') || isLegacyDraftPullRequest(entry.draftPullRequest)
+      : !isRecord(entry.pullRequest) || entry.pullRequest.state !== 'ready')
     && isOptionalDiagnosticList(entry.diagnostics)
     && (entry.created === null || typeof entry.created === 'string')))) return false;
   if (!lanes.archived.every((entry) => card(entry, 'archive') && isProgress(entry.tasks)
     && (entry.artifacts === undefined || isProgress(entry.artifacts))
     && (entry.lifecycle === undefined || entry.lifecycle === 'archived')
     && (entry.position === undefined || entry.position === 'archived')
+    && (entry.pullRequest === undefined || isPullRequestObservation(entry.pullRequest))
     && isOptionalDiagnosticList(entry.diagnostics)
     && (entry.archived === null || typeof entry.archived === 'string'))) return false;
 

@@ -78,6 +78,76 @@ describe('view command modes and protocol', () => {
     expect(JSON.stringify(model)).toBe(before);
   });
 
+  it('additively validates canonical pull-request observations on active and archived v4 cards', () => {
+    const pullRequest = {
+      number: 42,
+      url: 'https://github.com/acme/widget/pull/42',
+      repository: 'acme/widget',
+      base: 'main',
+      head: 'feature/change',
+      headSha: 'a'.repeat(40),
+      runId: 'view-validation',
+      state: 'ready' as const,
+    };
+    const archiveCard = {
+      kind: 'archive' as const,
+      id: 'archive-pr',
+      title: 'Archived PR',
+      archived: '2025-01-01',
+      tasks: { completed: 0, total: 0 },
+      pullRequest,
+    };
+    const withArchivePr = {
+      ...model,
+      summary: { ...model.summary, lanes: { ...model.summary.lanes, archived: 1 } },
+      lanes: { ...model.lanes, archived: [archiveCard] },
+    };
+    expect(validateKanbanBoardSnapshot(withArchivePr, KANBAN_BOARD_VERSION)).toMatchObject({ valid: true, snapshot: withArchivePr });
+    expect(validateKanbanBoardSnapshot({
+      ...withArchivePr,
+      lanes: { ...withArchivePr.lanes, archived: [{ ...archiveCard, pullRequest: { ...pullRequest, state: 'unknown' } }] },
+    }, KANBAN_BOARD_VERSION).valid).toBe(false);
+
+    const reviewingCard = {
+      kind: 'change' as const,
+      id: 'reviewing-pr',
+      title: 'Reviewing PR',
+      created: '2025-01-01',
+      artifacts: { completed: 1, total: 1 },
+      tasks: { completed: 1, total: 1 },
+      lifecycle: 'reviewing' as const,
+      pullRequest,
+    };
+    const withReviewingPr = {
+      ...model,
+      summary: { ...model.summary, completedTasks: 1, totalTasks: 1, lanes: { ...model.summary.lanes, reviewing: 1 } },
+      lanes: { ...model.lanes, reviewing: [reviewingCard] },
+    };
+    expect(validateKanbanBoardSnapshot(withReviewingPr, KANBAN_BOARD_VERSION).valid).toBe(true);
+    expect(decodeViewModelFrame(Buffer.from(JSON.stringify(withReviewingPr)))).toEqual(withReviewingPr);
+
+    const { state: _state, ...legacyDraftPullRequest } = pullRequest;
+    const { pullRequest: _pullRequest, ...legacyReviewingCard } = reviewingCard;
+    const legacyV4 = {
+      ...withReviewingPr,
+      lanes: { ...withReviewingPr.lanes, reviewing: [{ ...legacyReviewingCard, draftPullRequest: legacyDraftPullRequest }] },
+    };
+    expect(validateKanbanBoardSnapshot(legacyV4, KANBAN_BOARD_VERSION).valid).toBe(true);
+    expect(decodeViewModelFrame(Buffer.from(JSON.stringify(legacyV4)))).toEqual(legacyV4);
+    const malformedLegacyV4 = {
+      ...legacyV4,
+      lanes: { ...legacyV4.lanes, reviewing: [{ ...legacyV4.lanes.reviewing[0], draftPullRequest: { ...legacyDraftPullRequest, headSha: 'bad' } }] },
+    };
+    expect(validateKanbanBoardSnapshot(malformedLegacyV4, KANBAN_BOARD_VERSION).valid).toBe(false);
+    expect(() => decodeViewModelFrame(Buffer.from(JSON.stringify(malformedLegacyV4)))).toThrow(/schema/);
+
+    expect(validateKanbanBoardSnapshot({
+      ...withReviewingPr,
+      summary: { ...withReviewingPr.summary, lanes: { ...withReviewingPr.summary.lanes, reviewing: 0, implementing: 1 } },
+      lanes: { ...withReviewingPr.lanes, reviewing: [], implementing: [{ ...reviewingCard, lifecycle: 'implementing' }] },
+    }, KANBAN_BOARD_VERSION).valid).toBe(false);
+  });
+
   it('validates complete legacy v3 snapshots and rejects malformed compatibility values', () => {
     const v3 = {
       ...model,

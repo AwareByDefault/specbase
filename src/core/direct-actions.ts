@@ -10,11 +10,15 @@ import { resolveSpecModel } from './artifact-graph/types.js';
 import { resolveRegisteredStore } from './store/registry.js';
 import { Validator } from './validation/validator.js';
 import { FileSystemUtils } from '../utils/file-system.js';
-import { readChangeMetadata, writeChangeMetadata } from '../utils/change-metadata.js';
-import { DraftPullRequestSchema, type DraftPullRequest } from './change-metadata/index.js';
+import {
+  readChangeMetadata,
+  writeChangeMetadataAtomically,
+} from '../utils/change-metadata.js';
+import { acquireFileLock, releaseFileLock } from './file-state.js';
+import { PullRequestObservationSchema, type PullRequestObservation } from './change-metadata/index.js';
 
 /** Version of the supported direct-action catalogue contract. */
-export const DIRECT_ACTION_CATALOG_VERSION = 1 as const;
+export const DIRECT_ACTION_CATALOG_VERSION = 2 as const;
 
 export type DirectActionId =
   | 'explore'
@@ -22,9 +26,9 @@ export type DirectActionId =
   | 'explore-enforcement'
   | 'propose-enforcement'
   | 'apply'
-  | 'deliver-local'
+  | 'ready-to-review'
   | 'review'
-  | 'open-draft-pr'
+  | 'pr-feedback'
   | 'archive';
 
 export type DirectActionSkillId =
@@ -36,7 +40,7 @@ export type DirectActionSkillId =
   | 'specbase-review-panel'
   | 'specbase-archive-change';
 
-export type DirectActionCapabilityId = 'specbase.local-delivery' | 'specbase.draft-pr-delivery';
+export type DirectActionCapabilityId = 'specbase.ready-to-review' | 'specbase.pr-feedback';
 export type DirectActionDispatchKind = 'skill' | 'capability';
 export type DirectActionAvailability = 'available' | 'blocked';
 export type DirectActionTargetPosition = 'idea' | 'active' | 'archived';
@@ -65,7 +69,7 @@ export interface SkillDispatchContext {
   kind: 'skill';
   skillId: DirectActionSkillId;
   arguments:
-    | { workItemId: string; storeId?: string }
+    | { workItemId: string; storeId?: string; pullRequest?: PullRequestObservation }
     | { workItemId: string; fromIdea: true; storeId?: string }
     | { changeId: string; storeId?: string };
 }
@@ -73,7 +77,7 @@ export interface SkillDispatchContext {
 export interface CapabilityDispatchContext {
   kind: 'capability';
   capabilityId: DirectActionCapabilityId;
-  arguments: { changeId: string; storeId?: string };
+  arguments: { changeId: string; storeId?: string; pullRequest?: PullRequestObservation };
 }
 
 export type DirectActionDispatchContext = SkillDispatchContext | CapabilityDispatchContext;
@@ -123,8 +127,8 @@ export interface RecordDirectActionResultOptions {
 }
 
 export type DirectActionResultRecording =
-  | { accepted: true; snapshot: LifecycleSnapshot; draftPullRequest: DraftPullRequest; diagnostics: [] }
-  | { accepted: false; snapshot: null; draftPullRequest: null; diagnostics: DirectActionDiagnostic[] };
+  | { accepted: true; snapshot: LifecycleSnapshot; pullRequest: PullRequestObservation; diagnostics: [] }
+  | { accepted: false; snapshot: null; pullRequest: null; diagnostics: DirectActionDiagnostic[] };
 
 interface ChangeFacts {
   snapshot: LifecycleSnapshot;
@@ -155,9 +159,9 @@ const REGISTRY: readonly RegistryEntry[] = [
   { actionId: 'explore-enforcement', label: 'Explore enforcement', kind: 'skill', skillId: 'specbase-explore-enforce' },
   { actionId: 'propose-enforcement', label: 'Propose enforcement', kind: 'skill', skillId: 'specbase-propose-enforce' },
   { actionId: 'apply', label: 'Apply conversationally', kind: 'skill', skillId: 'specbase-apply-change' },
-  { actionId: 'deliver-local', label: 'Deliver to green local commits', kind: 'capability', capabilityId: 'specbase.local-delivery' },
+  { actionId: 'ready-to-review', label: 'Deliver to human review', kind: 'capability', capabilityId: 'specbase.ready-to-review' },
   { actionId: 'review', label: 'Review change', kind: 'skill', skillId: 'specbase-review-panel' },
-  { actionId: 'open-draft-pr', label: 'Review and open draft PR', kind: 'capability', capabilityId: 'specbase.draft-pr-delivery' },
+  { actionId: 'pr-feedback', label: 'Address pull-request feedback', kind: 'capability', capabilityId: 'specbase.pr-feedback' },
   { actionId: 'archive', label: 'Archive change', kind: 'skill', skillId: 'specbase-archive-change' },
 ];
 
@@ -321,14 +325,26 @@ async function resolveFacts(
   };
 }
 
-function dispatch(entry: RegistryEntry, target: DirectActionTarget): DirectActionDispatchContext {
+function dispatch(
+  entry: RegistryEntry,
+  target: DirectActionTarget,
+  pullRequest?: PullRequestObservation
+): DirectActionDispatchContext {
   const store = target.storeId ? { storeId: target.storeId } : {};
   if (entry.kind === 'capability') return {
     kind: 'capability',
     capabilityId: entry.capabilityId,
-    arguments: { changeId: target.workItemId, ...store },
+    arguments: {
+      changeId: target.workItemId,
+      ...store,
+      ...(entry.actionId === 'pr-feedback' && pullRequest ? { pullRequest } : {}),
+    },
   };
-  if (entry.actionId === 'explore') return { kind: 'skill', skillId: entry.skillId, arguments: { workItemId: target.workItemId, ...store } };
+  if (entry.actionId === 'explore') return {
+    kind: 'skill',
+    skillId: entry.skillId,
+    arguments: { workItemId: target.workItemId, ...store, ...(pullRequest ? { pullRequest } : {}) },
+  };
   if (entry.actionId === 'propose-feature') return { kind: 'skill', skillId: entry.skillId, arguments: { workItemId: target.workItemId, fromIdea: true, ...store } };
   return { kind: 'skill', skillId: entry.skillId, arguments: { changeId: target.workItemId, ...store } };
 }
@@ -342,7 +358,10 @@ function targetMismatch(entry: RegistryEntry, target: DirectActionTarget): Direc
 }
 
 function policy(entry: RegistryEntry, facts: TargetFacts): DirectActionDescriptor {
-  const route = dispatch(entry, facts.target);
+  const pullRequest = facts.kind === 'change' && facts.change.snapshot.lifecycle === 'reviewing'
+    ? facts.change.snapshot.pullRequest
+    : undefined;
+  const route = dispatch(entry, facts.target, pullRequest);
   if (facts.kind === 'idea') {
     return entry.actionId === 'explore' || entry.actionId === 'propose-feature'
       ? available(entry, route)
@@ -387,34 +406,40 @@ function policy(entry: RegistryEntry, facts: TargetFacts): DirectActionDescripto
     ));
     return blocked(entry, route, blocker('direct_action_apply_gate', 'Apply requirements are not currently ready.', 'Complete the required planning artifacts before applying the change.'));
   }
-  if (entry.actionId === 'deliver-local') {
+  if (entry.actionId === 'ready-to-review') {
     if (!governed) return blocked(entry, route, blocker(
       'direct_action_governed_required',
-      'Autonomous local delivery requires a governed Specbase change.',
+      'Ready-to-review delivery requires a governed Specbase change.',
       'Use conversational Apply for this schema, or migrate the change to a governed schema.'
     ));
     if (!featureComplete || !enforcementComplete) return blocked(entry, route, blocker(
       'direct_action_delivery_planning',
-      'Autonomous local delivery requires complete feature and enforcement planning.',
-      'Complete the governed proposal, specifications, design, enforcement, and tasks before local delivery.'
+      'Ready-to-review delivery requires complete feature and enforcement planning.',
+      'Complete the governed proposal, specifications, design, and enforcement artifacts before delivery.'
     ));
-    if (snapshot.lifecycle === 'ready-to-apply') return available(entry, route);
-    if (snapshot.lifecycle === 'implementing' && snapshot.tasks.complete < snapshot.tasks.total) return available(entry, route);
-    return blocked(entry, route, blocker(
-      'direct_action_delivery_gate',
-      'The change is not ready for autonomous local delivery.',
-      snapshot.tasks.total > 0 && snapshot.tasks.complete === snapshot.tasks.total
-        ? 'Run the review-to-draft-PR action when deterministic validation is ready.'
-        : 'Complete the governed planning artifacts before local delivery.'
-    ));
+    return snapshot.lifecycle === 'ready-to-apply' || snapshot.lifecycle === 'implementing'
+      ? available(entry, route)
+      : blocked(entry, route, blocker(
+        'direct_action_delivery_gate',
+        'The change is not eligible for ready-to-review delivery.',
+        'Refresh the change and select an action for its current lifecycle.'
+      ));
   }
-  if (entry.actionId === 'review' || entry.actionId === 'open-draft-pr') {
-    const remote = entry.actionId === 'open-draft-pr';
-    if (snapshot.tasks.total === 0 || snapshot.tasks.complete < snapshot.tasks.total) return blocked(entry, route, blocker('direct_action_tasks_incomplete', 'Implementation tasks are incomplete.', `Complete every tracked implementation task before ${remote ? 'draft-PR delivery' : 'review'}.`));
-    if (!strictValid) return blocked(entry, route, blocker('direct_action_strict_validation', 'Strict change validation is not currently passing.', `Repair the change and run strict validation before ${remote ? 'draft-PR delivery' : 'review'}.`));
+  if (entry.actionId === 'review') {
+    if (snapshot.tasks.total === 0 || snapshot.tasks.complete < snapshot.tasks.total) return blocked(entry, route, blocker('direct_action_tasks_incomplete', 'Implementation tasks are incomplete.', 'Complete every tracked implementation task before review.'));
+    if (!strictValid) return blocked(entry, route, blocker('direct_action_strict_validation', 'Strict change validation is not currently passing.', 'Repair the change and run strict validation before review.'));
     return snapshot.lifecycle === 'implementing'
       ? available(entry, route)
-      : blocked(entry, route, blocker('direct_action_review_complete', 'This change already has a review footprint.', 'Address review findings or select the archive action when eligible.'));
+      : blocked(entry, route, blocker('direct_action_review_complete', 'This change is already in the human-review lifecycle.', 'Address pull-request feedback or archive when eligible.'));
+  }
+  if (entry.actionId === 'pr-feedback') {
+    return snapshot.lifecycle === 'reviewing' && snapshot.pullRequest?.state === 'ready'
+      ? available(entry, route)
+      : blocked(entry, route, blocker(
+        'direct_action_pr_feedback_gate',
+        'Pull-request feedback is available only for work ready for human review.',
+        'Record a ready pull-request observation before addressing review feedback.'
+      ));
   }
   if (stack && !stack.archiveEligible) return blocked(entry, route, blocker(
     'direct_action_stack_predecessor',
@@ -425,7 +450,7 @@ function policy(entry: RegistryEntry, facts: TargetFacts): DirectActionDescripto
   if (!strictValid) return blocked(entry, route, blocker('direct_action_strict_validation', 'Strict change validation is not currently passing.', 'Repair the change and run strict validation before archiving.'));
   return snapshot.lifecycle === 'reviewing'
     ? available(entry, route)
-    : blocked(entry, route, blocker('direct_action_review_required', 'A review footprint is required before archive.', 'Run the review action and address its findings before archiving.'));
+    : blocked(entry, route, blocker('direct_action_review_required', 'A pull request ready for human review is required before archive.', 'Record a ready pull-request observation before archiving.'));
 }
 
 function catalogFromFacts(facts: TargetFacts): DirectActionCatalog {
@@ -527,9 +552,9 @@ export async function validateDirectActionIntent(
 }
 
 /**
- * Record the confirmed terminal result of the autonomous draft-PR capability.
- * The boundary accepts only the exact canonical action identity and a
- * schema-valid GitHub draft descriptor; it performs no remote operation.
+ * Record a schema-valid pull-request observation from the closed
+ * ready-to-review capability. This boundary writes metadata only; it never
+ * invokes a remote adapter, Git, shell, comment, merge, or branch operation.
  */
 export async function recordDirectActionResult(
   intentValue: unknown,
@@ -537,136 +562,198 @@ export async function recordDirectActionResult(
   options: RecordDirectActionResultOptions = {}
 ): Promise<DirectActionResultRecording> {
   const parsed = parseIntent(intentValue);
-  if ('rejection' in parsed) {
-    return { accepted: false, snapshot: null, draftPullRequest: null, diagnostics: parsed.rejection.diagnostics };
-  }
+  if ('rejection' in parsed) return { accepted: false, snapshot: null, pullRequest: null, diagnostics: parsed.rejection.diagnostics };
   const intent = parsed.intent;
-  if (
-    intent.version !== DIRECT_ACTION_CATALOG_VERSION ||
-    intent.actionId !== 'open-draft-pr' ||
-    intent.dispatchKind !== 'capability'
-  ) {
+  if (intent.version !== DIRECT_ACTION_CATALOG_VERSION || intent.actionId !== 'ready-to-review' || intent.dispatchKind !== 'capability') {
     return {
       accepted: false,
       snapshot: null,
-      draftPullRequest: null,
+      pullRequest: null,
       diagnostics: [diagnostic(
-        'direct_action_result_kind',
-        intent.storeId,
-        intent.workItemId,
-        'Only the canonical open-draft-pr capability may record a draft pull request.',
-        'Use the exact current draft-PR action intent.',
-        intent.actionId
+        'direct_action_result_kind', intent.storeId, intent.workItemId,
+        'Only the canonical ready-to-review capability may record a pull-request observation.',
+        'Use the exact current ready-to-review action intent.', intent.actionId
       )],
     };
   }
 
-  const parsedResult = DraftPullRequestSchema.safeParse(resultValue);
+  const parsedResult = PullRequestObservationSchema.safeParse(resultValue);
   if (!parsedResult.success) {
     return {
       accepted: false,
       snapshot: null,
-      draftPullRequest: null,
+      pullRequest: null,
       diagnostics: [diagnostic(
-        'direct_action_result_malformed',
-        intent.storeId,
-        intent.workItemId,
-        'The draft pull-request result is malformed.',
-        'Provide exact number, URL, repository, base, head, headSha, and runId fields.',
-        intent.actionId
+        'direct_action_result_malformed', intent.storeId, intent.workItemId,
+        'The pull-request observation is malformed.',
+        'Provide exact number, URL, repository, base, head, headSha, runId, and draft or ready state fields.', intent.actionId
+      )],
+    };
+  }
+  const pullRequest = parsedResult.data;
+
+  const root = await resolveRoot({ ...options, workItemId: intent.workItemId, ...(intent.storeId ? { storeId: intent.storeId } : {}) });
+  const initial = resolveLifecycleSnapshot({ root: root.root, id: intent.workItemId });
+  if (!initial.context || !initial.snapshot || initial.snapshot.position !== 'active') {
+    return {
+      accepted: false,
+      snapshot: null,
+      pullRequest: null,
+      diagnostics: [diagnostic(
+        'direct_action_result_target_unresolved', intent.storeId, intent.workItemId,
+        'The active change could not be resolved for result recording.', 'Restore the active change and retry recording.', intent.actionId
       )],
     };
   }
 
-  const catalog = await getDirectActions({
-    ...options,
-    workItemId: intent.workItemId,
-    ...(intent.storeId ? { storeId: intent.storeId } : {}),
-  });
-  if (!catalog.target || catalog.target.storeId !== intent.storeId || catalog.target.workItemId !== intent.workItemId) {
+  const lockPath = path.join(initial.context.changeDir, '.openspec.action-result.lock');
+  let lock: Awaited<ReturnType<typeof acquireFileLock>>;
+  try {
+    lock = await acquireFileLock({
+      lockPath,
+      errorFor: (kind) => new Error(kind === 'timeout' ? 'result recording is busy' : 'result lock could not be created'),
+    });
+  } catch {
     return {
       accepted: false,
       snapshot: null,
-      draftPullRequest: null,
-      diagnostics: catalog.diagnostics.length > 0
-        ? catalog.diagnostics
-        : [diagnostic('direct_action_identity_mismatch', intent.storeId, intent.workItemId, 'Result identity no longer matches the canonical target.', 'Refresh canonical state before recording the result.', intent.actionId)],
-    };
-  }
-  const descriptor = catalog.actions.find((entry) => entry.actionId === 'open-draft-pr');
-  const dispatch = descriptor?.dispatch;
-  if (
-    dispatch?.kind !== 'capability' ||
-    dispatch.capabilityId !== 'specbase.draft-pr-delivery' ||
-    dispatch.arguments.changeId !== intent.workItemId ||
-    (intent.storeId === null ? 'storeId' in dispatch.arguments : dispatch.arguments.storeId !== intent.storeId)
-  ) {
-    return {
-      accepted: false,
-      snapshot: null,
-      draftPullRequest: null,
-      diagnostics: [diagnostic('direct_action_result_route_mismatch', intent.storeId, intent.workItemId, 'Canonical draft-PR route no longer matches this result.', 'Refresh and resolve the identity conflict before recording.', intent.actionId)],
-    };
-  }
-
-  const root = await resolveRoot({
-    ...options,
-    workItemId: intent.workItemId,
-    ...(intent.storeId ? { storeId: intent.storeId } : {}),
-  });
-  const resolved = resolveLifecycleSnapshot({ root: root.root, id: intent.workItemId });
-  if (!resolved.context || !resolved.snapshot || resolved.snapshot.position !== 'active') {
-    return {
-      accepted: false,
-      snapshot: null,
-      draftPullRequest: null,
-      diagnostics: [diagnostic('direct_action_result_target_unresolved', intent.storeId, intent.workItemId, 'The active change could not be resolved for result recording.', 'Restore the active change and retry recording.', intent.actionId)],
-    };
-  }
-  const metadata = readChangeMetadata(resolved.context.changeDir, root.root);
-  if (!metadata) {
-    return {
-      accepted: false,
-      snapshot: null,
-      draftPullRequest: null,
-      diagnostics: [diagnostic('direct_action_result_metadata_missing', intent.storeId, intent.workItemId, 'The change metadata required for canonical recording is missing.', 'Restore .openspec.yaml and retry.', intent.actionId)],
-    };
-  }
-  if (
-    metadata.draftPullRequest &&
-    JSON.stringify(metadata.draftPullRequest) !== JSON.stringify(parsedResult.data)
-  ) {
-    return {
-      accepted: false,
-      snapshot: null,
-      draftPullRequest: null,
+      pullRequest: null,
       diagnostics: [diagnostic(
-        'direct_action_result_conflict',
-        intent.storeId,
-        intent.workItemId,
-        'A different draft pull-request result is already recorded for this change.',
-        'Resolve the conflicting canonical draft descriptor before retrying.',
-        intent.actionId
+        'direct_action_result_busy', intent.storeId, intent.workItemId,
+        'Another process is recording a result for this change.', 'Retry after the current result recording completes.', intent.actionId
       )],
     };
   }
-  writeChangeMetadata(
-    resolved.context.changeDir,
-    {
-      ...metadata,
-      lastReviewedAt: metadata.lastReviewedAt ?? new Date().toISOString(),
-      draftPullRequest: parsedResult.data,
-    },
-    root.root
-  );
-  const refreshed = resolveLifecycleSnapshot({ root: root.root, id: intent.workItemId });
-  if (!refreshed.snapshot || refreshed.snapshot.lifecycle !== 'reviewing' || !refreshed.snapshot.draftPullRequest) {
-    return {
-      accepted: false,
-      snapshot: null,
-      draftPullRequest: null,
-      diagnostics: [diagnostic('direct_action_result_observation_failed', intent.storeId, intent.workItemId, 'Canonical state did not project the recorded draft into Reviewing.', 'Inspect change metadata and refresh the board.', intent.actionId)],
-    };
+
+  try {
+    const catalog = await getDirectActions({ ...options, workItemId: intent.workItemId, ...(intent.storeId ? { storeId: intent.storeId } : {}) });
+    if (!catalog.target || catalog.target.storeId !== intent.storeId || catalog.target.workItemId !== intent.workItemId) {
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: catalog.diagnostics.length > 0 ? catalog.diagnostics : [diagnostic(
+          'direct_action_identity_mismatch', intent.storeId, intent.workItemId,
+          'Result identity no longer matches the canonical target.', 'Refresh canonical state before recording the result.', intent.actionId
+        )],
+      };
+    }
+    const descriptor = catalog.actions.find((entry) => entry.actionId === 'ready-to-review');
+    const dispatch = descriptor?.dispatch;
+    if (dispatch?.kind !== 'capability' || dispatch.capabilityId !== 'specbase.ready-to-review'
+      || dispatch.arguments.changeId !== intent.workItemId
+      || (intent.storeId === null ? 'storeId' in dispatch.arguments : dispatch.arguments.storeId !== intent.storeId)) {
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: [diagnostic(
+          'direct_action_result_route_mismatch', intent.storeId, intent.workItemId,
+          'Canonical ready-to-review route no longer matches this result.', 'Refresh and resolve the identity conflict before recording.', intent.actionId
+        )],
+      };
+    }
+
+    const resolved = resolveLifecycleSnapshot({ root: root.root, id: intent.workItemId });
+    if (!resolved.context || !resolved.snapshot || resolved.snapshot.position !== 'active') {
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: [diagnostic(
+          'direct_action_result_target_unresolved', intent.storeId, intent.workItemId,
+          'The active change could not be resolved for result recording.', 'Restore the active change and retry recording.', intent.actionId
+        )],
+      };
+    }
+    if (resolved.snapshot.tasks.total === 0 || resolved.snapshot.tasks.complete < resolved.snapshot.tasks.total) {
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: [diagnostic(
+          'direct_action_tasks_incomplete', intent.storeId, intent.workItemId,
+          'Implementation tasks are incomplete.', 'Complete every tracked implementation task before recording ready-for-review delivery.', intent.actionId
+        )],
+      };
+    }
+
+    const metadata = readChangeMetadata(resolved.context.changeDir, root.root);
+    if (!metadata) {
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: [diagnostic(
+          'direct_action_result_metadata_missing', intent.storeId, intent.workItemId,
+          'The change metadata required for canonical recording is missing.', 'Restore .openspec.yaml and retry.', intent.actionId
+        )],
+      };
+    }
+    const existing = metadata.pullRequest;
+    const sameIdentity = (left: PullRequestObservation, right: PullRequestObservation): boolean =>
+      left.number === right.number && left.url === right.url && left.repository === right.repository
+      && left.base === right.base && left.head === right.head && left.headSha === right.headSha && left.runId === right.runId;
+    if (existing && !sameIdentity(existing, pullRequest)) {
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: [diagnostic(
+          'direct_action_result_conflict', intent.storeId, intent.workItemId,
+          'A different pull-request observation is already recorded for this change.', 'Resolve the conflicting canonical pull-request descriptor before retrying.', intent.actionId
+        )],
+      };
+    }
+    if (existing?.state === 'ready' && pullRequest.state === 'draft') {
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: [diagnostic(
+          'direct_action_result_conflict', intent.storeId, intent.workItemId,
+          'A ready pull-request observation cannot regress to draft.', 'Submit the current ready observation or resolve the canonical conflict.', intent.actionId
+        )],
+      };
+    }
+
+    const exactReplay = existing?.state === pullRequest.state && sameIdentity(existing, pullRequest);
+    if (!exactReplay && descriptor?.availability !== 'available') {
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: descriptor?.blocker
+          ? [diagnostic(descriptor.blocker.code, intent.storeId, intent.workItemId, descriptor.blocker.message, descriptor.blocker.remediation, intent.actionId)]
+          : [diagnostic('direct_action_result_stale', intent.storeId, intent.workItemId, 'The ready-to-review action is no longer available.', 'Refresh canonical state before recording the result.', intent.actionId)],
+      };
+    }
+
+    let wrote = false;
+    if (!exactReplay) {
+      await writeChangeMetadataAtomically(resolved.context.changeDir, { ...metadata, pullRequest }, root.root);
+      wrote = true;
+    }
+
+    const refreshed = resolveLifecycleSnapshot({ root: root.root, id: intent.workItemId });
+    const expectedLifecycle = pullRequest.state === 'ready' ? 'reviewing' : 'implementing';
+    if (!refreshed.snapshot
+      || refreshed.snapshot.lifecycle !== expectedLifecycle
+      || !refreshed.snapshot.pullRequest
+      || JSON.stringify(refreshed.snapshot.pullRequest) !== JSON.stringify(pullRequest)) {
+      if (wrote) await writeChangeMetadataAtomically(resolved.context.changeDir, metadata, root.root);
+      return {
+        accepted: false,
+        snapshot: null,
+        pullRequest: null,
+        diagnostics: [diagnostic(
+          'direct_action_result_observation_failed', intent.storeId, intent.workItemId,
+          'Canonical state did not project the recorded pull-request observation.', 'Inspect change metadata and refresh the board.', intent.actionId
+        )],
+      };
+    }
+    return { accepted: true, snapshot: refreshed.snapshot, pullRequest, diagnostics: [] };
+  } finally {
+    await releaseFileLock(lock, lockPath);
   }
-  return { accepted: true, snapshot: refreshed.snapshot, draftPullRequest: parsedResult.data, diagnostics: [] };
 }

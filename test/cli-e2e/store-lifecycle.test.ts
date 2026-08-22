@@ -371,7 +371,7 @@ describe('standalone store lifecycle journey', () => {
       'explore', 'propose-feature', 'explore-enforcement', 'propose-enforcement', 'apply', 'ready-to-review', 'review', 'pr-feedback', 'archive',
     ]);
     expect(result.catalog.actions).toEqual(expect.arrayContaining([
-      expect.objectContaining({ actionId: 'ready-to-review', dispatch: { kind: 'capability', capabilityId: 'specbase.ready-to-review' } }),
+      expect.objectContaining({ actionId: 'ready-to-review', dispatch: expect.objectContaining({ kind: 'capability', capabilityId: 'specbase.ready-to-review' }) }),
     ]));
     expect(result.catalog.actions.slice(0, 2)).toEqual(expect.arrayContaining([
       expect.objectContaining({ actionId: 'explore', availability: 'available', blocker: null }),
@@ -425,7 +425,7 @@ describe('standalone store lifecycle journey', () => {
       lanes: {
         reviewing: [expect.objectContaining({
           id: 'board-active',
-          pullRequest: { number: 42, state: 'ready', url: 'https://github.com/acme/widget/pull/42' },
+          pullRequest: expect.objectContaining({ number: 42, state: 'ready', url: 'https://github.com/acme/widget/pull/42' }),
         })],
       },
     });
