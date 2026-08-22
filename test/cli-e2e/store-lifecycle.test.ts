@@ -104,6 +104,79 @@ async function listRelativeEntries(root: string, skipDirs: Set<string>): Promise
   return found.sort();
 }
 
+async function writeLifecycleSnapshotFixture(root: string): Promise<void> {
+  const active = path.join(root, 'specbase', 'changes', 'renamed-active');
+  const archived = path.join(root, 'specbase', 'changes', 'archive', '2025-01-02-renamed-archive');
+  const duplicateActive = path.join(root, 'specbase', 'changes', 'duplicate-active');
+  const duplicateArchived = path.join(root, 'specbase', 'changes', 'archive', '2025-01-03-duplicate-archive');
+  for (const [directory, id] of [
+    [active, 'snapshot-active'],
+    [archived, 'snapshot-archived'],
+    [duplicateActive, 'snapshot-duplicate'],
+    [duplicateArchived, 'snapshot-duplicate'],
+  ] as const) {
+    await fs.mkdir(directory, { recursive: true });
+    await fs.writeFile(path.join(directory, '.openspec.yaml'), `schema: spec-driven\nid: ${id}\n`, 'utf8');
+    await fs.writeFile(path.join(directory, 'tasks.md'), '- [x] done\n- [ ] pending\n', 'utf8');
+  }
+  await fs.writeFile(path.join(archived, '.openspec.yaml'), [
+    'schema: spec-driven',
+    'id: snapshot-archived',
+    'pullRequest:',
+    '  number: 42',
+    '  url: https://github.com/acme/widget/pull/42',
+    '  repository: acme/widget',
+    '  base: main',
+    '  head: feature/snapshot-archived',
+    `  headSha: ${'a'.repeat(40)}`,
+    '  runId: 2026-08-21_17-00-00-abcd',
+    '  state: ready',
+    '',
+  ].join('\n'), 'utf8');
+  await fs.writeFile(path.join(archived, 'tasks.md'), '- [x] done\n- [x] complete\n', 'utf8');
+}
+
+async function writeDirectActionFixture(root: string): Promise<void> {
+  const idea = path.join(root, 'specbase', 'ideas', 'catalog-idea-directory');
+  const active = path.join(root, 'specbase', 'changes', 'catalog-active-directory');
+  const archived = path.join(root, 'specbase', 'changes', 'archive', '2025-01-02-catalog-archived-directory');
+  await fs.mkdir(idea, { recursive: true });
+  await fs.mkdir(active, { recursive: true });
+  await fs.mkdir(archived, { recursive: true });
+  await fs.writeFile(path.join(idea, '.openspec.yaml'), 'id: catalog-idea\nsummary: Catalog fixture\ncreated: 2025-01-01\n', 'utf8');
+  await fs.writeFile(path.join(idea, 'notes.md'), 'A fixture.\n', 'utf8');
+  await fs.writeFile(path.join(active, '.openspec.yaml'), 'schema: spec-driven\nid: catalog-active\n', 'utf8');
+  await fs.writeFile(path.join(active, 'tasks.md'), '- [x] done\n- [ ] pending\n', 'utf8');
+  await fs.writeFile(path.join(archived, '.openspec.yaml'), 'schema: spec-driven\nid: catalog-archived\n', 'utf8');
+  await fs.writeFile(path.join(archived, 'tasks.md'), '- [x] done\n', 'utf8');
+}
+
+async function writeKanbanSnapshotFixture(root: string): Promise<void> {
+  await fs.mkdir(path.join(root, 'specbase', 'ideas', 'idea'), { recursive: true });
+  await fs.mkdir(path.join(root, 'specbase', 'changes', 'active'), { recursive: true });
+  await fs.mkdir(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived'), { recursive: true });
+  await fs.mkdir(path.join(root, 'specbase', 'specs', 'behavior', 'sample'), { recursive: true });
+  await fs.writeFile(path.join(root, 'specbase', 'ideas', 'idea', '.openspec.yaml'), 'id: idea-id\nsummary: A board idea\ncreated: 2025-01-01\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'active', '.openspec.yaml'), [
+    'schema: spec-driven',
+    'id: board-active',
+    'pullRequest:',
+    '  number: 42',
+    '  url: https://github.com/acme/widget/pull/42',
+    '  repository: acme/widget',
+    '  base: main',
+    '  head: feature/board-active',
+    `  headSha: ${'a'.repeat(40)}`,
+    '  runId: 2026-08-21_17-00-00-abcd',
+    '  state: ready',
+    '',
+  ].join('\n'), 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'active', 'tasks.md'), '- [x] done\n- [x] next\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived', '.openspec.yaml'), 'schema: spec-driven\nid: board-archived\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived', 'tasks.md'), '- [x] done\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'specs', 'behavior', 'sample', 'spec.md'), '---\nid: behavior.sample\n---\n### Requirement: Sample\n**ID:** sample\nText.\n', 'utf8');
+}
+
 async function writeCompletedChangeArtifacts(
   changeDir: string,
   capability: string
@@ -195,6 +268,170 @@ afterAll(async () => {
 });
 
 describe('standalone store lifecycle journey', () => {
+  it('installed package resolves lifecycle snapshots and matches status JSON', async () => {
+    const fixtureRoot = path.join(base, 'lifecycle-api-store');
+    const consumerRoot = path.join(base, 'lifecycle-api-consumer');
+    const packedRoot = path.join(base, 'packed');
+    await writeLifecycleSnapshotFixture(fixtureRoot);
+    await fs.mkdir(consumerRoot, { recursive: true });
+    await fs.mkdir(packedRoot, { recursive: true });
+
+    await execFileAsync('pnpm', ['run', 'build'], { cwd: path.resolve('.') });
+    await execFileAsync('pnpm', ['pack', '--pack-destination', packedRoot], { cwd: path.resolve('.') });
+    const tarball = path.join(packedRoot, (await fs.readdir(packedRoot)).find((entry) => entry.endsWith('.tgz'))!);
+    await execFileAsync('npm', ['install', '--ignore-scripts', '--no-package-lock', tarball], { cwd: consumerRoot });
+
+    async function packageResult(id: string) {
+      const script = [
+        "import { getLifecycleSnapshot, LIFECYCLE_SNAPSHOT_VERSION } from '@awarebydefault/specbase';",
+        "const result = getLifecycleSnapshot({ root: process.argv[1], id: process.argv[2] });",
+        'console.log(JSON.stringify({ version: LIFECYCLE_SNAPSHOT_VERSION, result }));',
+      ].join(' ');
+      const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '--eval', script, fixtureRoot, id], { cwd: consumerRoot });
+      return JSON.parse(stdout) as { version: number; result: { snapshot: unknown; diagnostics: unknown[] } };
+    }
+
+    const active = await packageResult('snapshot-active');
+    const archived = await packageResult('snapshot-archived');
+    const missing = await packageResult('snapshot-missing');
+    const ambiguous = await packageResult('snapshot-duplicate');
+
+    expect(active.version).toBe(2);
+    expect(JSON.parse(JSON.stringify(active.result))).toEqual(active.result);
+    expect(active.result.snapshot).toMatchObject({ id: 'snapshot-active', position: 'active', lifecycle: 'implementing' });
+    expect(archived.result.snapshot).toMatchObject({
+      id: 'snapshot-archived',
+      position: 'archived',
+      lifecycle: 'archived',
+      pullRequest: { number: 42, state: 'ready', url: 'https://github.com/acme/widget/pull/42' },
+    });
+    expect(missing.result).toMatchObject({ snapshot: null, diagnostics: [{ code: 'lifecycle_snapshot_unresolved', id: 'snapshot-missing' }] });
+    expect(ambiguous.result).toMatchObject({ snapshot: null, diagnostics: [{ code: 'lifecycle_snapshot_ambiguous', id: 'snapshot-duplicate' }] });
+
+    const status = await runCLI(['status', '--change', 'snapshot-active', '--json'], { cwd: fixtureRoot });
+    expect(status.exitCode).toBe(0);
+    const statusJson = JSON.parse(status.stdout);
+    expect(statusJson.lifecycleSnapshot).toEqual(active.result);
+
+    const archivedStatus = await runCLI(['status', '--change', 'snapshot-archived', '--json'], { cwd: fixtureRoot });
+    expect(archivedStatus.exitCode).toBe(0);
+    const archivedStatusJson = JSON.parse(archivedStatus.stdout);
+    expect(archivedStatusJson.lifecycleSnapshot).toEqual(archived.result);
+  }, JOURNEY_TIMEOUT_MS);
+
+  it('installed package exposes deterministic read-only direct actions and rejects tampered intent', async () => {
+    const fixtureRoot = path.join(base, 'direct-action-api-store');
+    const consumerRoot = path.join(base, 'direct-action-api-consumer');
+    const packedRoot = path.join(base, 'direct-action-packed');
+    await writeDirectActionFixture(fixtureRoot);
+    const before = await snapshotDirectory(fixtureRoot);
+    await fs.mkdir(consumerRoot, { recursive: true });
+    await fs.mkdir(packedRoot, { recursive: true });
+
+    await execFileAsync('pnpm', ['run', 'build'], { cwd: path.resolve('.') });
+    await execFileAsync('pnpm', ['pack', '--pack-destination', packedRoot], { cwd: path.resolve('.') });
+    const tarball = path.join(packedRoot, (await fs.readdir(packedRoot)).find((entry) => entry.endsWith('.tgz'))!);
+    await execFileAsync('npm', ['install', '--ignore-scripts', '--no-package-lock', tarball], { cwd: consumerRoot });
+
+    const script = [
+      "import { readFileSync, writeFileSync } from 'node:fs';",
+      "import { join } from 'node:path';",
+      "import { DIRECT_ACTION_CATALOG_VERSION, getDirectActions, validateDirectActionIntent } from '@awarebydefault/specbase';",
+      'const root = process.argv[1];',
+      "const catalog = await getDirectActions({ root, workItemId: 'catalog-idea' });",
+      "const active = await getDirectActions({ root, workItemId: 'catalog-active' });",
+      "const archived = await getDirectActions({ root, workItemId: 'catalog-archived' });",
+      "const accepted = await validateDirectActionIntent({ version: DIRECT_ACTION_CATALOG_VERSION, storeId: null, workItemId: 'catalog-idea', actionId: 'explore', dispatchKind: 'skill' }, { root });",
+      "const rejected = await validateDirectActionIntent({ version: DIRECT_ACTION_CATALOG_VERSION, storeId: null, workItemId: 'catalog-idea', actionId: 'explore', dispatchKind: 'skill', workflow: 'untrusted' }, { root });",
+      "const applyIntent = { version: DIRECT_ACTION_CATALOG_VERSION, storeId: null, workItemId: 'catalog-active', actionId: 'apply', dispatchKind: 'skill' };",
+      "const acceptedApply = await validateDirectActionIntent(applyIntent, { root });",
+      "const tasks = join(root, 'specbase', 'changes', 'catalog-active-directory', 'tasks.md');",
+      'const originalTasks = readFileSync(tasks, \"utf8\");',
+      "writeFileSync(tasks, originalTasks.replace('- [ ] pending', '- [x] pending'));",
+      'const staleApply = await validateDirectActionIntent(applyIntent, { root });',
+      'writeFileSync(tasks, originalTasks);',
+      "const unsupported = await validateDirectActionIntent({ ...applyIntent, version: 99 }, { root });",
+      'console.log(JSON.stringify({ actionCatalogVersion: DIRECT_ACTION_CATALOG_VERSION, catalog, active, archived, accepted, rejected, acceptedApply, staleApply, unsupported }));',
+    ].join(' ');
+    const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '--eval', script, fixtureRoot], { cwd: consumerRoot });
+    const result = JSON.parse(stdout) as {
+      actionCatalogVersion: number;
+      catalog: { actions: Array<{ actionId: string; availability: string; blocker: unknown; dispatch: unknown }> };
+      active: { actions: Array<{ actionId: string; availability: string; blocker: { code: string } | null }> };
+      archived: { target: { position: string }; actions: Array<{ availability: string; blocker: { code: string } | null }> };
+      accepted: { accepted: boolean };
+      rejected: { accepted: boolean; descriptor: unknown; diagnostics: Array<{ code: string; target: { workItemId: string }; actionId?: string }> };
+      acceptedApply: { accepted: boolean };
+      staleApply: { accepted: boolean; diagnostics: Array<{ code: string }> };
+      unsupported: { accepted: boolean; diagnostics: Array<{ code: string }> };
+    };
+
+    expect(result.actionCatalogVersion).toBe(2);
+    expect(result.catalog.actions.map((action) => action.actionId)).toEqual([
+      'explore', 'propose-feature', 'explore-enforcement', 'propose-enforcement', 'apply', 'ready-to-review', 'review', 'pr-feedback', 'archive',
+    ]);
+    expect(result.catalog.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ actionId: 'ready-to-review', dispatch: expect.objectContaining({ kind: 'capability', capabilityId: 'specbase.ready-to-review' }) }),
+    ]));
+    expect(result.catalog.actions.slice(0, 2)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ actionId: 'explore', availability: 'available', blocker: null }),
+      expect.objectContaining({ actionId: 'propose-feature', availability: 'available', blocker: null }),
+    ]));
+    expect(result.active.actions.find((action) => action.actionId === 'apply')).toMatchObject({ availability: 'available', blocker: null });
+    expect(result.active.actions.find((action) => action.actionId === 'explore-enforcement')).toMatchObject({ availability: 'blocked', blocker: { code: 'direct_action_governed_required' } });
+    expect(result.archived.target.position).toBe('archived');
+    expect(result.archived.actions.every((action) => action.availability === 'blocked' && action.blocker?.code === 'direct_action_terminal')).toBe(true);
+    expect(result.accepted.accepted).toBe(true);
+    expect(result.acceptedApply.accepted).toBe(true);
+    expect(result.staleApply).toMatchObject({ accepted: false, diagnostics: [{ code: 'direct_action_apply_complete' }] });
+    expect(result.unsupported).toMatchObject({ accepted: false, diagnostics: [{ code: 'direct_action_unsupported_version' }] });
+    expect(result.rejected).toMatchObject({
+      accepted: false,
+      descriptor: null,
+      diagnostics: [{ code: 'direct_action_intent_executable_field', target: { workItemId: 'catalog-idea' }, actionId: 'explore' }],
+    });
+    expect(await snapshotDirectory(fixtureRoot)).toEqual(before);
+  }, JOURNEY_TIMEOUT_MS);
+
+  it('installed package derives and validates the same public kanban snapshot as view JSON', async () => {
+    const fixtureRoot = path.join(base, 'kanban-api-store');
+    const consumerRoot = path.join(base, 'kanban-api-consumer');
+    const packedRoot = path.join(base, 'kanban-packed');
+    await writeKanbanSnapshotFixture(fixtureRoot);
+    await fs.mkdir(consumerRoot, { recursive: true });
+    await fs.mkdir(packedRoot, { recursive: true });
+
+    await execFileAsync('pnpm', ['run', 'build'], { cwd: path.resolve('.') });
+    await execFileAsync('pnpm', ['pack', '--pack-destination', packedRoot], { cwd: path.resolve('.') });
+    const tarball = path.join(packedRoot, (await fs.readdir(packedRoot)).find((entry) => entry.endsWith('.tgz'))!);
+    await execFileAsync('npm', ['install', '--ignore-scripts', '--no-package-lock', tarball], { cwd: consumerRoot });
+
+    const script = [
+      "import { KANBAN_BOARD_VERSION, deriveKanbanBoard, validateKanbanBoardSnapshot } from '@awarebydefault/specbase';",
+      'const board = await deriveKanbanBoard(process.argv[1]);',
+      'const validation = validateKanbanBoardSnapshot(board, KANBAN_BOARD_VERSION);',
+      'console.log(JSON.stringify({ version: KANBAN_BOARD_VERSION, board, validation }));',
+    ].join(' ');
+    const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '--eval', script, fixtureRoot], { cwd: consumerRoot });
+    const packageResult = JSON.parse(stdout) as { version: number; board: unknown; validation: { valid: boolean; snapshot: unknown } };
+    expect(packageResult.validation).toMatchObject({ valid: true, snapshot: packageResult.board });
+    expect(JSON.parse(JSON.stringify(packageResult.board))).toEqual(packageResult.board);
+
+    const cli = await runCLI(['view', '--json'], { cwd: fixtureRoot });
+    expect(cli.exitCode).toBe(0);
+    expect(JSON.parse(cli.stdout)).toEqual(packageResult.board);
+    expect(packageResult.version).toBe(4);
+    expect(packageResult.board).toMatchObject({
+      lanes: {
+        reviewing: [expect.objectContaining({
+          id: 'board-active',
+          pullRequest: expect.objectContaining({ number: 42, state: 'ready', url: 'https://github.com/acme/widget/pull/42' }),
+        })],
+      },
+    });
+    await expect(fs.access(path.join(consumerRoot, 'node_modules', '@awarebydefault', 'specbase', 'dist', 'tui'))).rejects.toThrow();
+  }, JOURNEY_TIMEOUT_MS);
+
   it('machine A: setup produces a committed, clonable repo', async () => {
     const result = await runCLI(
       ['store', 'setup', STORE_ID, '--path', storeRoot, '--json'],

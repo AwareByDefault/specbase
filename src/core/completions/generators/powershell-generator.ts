@@ -151,6 +151,25 @@ Register-ArgumentCompleter -CommandName specbase -ScriptBlock $specbaseCompleter
   ): string[] {
     const lines: string[] = [];
 
+    const dynamicFlags = cmd.flags.filter((flag) => flag.takesValue && flag.valueType);
+    if (dynamicFlags.length > 0) {
+      lines.push(`${indent}switch ($tokens[$commandCount - 2]) {`);
+      for (const flag of dynamicFlags) {
+        lines.push(`${indent}    "--${flag.name}" {`);
+        lines.push(...this.generatePositionalCompletion(flag.valueType, indent + '        '));
+        lines.push(`${indent}        return`);
+        lines.push(`${indent}    }`);
+        if (flag.short) {
+          lines.push(`${indent}    "-${flag.short}" {`);
+          lines.push(...this.generatePositionalCompletion(flag.valueType, indent + '        '));
+          lines.push(`${indent}        return`);
+          lines.push(`${indent}    }`);
+        }
+      }
+      lines.push(`${indent}}`);
+      lines.push('');
+    }
+
     // Flag completion
     if (cmd.flags.length > 0) {
       lines.push(`${indent}if ($wordToComplete -like "-*") {`);
@@ -282,6 +301,21 @@ Register-ArgumentCompleter -CommandName specbase -ScriptBlock $specbaseCompleter
         lines.push(`${indent}$items = @(Get-SpecbaseChanges) + @(Get-SpecbaseSpecs)`);
         lines.push(`${indent}$items | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {`);
         lines.push(`${indent}    [System.Management.Automation.CompletionResult]::new($_, $_, "ParameterValue", $_)`);
+        lines.push(`${indent}}`);
+        break;
+      case 'stack-id':
+        lines.push(`${indent}Get-SpecbaseStacks | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {`);
+        lines.push(`${indent}    [System.Management.Automation.CompletionResult]::new($_, $_, "ParameterValue", "Stack: $_")`);
+        lines.push(`${indent}}`);
+        break;
+      case 'idea-id':
+        lines.push(`${indent}Get-SpecbaseIdeas | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {`);
+        lines.push(`${indent}    [System.Management.Automation.CompletionResult]::new($_, $_, "ParameterValue", "Idea: $_")`);
+        lines.push(`${indent}}`);
+        break;
+      case 'work-item-id':
+        lines.push(`${indent}Get-SpecbaseWorkItems | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {`);
+        lines.push(`${indent}    [System.Management.Automation.CompletionResult]::new($_, $_, "ParameterValue", "Work item: $_")`);
         lines.push(`${indent}}`);
         break;
       case 'schema-name':

@@ -26,6 +26,7 @@ import { registerDoctorCommand } from '../commands/doctor.js';
 import { registerContextCommand } from '../commands/context.js';
 import { registerWorksetCommand } from '../commands/workset.js';
 import { registerIdeasCommand } from '../commands/ideas.js';
+import { registerStackCommand } from '../commands/stack.js';
 import {
   statusCommand,
   instructionsCommand,
@@ -253,14 +254,17 @@ program
 
 program
   .command('view')
-  .description('Display an interactive dashboard of specs and changes')
-  .action(async () => {
+  .description('Inspect ideas, changes, and archives in a viewer-only board')
+  .option('--plain', 'Force deterministic non-interactive text output')
+  .option('--json', 'Output the versioned board model as JSON')
+  .action(async (options: { plain?: boolean; json?: boolean }) => {
     try {
       const viewCommand = new ViewCommand();
-      await viewCommand.execute('.');
+      const code = await viewCommand.execute('.', options);
+      if (code !== 0) process.exitCode = code;
     } catch (error) {
       failWithError(error);
-      process.exit(1);
+      process.exitCode = 1;
     }
   });
 
@@ -353,6 +357,7 @@ registerDoctorCommand(program);
 registerContextCommand(program);
 registerWorksetCommand(program);
 registerIdeasCommand(program);
+registerStackCommand(program);
 
 // Top-level validate command
 program

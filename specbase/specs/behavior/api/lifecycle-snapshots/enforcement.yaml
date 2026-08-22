@@ -1,0 +1,21 @@
+bindings:
+  lifecycle-snapshot-api-tests:
+    type: test
+    covers:
+      - resolve-lifecycle-snapshot
+      - lifecycle-resolution-diagnostics
+    source: test/cli-e2e/store-lifecycle.test.ts
+  lifecycle-status-parity-tests:
+    type: test
+    covers: status-snapshot-parity
+    source: test/cli-e2e/store-lifecycle.test.ts
+  pr-ready-lifecycle-tests:
+    type: test
+    covers:
+      - reviewing-requires-ready-pr
+      - pull-request-observation-projection
+    source: test/commands/work-item-lifecycle.test.ts
+  pr-ready-package-parity:
+    type: test
+    covers: pull-request-observation-projection
+    source: test/cli-e2e/store-lifecycle.test.ts

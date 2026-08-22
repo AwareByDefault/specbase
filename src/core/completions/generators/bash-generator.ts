@@ -137,6 +137,18 @@ complete -F _specbase_completion specbase
   ): string[] {
     const lines: string[] = [];
 
+    const dynamicFlags = cmd.flags.filter((flag) => flag.takesValue && flag.valueType);
+    if (dynamicFlags.length > 0) {
+      lines.push(`${indent}case "$prev" in`);
+      for (const flag of dynamicFlags) {
+        lines.push(`${indent}  --${flag.name}${flag.short ? `|-${flag.short}` : ''})`);
+        lines.push(...this.generatePositionalCompletion(flag.valueType, indent + '    '));
+        lines.push(`${indent}    return 0 ;;`);
+      }
+      lines.push(`${indent}esac`);
+      lines.push('');
+    }
+
     // Check for flag completion
     if (cmd.flags.length > 0) {
       lines.push(`${indent}if [[ "$cur" == -* ]]; then`);
@@ -183,6 +195,15 @@ complete -F _specbase_completion specbase
         break;
       case 'change-or-spec-id':
         lines.push(`${indent}_specbase_complete_items`);
+        break;
+      case 'stack-id':
+        lines.push(`${indent}_specbase_complete_stacks`);
+        break;
+      case 'idea-id':
+        lines.push(`${indent}_specbase_complete_ideas`);
+        break;
+      case 'work-item-id':
+        lines.push(`${indent}_specbase_complete_work_items`);
         break;
       case 'schema-name':
         lines.push(`${indent}_specbase_complete_schemas`);

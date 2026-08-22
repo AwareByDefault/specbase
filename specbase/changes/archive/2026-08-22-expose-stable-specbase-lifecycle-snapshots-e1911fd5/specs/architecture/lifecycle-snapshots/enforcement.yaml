@@ -1,0 +1,9 @@
+bindings:
+  lifecycle-resolver-contract-tests:
+    type: test
+    covers: authoritative-lifecycle-resolver
+    source: test/commands/work-item-lifecycle.test.ts
+  lifecycle-headless-boundary-analysis:
+    type: static-analysis
+    covers: headless-lifecycle-boundary
+    source: test/core/view/architecture.test.ts

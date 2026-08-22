@@ -38,6 +38,7 @@ import {
 } from '../../core/references.js';
 import { readRegistrySnapshot } from '../../core/store/registry.js';
 import { readProjectConfig, type ProjectConfig } from '../../core/project-config.js';
+import { getChangeStackContext, resolveSelectedChangeId } from '../../core/change-stacks/context.js';
 import {
   validateChangeExists,
   validateSchemaExists,
@@ -128,8 +129,9 @@ export async function instructionsCommand(
     }
 
     // loadChangeContext will auto-detect schema from metadata if not provided
+    const selectedChangeDir = getChangeDir(planningHome, changeName);
     const context = loadChangeContext(projectRoot, changeName, options.schema, {
-      changeDir: getChangeDir(planningHome, changeName),
+      changeDir: selectedChangeDir,
       planningHome,
     });
 
@@ -160,6 +162,9 @@ export async function instructionsCommand(
     // with paired spec.md/enforcement.md, corresponding current pairs). No-op
     // under the legacy model, so legacy instruction output is unchanged.
     const instructions = await withGovernedInstructions(baseInstructions, context);
+    const stableChangeId = await resolveSelectedChangeId(selectedChangeDir, changeName);
+    const stack = await getChangeStackContext(projectRoot, stableChangeId);
+    if (stack) instructions.stack = stack;
     const isBlocked = instructions.dependencies.some((d) => !d.done);
 
     spinner?.stop();
@@ -437,6 +442,8 @@ export async function generateApplyInstructions(
     instruction = schemaInstruction?.trim() ?? 'Read context files, work through pending tasks, mark complete as you go.\nPause if you hit blockers or need clarification.';
   }
 
+  const stableChangeId = await resolveSelectedChangeId(changeDir, changeName);
+  const stack = await getChangeStackContext(projectRoot, stableChangeId);
   return {
     changeName,
     changeDir,
@@ -449,6 +456,7 @@ export async function generateApplyInstructions(
     instruction,
     ...(references !== undefined ? { references } : {}),
     ...(governedContext ? { governed: governedContext.governed } : {}),
+    ...(stack ? { stack } : {}),
   };
 }
 

@@ -1,0 +1,7 @@
+id: add-kanban-tui-viewer-for-specs-460680a4
+summary: "ADD: kanban tui viewer for specs"
+created: 2026-08-08
+members:
+  - kanban-v1-interactive-opentui-board-b4cf8bbc
+  - kanban-v2-activity-awareness-e3823ed2
+  - kanban-v3-agentic-delivery-queue-8ee64874

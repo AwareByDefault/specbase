@@ -1,0 +1,17 @@
+bindings:
+  stack-manifest-invariant-tests:
+    type: test
+    covers:
+      - linear-manifest
+      - stable-member-resolution
+    source: test/core/change-stacks/manifest.test.ts
+  stack-enumeration-exclusion-tests:
+    type: test
+    covers: stacks-outside-governed-enumeration
+    source: test/core/init.change-stacks.test.ts
+  stack-projection-invariant-tests:
+    type: test
+    covers:
+      - projection-once-in-order
+      - valid-prefix
+    source: test/core/change-stacks/projection.test.ts

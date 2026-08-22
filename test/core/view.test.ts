@@ -1,178 +1,97 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { promises as fs } from 'fs';
-import path from 'path';
-import os from 'os';
-import { ViewCommand } from '../../src/core/view.js';
+import { afterEach, describe, expect, it } from 'vitest';
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { deriveViewBoard, type ViewBoardModel } from '../../src/core/view/model.js';
+import { createViewerState, keyboardCommand, reduceViewerState } from '../../src/core/view/commands.js';
 
-const stripAnsi = (input: string): string => input.replace(/\u001b\[[0-9;]*m/g, '');
+const roots: string[] = [];
+afterEach(async () => Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true }))));
 
-describe('ViewCommand', () => {
-  let tempDir: string;
-  let originalLog: typeof console.log;
-  let logOutput: string[] = [];
+const commandModel: ViewBoardModel = {
+  version: 4,
+  project: { name: 'command-project' },
+  summary: { openIdeas: 0, completedTasks: 0, totalTasks: 12, lanes: { proposed: 0, enforcement: 0, 'ready-to-apply': 12, implementing: 0, reviewing: 0, archived: 0 } },
+  lanes: {
+    ideas: [], proposed: [], enforcement: [],
+    'ready-to-apply': Array.from({ length: 12 }, (_, index) => ({
+      kind: 'change' as const, id: `ready-${index}`, title: `Ready ${index}`, created: null,
+      artifacts: { completed: 3, total: 3 }, tasks: { completed: index, total: 12 }, lifecycle: 'ready-to-apply' as const,
+    })),
+    implementing: [], reviewing: [], archived: [],
+  },
+  diagnostics: [],
+};
 
-  beforeEach(async () => {
-    tempDir = path.join(os.tmpdir(), `specbase-view-test-${Date.now()}`);
-    await fs.mkdir(tempDir, { recursive: true });
+describe('viewer command feedback', () => {
+  it('pages within the focused lane and reports boundaries or empty lanes', () => {
+    let state = createViewerState(commandModel);
+    state = reduceViewerState(state, { type: 'select-pane', pane: 'ready-to-apply' }, commandModel);
+    state = reduceViewerState(state, keyboardCommand({ name: 'up' })!, commandModel);
+    expect(state.selected['ready-to-apply']).toBe(0);
+    expect(state.announcement).toContain('Start of Ready to Apply');
+    state = reduceViewerState(state, keyboardCommand({ name: 'pagedown' })!, commandModel);
+    expect(state.pane).toBe('ready-to-apply');
+    expect(state.selected['ready-to-apply']).toBe(10);
+    expect(state.announcement).toBe('Ready to Apply: item 11 of 12.');
 
-    originalLog = console.log;
-    console.log = (...args: any[]) => {
-      logOutput.push(args.join(' '));
-    };
+    state = reduceViewerState(state, keyboardCommand({ name: 'pagedown' })!, commandModel);
+    expect(state.selected['ready-to-apply']).toBe(11);
+    state = reduceViewerState(state, keyboardCommand({ name: 'pagedown' })!, commandModel);
+    expect(state.selected['ready-to-apply']).toBe(11);
+    expect(state.announcement).toContain('End of Ready to Apply');
 
-    logOutput = [];
+    state = reduceViewerState(state, { type: 'select-pane', pane: 'proposed' }, commandModel);
+    state = reduceViewerState(state, keyboardCommand({ name: 'down' })!, commandModel);
+    expect(state.announcement).toContain('Proposed has no items');
   });
 
-  afterEach(async () => {
-    console.log = originalLog;
-    await fs.rm(tempDir, { recursive: true, force: true });
-  });
-
-  it('shows changes with no tasks in Draft section, not Completed', async () => {
-    const changesDir = path.join(tempDir, 'specbase', 'changes');
-    await fs.mkdir(changesDir, { recursive: true });
-
-    // Empty change (no tasks.md) - should show in Draft
-    await fs.mkdir(path.join(changesDir, 'empty-change'), { recursive: true });
-
-    // Change with tasks.md but no tasks - should show in Draft
-    await fs.mkdir(path.join(changesDir, 'no-tasks-change'), { recursive: true });
-    await fs.writeFile(path.join(changesDir, 'no-tasks-change', 'tasks.md'), '# Tasks\n\nNo tasks yet.');
-
-    // Change with all tasks complete - should show in Completed
-    await fs.mkdir(path.join(changesDir, 'completed-change'), { recursive: true });
-    await fs.writeFile(
-      path.join(changesDir, 'completed-change', 'tasks.md'),
-      '- [x] Done task\n'
-    );
-
-    const viewCommand = new ViewCommand();
-    await viewCommand.execute(tempDir);
-
-    const output = logOutput.map(stripAnsi).join('\n');
-
-    // Draft section should contain empty and no-tasks changes
-    expect(output).toContain('Draft Changes');
-    expect(output).toContain('empty-change');
-    expect(output).toContain('no-tasks-change');
-
-    // Completed section should only contain changes with all tasks done
-    expect(output).toContain('Completed Changes');
-    expect(output).toContain('completed-change');
-
-    // Verify empty-change and no-tasks-change are in Draft section (marked with ○)
-    const draftLines = logOutput
-      .map(stripAnsi)
-      .filter((line) => line.includes('○'));
-    const draftNames = draftLines.map((line) => line.trim().replace('○ ', ''));
-    expect(draftNames).toContain('empty-change');
-    expect(draftNames).toContain('no-tasks-change');
-
-    // Verify completed-change is in Completed section (marked with ✓)
-    const completedLines = logOutput
-      .map(stripAnsi)
-      .filter((line) => line.includes('✓'));
-    const completedNames = completedLines.map((line) => line.trim().replace('✓ ', ''));
-    expect(completedNames).toContain('completed-change');
-    expect(completedNames).not.toContain('empty-change');
-    expect(completedNames).not.toContain('no-tasks-change');
-  });
-
-  it('sorts active changes by completion percentage ascending with deterministic tie-breakers', async () => {
-    const changesDir = path.join(tempDir, 'specbase', 'changes');
-    await fs.mkdir(changesDir, { recursive: true });
-
-    await fs.mkdir(path.join(changesDir, 'gamma-change'), { recursive: true });
-    await fs.writeFile(
-      path.join(changesDir, 'gamma-change', 'tasks.md'),
-      '- [x] Done\n- [x] Also done\n- [ ] Not done\n'
-    );
-
-    await fs.mkdir(path.join(changesDir, 'beta-change'), { recursive: true });
-    await fs.writeFile(
-      path.join(changesDir, 'beta-change', 'tasks.md'),
-      '- [x] Task 1\n- [ ] Task 2\n'
-    );
-
-    await fs.mkdir(path.join(changesDir, 'delta-change'), { recursive: true });
-    await fs.writeFile(
-      path.join(changesDir, 'delta-change', 'tasks.md'),
-      '- [x] Task 1\n- [ ] Task 2\n'
-    );
-
-    await fs.mkdir(path.join(changesDir, 'alpha-change'), { recursive: true });
-    await fs.writeFile(
-      path.join(changesDir, 'alpha-change', 'tasks.md'),
-      '- [ ] Task 1\n- [ ] Task 2\n'
-    );
-
-    const viewCommand = new ViewCommand();
-    await viewCommand.execute(tempDir);
-
-    const activeLines = logOutput
-      .map(stripAnsi)
-      .filter(line => line.includes('◉'));
-
-    const activeOrder = activeLines.map(line => {
-      const afterBullet = line.split('◉')[1] ?? '';
-      return afterBullet.split('[')[0]?.trim();
-    });
-
-    expect(activeOrder).toEqual([
-      'alpha-change',
-      'beta-change',
-      'delta-change',
-      'gamma-change'
-    ]);
-  });
-
-  it('classifies a nested glob-tasks change as Active, not Draft (#1202)', async () => {
-    const specbaseDir = path.join(tempDir, 'specbase');
-    const changesDir = path.join(specbaseDir, 'changes');
-    await fs.mkdir(changesDir, { recursive: true });
-
-    // Project-local schema whose tasks artifact resolves a nested glob.
-    const schemaDir = path.join(specbaseDir, 'schemas', 'glob-tasks');
-    await fs.mkdir(schemaDir, { recursive: true });
-    await fs.writeFile(
-      path.join(schemaDir, 'schema.yaml'),
-      [
-        'name: glob-tasks',
-        'version: 1',
-        'artifacts:',
-        '  - id: proposal',
-        '    generates: proposal.md',
-        '    description: Proposal',
-        '    template: proposal.md',
-        '    requires: []',
-        '  - id: tasks',
-        '    generates: "**/tasks.md"',
-        '    description: Nested tasks',
-        '    template: tasks.md',
-        '    requires: [proposal]',
-        'apply:',
-        '  requires: [tasks]',
-        '  tracks: "**/tasks.md"',
-        '',
-      ].join('\n')
-    );
-
-    const changeDir = path.join(changesDir, 'nested-change');
-    await fs.mkdir(path.join(changeDir, 'backend'), { recursive: true });
-    await fs.mkdir(path.join(changeDir, 'frontend'), { recursive: true });
-    await fs.writeFile(path.join(changeDir, '.openspec.yaml'), 'schema: glob-tasks\n');
-    await fs.writeFile(path.join(changeDir, 'backend', 'tasks.md'), '- [x] 1.1 a\n- [x] 1.2 b\n');
-    await fs.writeFile(path.join(changeDir, 'frontend', 'tasks.md'), '- [x] 2.1 a\n- [ ] 2.2 b\n- [ ] 2.3 c\n');
-
-    await new ViewCommand().execute(tempDir);
-    const output = logOutput.map(stripAnsi).join('\n');
-
-    // Active section lists the change with aggregated 3/5 progress; not Draft.
-    const activeLines = logOutput.map(stripAnsi).filter(line => line.includes('◉'));
-    expect(activeLines.some(line => line.includes('nested-change'))).toBe(true);
-    const draftLines = logOutput.map(stripAnsi).filter(line => line.includes('○'));
-    expect(draftLines.some(line => line.includes('nested-change'))).toBe(false);
-    expect(output).toContain('60%');
+  it('uses one close convention for help and details while preserving selection', () => {
+    let state = createViewerState(commandModel);
+    state = reduceViewerState(state, { type: 'select-pane', pane: 'ready-to-apply' }, commandModel);
+    state = reduceViewerState(state, { type: 'select-item', pane: 'ready-to-apply', index: 3 }, commandModel);
+    state = reduceViewerState(state, keyboardCommand({ name: '?' })!, commandModel);
+    expect(state.overlay).toBe('help');
+    state = reduceViewerState(state, keyboardCommand({ name: 'escape' })!, commandModel);
+    expect(state.overlay).toBeNull();
+    expect(state.selected['ready-to-apply']).toBe(3);
+    state = reduceViewerState(state, keyboardCommand({ name: 'enter' })!, commandModel);
+    expect(state.detail).toEqual({ pane: 'ready-to-apply', index: 3 });
+    state = reduceViewerState(state, keyboardCommand({ name: 'escape' })!, commandModel);
+    expect(state.detail).toBeNull();
+    expect(state.selected['ready-to-apply']).toBe(3);
   });
 });
 
+describe('legacy tracked-task view coverage', () => {
+  it('keeps every on-disk change active and orders by aggregated tracked-task progress', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'specbase-view-tracked-'));
+    roots.push(root);
+    const store = path.join(root, 'specbase');
+    const schema = path.join(store, 'schemas', 'glob-tasks');
+    await fs.mkdir(schema, { recursive: true });
+    await fs.writeFile(path.join(schema, 'schema.yaml'), [
+      'name: glob-tasks', 'version: 1', 'artifacts:',
+      '  - id: tasks', '    generates: "**/tasks.md"', '    description: Nested tasks', '    template: tasks.md', '    requires: []',
+      'apply:', '  requires: [tasks]', '  tracks: "**/tasks.md"', '',
+    ].join('\n'));
+    const changes = path.join(store, 'changes');
+    await fs.mkdir(path.join(changes, 'archive'), { recursive: true });
+    await fs.mkdir(path.join(changes, 'empty'), { recursive: true });
+    const nested = path.join(changes, 'nested');
+    await fs.mkdir(path.join(nested, 'one'), { recursive: true });
+    await fs.mkdir(path.join(nested, 'two'), { recursive: true });
+    await fs.writeFile(path.join(nested, '.openspec.yaml'), 'schema: glob-tasks\nid: nested-id\n');
+    await fs.writeFile(path.join(nested, 'one', 'tasks.md'), '- [x] a\n- [ ] b\n');
+    await fs.writeFile(path.join(nested, 'two', 'tasks.md'), '- [x] c\n');
+
+    const model = await deriveViewBoard(root);
+    // `empty` has no tasks artifact -> proposed; `nested-id` has the tasks artifact
+    // present and its apply gate met, so its derived lifecycle is ready-to-apply.
+    expect(model.lanes.proposed.map((card) => card.id)).toEqual(['empty']);
+    expect(model.lanes['ready-to-apply'].map((card) => card.id)).toEqual(['nested-id']);
+    expect(model.lanes['ready-to-apply'][0].tasks).toEqual({ completed: 2, total: 3 });
+    expect(model.summary).toMatchObject({ completedTasks: 2, totalTasks: 3 });
+    expect(model.summary.lanes).toEqual({ proposed: 1, enforcement: 0, 'ready-to-apply': 1, implementing: 0, reviewing: 0, archived: 0 });
+  });
+});

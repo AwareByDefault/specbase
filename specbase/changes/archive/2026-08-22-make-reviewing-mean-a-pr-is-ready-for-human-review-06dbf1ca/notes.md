@@ -1,0 +1,1 @@
+Observable outcome: panel audit alone does not move a card; canonical PR-ready recording moves it to Reviewing and exposes review-feedback, Explore, and human-controlled Archive actions. Depends on kanban v4.

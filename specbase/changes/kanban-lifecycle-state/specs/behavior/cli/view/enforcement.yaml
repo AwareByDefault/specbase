@@ -1,0 +1,15 @@
+bindings:
+  lifecycle-lane-placement:
+    type: test
+    covers:
+      - dashboard-sections
+      - change-classification
+    source: test/core/view/lifecycle-model.test.ts
+  lifecycle-summary-lane-counts:
+    type: test
+    covers: summary-metrics
+    source: test/core/view/lifecycle-model.test.ts
+  lifecycle-lane-ordering:
+    type: test
+    covers: change-ordering
+    source: test/core/view/lifecycle-model.test.ts

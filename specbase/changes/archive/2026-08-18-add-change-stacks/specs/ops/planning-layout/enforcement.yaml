@@ -1,0 +1,5 @@
+bindings:
+  stack-layout-tests:
+    type: test
+    covers: specbase-is-planning-root
+    source: test/core/init.change-stacks.test.ts

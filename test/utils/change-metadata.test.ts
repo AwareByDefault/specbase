@@ -54,6 +54,26 @@ describe('ChangeMetadataSchema', () => {
         });
       }
     });
+
+    it('should accept exact draft and ready pull-request observations', () => {
+      for (const state of ['draft', 'ready'] as const) {
+        const result = ChangeMetadataSchema.safeParse({
+          schema: 'spec-driven',
+          pullRequest: {
+            number: 42,
+            url: 'https://github.com/acme/widget/pull/42',
+            repository: 'acme/widget',
+            base: 'main',
+            head: 'feature/change',
+            headSha: 'a'.repeat(40),
+            runId: 'run-42',
+            state,
+          },
+        });
+        expect(result.success).toBe(true);
+        if (result.success) expect(result.data.pullRequest?.state).toBe(state);
+      }
+    });
   });
 
   describe('invalid metadata', () => {
@@ -101,6 +121,20 @@ describe('ChangeMetadataSchema', () => {
       expect(result.success).toBe(false);
     });
 
+    it('should reject malformed or ambiguous pull-request observations', () => {
+      const observation = {
+        number: 42,
+        url: 'https://github.com/acme/widget/pull/42',
+        repository: 'acme/widget',
+        base: 'main',
+        head: 'feature/change',
+        headSha: 'a'.repeat(40),
+        runId: 'run-42',
+      };
+      expect(ChangeMetadataSchema.safeParse({ schema: 'spec-driven', pullRequest: { ...observation, state: 'merged' } }).success).toBe(false);
+      expect(ChangeMetadataSchema.safeParse({ schema: 'spec-driven', pullRequest: { ...observation, state: 'ready' }, draftPullRequest: observation }).success).toBe(false);
+    });
+
     it('should reject unsafe initiative link identifiers', () => {
       for (const initiative of [
         { store: '/tmp/platform', id: 'billing-launch' },
@@ -146,6 +180,26 @@ describe('writeChangeMetadata', () => {
     expect(content).toContain('created: 2025-01-05');
   });
 
+  it('should write only canonical pullRequest metadata', async () => {
+    writeChangeMetadata(changeDir, {
+      schema: 'spec-driven',
+      pullRequest: {
+        number: 42,
+        url: 'https://github.com/acme/widget/pull/42',
+        repository: 'acme/widget',
+        base: 'main',
+        head: 'feature/change',
+        headSha: 'a'.repeat(40),
+        runId: 'run-42',
+        state: 'ready',
+      },
+    });
+    const content = await fs.readFile(path.join(changeDir, '.openspec.yaml'), 'utf8');
+    expect(content).toContain('pullRequest:');
+    expect(content).toContain('state: ready');
+    expect(content).not.toContain('draftPullRequest:');
+  });
+
   it('should throw error for unknown schema', () => {
     expect(() =>
       writeChangeMetadata(changeDir, {
@@ -188,6 +242,25 @@ describe('readChangeMetadata', () => {
       schema: 'spec-driven',
       created: '2025-01-05',
     });
+  });
+
+  it('should normalize legacy draftPullRequest metadata without rewriting the file', async () => {
+    const metaPath = path.join(changeDir, '.openspec.yaml');
+    const legacy = [
+      'schema: spec-driven',
+      'draftPullRequest:',
+      '  number: 42',
+      '  url: https://github.com/acme/widget/pull/42',
+      '  repository: acme/widget',
+      '  base: main',
+      '  head: feature/change',
+      `  headSha: ${'a'.repeat(40)}`,
+      '  runId: run-42',
+      '',
+    ].join('\n');
+    await fs.writeFile(metaPath, legacy, 'utf8');
+    expect(readChangeMetadata(changeDir)?.pullRequest).toMatchObject({ number: 42, state: 'draft' });
+    expect(await fs.readFile(metaPath, 'utf8')).toBe(legacy);
   });
 
   it('should read portable initiative metadata', async () => {

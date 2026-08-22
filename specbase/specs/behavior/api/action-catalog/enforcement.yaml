@@ -1,0 +1,28 @@
+bindings:
+  direct-action-policy-tests:
+    type: test
+    covers:
+      - list-direct-actions
+      - validate-direct-action-intent
+      - record-draft-pr-result
+    source: test/commands/work-item-lifecycle.test.ts
+  direct-action-package-journey:
+    type: test
+    covers:
+      - list-direct-actions
+      - validate-direct-action-intent
+      - action-catalog-diagnostics
+    source: test/cli-e2e/store-lifecycle.test.ts
+  human-review-action-tests:
+    type: test
+    covers:
+      - record-draft-pr-result
+      - ready-to-review-capability
+      - reviewing-action-set
+    source: test/commands/work-item-lifecycle.test.ts
+  human-review-package-journey:
+    type: test
+    covers:
+      - ready-to-review-capability
+      - reviewing-action-set
+    source: test/cli-e2e/store-lifecycle.test.ts

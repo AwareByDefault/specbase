@@ -6,22 +6,19 @@
 
 import ora from 'ora';
 import chalk from 'chalk';
-import { getChangeDir } from '../../core/planning-home.js';
 import {
   resolveRootForCommand,
-  toPlanningHome,
   toRootOutput,
   withStoreFlag,
   isStoreSelectedRoot,
 } from '../../core/root-selection.js';
 import {
-  loadChangeContext,
-  formatChangeStatus,
   withGovernedStatus,
   type ChangeStatus,
 } from '../../core/artifact-graph/index.js';
+import { getChangeStackContext } from '../../core/change-stacks/context.js';
+import { resolveLifecycleSnapshot } from '../../core/lifecycle-snapshot.js';
 import {
-  validateChangeExists,
   validateSchemaExists,
   getAvailableChanges,
   getStatusIndicator,
@@ -55,7 +52,6 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
   const spinner = options.json ? undefined : ora('Loading change status...').start();
 
   try {
-    const planningHome = toPlanningHome(root);
     const projectRoot = root.path;
     const rootOutput = toRootOutput(root);
     const newChangeHint = withStoreFlag(root, 'specbase new change <name>');
@@ -86,35 +82,41 @@ export async function statusCommand(options: StatusOptions): Promise<void> {
       );
     }
 
-    const changeName = await validateChangeExists(
-      options.change,
-      projectRoot,
-      root.changesDir,
-      { newChangeHint }
-    );
-
-    // Validate schema if explicitly provided
+    // Validate schema if explicitly provided before resolving the selected item.
     if (options.schema) {
       validateSchemaExists(options.schema, projectRoot);
     }
 
-    // loadChangeContext will auto-detect schema from metadata if not provided
-    const context = loadChangeContext(projectRoot, changeName, options.schema, {
-      changeDir: getChangeDir(planningHome, changeName),
-      planningHome,
+    const resolution = resolveLifecycleSnapshot({
+      root: projectRoot,
+      id: options.change,
+      allowDirectoryFallback: true,
+      ...(options.schema ? { schema: options.schema } : {}),
+      ...(isStoreSelectedRoot(root) ? { storeId: root.storeId } : {}),
     });
-    const baseStatus = formatChangeStatus(
-      context,
-      isStoreSelectedRoot(root) ? { storeId: root.storeId } : {}
-    );
-    // Governed-only: attach spec model + pair context. No-op (returns the base
-    // object) under the legacy model, keeping legacy output unchanged.
-    const status = await withGovernedStatus(baseStatus, context);
+    if (!resolution.snapshot || !resolution.context || !resolution.status) {
+      const diagnostic = resolution.diagnostics[0];
+      throw new Error(`${diagnostic.message} ${diagnostic.remediation}`);
+    }
+
+    // The shared resolver owns lifecycle/progress truth. Status only projects
+    // that result into its established outer envelope.
+    const status = await withGovernedStatus(resolution.status, resolution.context);
+    const stack = await getChangeStackContext(projectRoot, resolution.snapshot.id);
+    if (stack) status.stack = stack;
 
     spinner?.stop();
 
     if (options.json) {
-      console.log(JSON.stringify({ ...status, root: rootOutput }, null, 2));
+      console.log(JSON.stringify({
+        ...status,
+        lifecycleSnapshot: {
+          version: resolution.version,
+          snapshot: resolution.snapshot,
+          diagnostics: resolution.diagnostics,
+        },
+        root: rootOutput,
+      }, null, 2));
       return;
     }
 

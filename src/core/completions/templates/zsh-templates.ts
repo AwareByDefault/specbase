@@ -35,6 +35,30 @@ _specbase_complete_items() {
   _describe "item" items
 }
 
+_specbase_complete_stacks() {
+  local -a stacks
+  while IFS=$'\\t' read -r id desc; do
+    stacks+=("$id:$desc")
+  done < <(specbase __complete stacks 2>/dev/null)
+  _describe "stack" stacks
+}
+
+_specbase_complete_ideas() {
+  local -a ideas
+  while IFS=$'\\t' read -r id desc; do
+    ideas+=("$id:$desc")
+  done < <(specbase __complete ideas 2>/dev/null)
+  _describe "idea" ideas
+}
+
+_specbase_complete_work_items() {
+  local -a items
+  while IFS=$'\\t' read -r id desc; do
+    items+=("$id:$desc")
+  done < <(specbase __complete work-items 2>/dev/null)
+  _describe "work item" items
+}
+
 # Use specbase __complete to get available schemas
 _specbase_complete_schemas() {
   local -a schemas

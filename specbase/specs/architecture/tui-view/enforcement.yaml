@@ -1,0 +1,17 @@
+bindings:
+  view-boundary-tests:
+    type: test
+    covers:
+      - pure-board-model
+      - projection-state-boundary
+      - shared-input-commands
+      - renderer-lifecycle-boundary
+    source: test/core/view/architecture.test.ts
+  view-terminal-pty-integration:
+    type: test
+    covers: renderer-lifecycle-boundary
+    source: test/tui/view-terminal.integration.test.ts
+  kanban-lifecycle-composition-tests:
+    type: test
+    covers: pure-board-model
+    source: test/core/view/model.test.ts

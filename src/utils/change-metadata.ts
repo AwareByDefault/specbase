@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import * as yaml from 'yaml';
 import { ChangeMetadataSchema, type ChangeMetadata } from '../core/change-metadata/index.js';
 import { listSchemas } from '../core/artifact-graph/resolver.js';
+import { writeFileAtomically } from '../core/file-state.js';
 import { readProjectConfig } from '../core/project-config.js';
 
 export const METADATA_FILENAME = '.openspec.yaml';
@@ -42,44 +43,47 @@ export function validateSchemaName(
   return schemaName;
 }
 
-/**
- * Writes change metadata to .openspec.yaml in the change directory.
- *
- * @param changeDir - The path to the change directory
- * @param metadata - The metadata to write
- * @param projectRoot - Optional project root for project-local schema resolution
- * @throws ChangeMetadataError if validation fails or write fails
- */
+function serializeChangeMetadata(
+  changeDir: string,
+  metadata: ChangeMetadata,
+  projectRoot?: string
+): { metaPath: string; content: string } {
+  const metaPath = path.join(changeDir, METADATA_FILENAME);
+  validateSchemaName(metadata.schema, projectRoot);
+  const parseResult = ChangeMetadataSchema.safeParse(metadata);
+  if (!parseResult.success) {
+    throw new ChangeMetadataError(`Invalid metadata: ${parseResult.error.message}`, metaPath);
+  }
+  return { metaPath, content: yaml.stringify(parseResult.data) };
+}
+
+/** Write validated canonical metadata synchronously. */
 export function writeChangeMetadata(
   changeDir: string,
   metadata: ChangeMetadata,
   projectRoot?: string
 ): void {
-  const metaPath = path.join(changeDir, METADATA_FILENAME);
-
-  // Validate schema exists
-  validateSchemaName(metadata.schema, projectRoot);
-
-  // Validate with Zod
-  const parseResult = ChangeMetadataSchema.safeParse(metadata);
-  if (!parseResult.success) {
-    throw new ChangeMetadataError(
-      `Invalid metadata: ${parseResult.error.message}`,
-      metaPath
-    );
-  }
-
-  // Write YAML file
-  const content = yaml.stringify(parseResult.data);
+  const { metaPath, content } = serializeChangeMetadata(changeDir, metadata, projectRoot);
   try {
     fs.writeFileSync(metaPath, content, 'utf-8');
   } catch (err) {
     const ioError = err instanceof Error ? err : new Error(String(err));
-    throw new ChangeMetadataError(
-      `Failed to write metadata: ${ioError.message}`,
-      metaPath,
-      ioError
-    );
+    throw new ChangeMetadataError(`Failed to write metadata: ${ioError.message}`, metaPath, ioError);
+  }
+}
+
+/** Write validated canonical metadata by temp-file rename. */
+export async function writeChangeMetadataAtomically(
+  changeDir: string,
+  metadata: ChangeMetadata,
+  projectRoot?: string
+): Promise<void> {
+  const { metaPath, content } = serializeChangeMetadata(changeDir, metadata, projectRoot);
+  try {
+    await writeFileAtomically(metaPath, content);
+  } catch (err) {
+    const ioError = err instanceof Error ? err : new Error(String(err));
+    throw new ChangeMetadataError(`Failed to write metadata: ${ioError.message}`, metaPath, ioError);
   }
 }
 

@@ -1,5 +1,9 @@
 # Workflows
 
+## Change stacks
+
+Use `/spcb:stack <idea-id>` when a large idea needs several independently observable review boundaries. The workflow challenges horizontal setup/layer/UI phases and creates ordinary child work items as vertical slices, each with a newly true outcome and explicit deferrals. It then uses `specbase stack create`, `show`, and `validate`; stack members remain ordinary changes rather than tasks or retired initiatives.
+
 This guide covers common workflow patterns for Specbase and when to use each one. For basic setup, see [Getting Started](getting-started.md). For command reference, see [Commands](commands.md).
 
 ## Philosophy: Actions, Not Phases

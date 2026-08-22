@@ -1,0 +1,1 @@
+Observable outcome: installed clients and CLI consumers receive a versioned seven-lane work-item board with typed stack membership and no accepted-specification pane. Defers PR-ready Reviewing actions to the next member.

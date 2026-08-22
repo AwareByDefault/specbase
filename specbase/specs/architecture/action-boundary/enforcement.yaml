@@ -1,0 +1,13 @@
+bindings:
+  authoritative-action-policy-tests:
+    type: test
+    covers: authoritative-action-policy
+    source: test/commands/work-item-lifecycle.test.ts
+  validated-dispatch-boundary-tests:
+    type: test
+    covers: validation-execution-boundary
+    source: test/commands/work-item-lifecycle.test.ts
+  remote-review-boundary-tests:
+    type: test
+    covers: remote-review-result-boundary
+    source: test/commands/work-item-lifecycle.test.ts

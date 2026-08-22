@@ -20,6 +20,7 @@ import type { PlanningHome } from '../planning-home.js';
 import type { ChangeMetadata } from '../change-metadata/index.js';
 import type { Artifact, CompletedSet, SpecModel } from './types.js';
 import type { GovernedWorkflowContext } from './governed-context.js';
+import type { ChangeStackContext } from '../change-stacks/context.js';
 import {
   deriveLifecycleState,
   gatherLifecycleInput,
@@ -116,6 +117,7 @@ export interface ArtifactInstructions {
    * current pairs). Governed-only additive field; omitted for legacy schemas.
    */
   governed?: GovernedWorkflowContext;
+  stack?: ChangeStackContext;
 }
 
 /**
@@ -182,9 +184,10 @@ export interface ChangeStatus {
    * current pairs). Governed-only additive field; omitted for legacy schemas.
    */
   governed?: GovernedWorkflowContext;
+  stack?: ChangeStackContext;
   /**
    * Derived lifecycle position (proposed/enforcement/ready-to-apply/implementing/reviewing/archived),
-   * computed on read from artifacts, tasks, review footprint, and archive location.
+   * computed on read from artifacts, tasks, pull-request readiness, and archive location.
    * Never read from a stored state field. Additive; the legacy per-artifact view is unchanged.
    */
   lifecycle?: LifecycleState;

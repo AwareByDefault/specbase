@@ -1,0 +1,25 @@
+bindings:
+  delivery-queue-cli-tests:
+    type: test
+    covers:
+      - explicit-queue-item
+      - queue-json-contracts
+      - api-derived-readiness
+    source: test/commands/delivery-queue.test.ts
+  delivery-queue-state-tests:
+    type: test
+    covers:
+      - api-derived-readiness
+      - durable-queue-lifecycle
+      - cancellation-and-recovery
+    source: test/core/delivery-queue/state.test.ts
+  delivery-queue-concurrency-tests:
+    type: test
+    covers: lease-and-idempotency
+    source: test/core/delivery-queue/concurrency.test.ts
+  delivery-queue-approval-tests:
+    type: test
+    covers:
+      - cancellation-and-recovery
+      - explicit-consequential-approval
+    source: test/core/delivery-queue/approval.test.ts

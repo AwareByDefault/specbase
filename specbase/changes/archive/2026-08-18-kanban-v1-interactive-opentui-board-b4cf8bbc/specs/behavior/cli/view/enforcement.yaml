@@ -1,0 +1,30 @@
+remove:
+  - view-classification-tests
+  - dashboard-rendering-review
+bindings:
+  view-board-model-tests:
+    type: test
+    covers:
+      - dashboard-sections
+      - summary-metrics
+      - change-classification
+      - change-ordering
+      - specs-display
+    source: test/core/view/model.test.ts
+  view-cli-mode-tests:
+    type: test
+    covers:
+      - interactive-viewer-launch
+      - plain-and-json-projections
+    source: test/commands/view.test.ts
+  view-headless-input-tests:
+    type: test
+    covers:
+      - viewer-input-parity
+      - viewer-detail-navigation
+      - viewer-terminal-lifecycle
+    source: test/tui/view-board.test.ts
+  view-terminal-pty-integration:
+    type: test
+    covers: viewer-terminal-lifecycle
+    source: test/tui/view-terminal.integration.test.ts

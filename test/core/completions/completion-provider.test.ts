@@ -169,6 +169,49 @@ describe('CompletionProvider', () => {
     });
   });
 
+  describe('getIdeaIds', () => {
+    it('returns only open idea identities', async () => {
+      const idea = path.join(testDir, 'specbase', 'ideas', 'planned-id');
+      const active = path.join(testDir, 'specbase', 'changes', 'active-id');
+      await fs.mkdir(idea, { recursive: true });
+      await fs.writeFile(path.join(idea, '.openspec.yaml'), 'id: planned-id\nsummary: Planned\ncreated: 2026-01-01\n');
+      await fs.mkdir(active, { recursive: true });
+      await fs.writeFile(path.join(active, '.openspec.yaml'), 'schema: spec-driven\nid: active-id\n');
+      expect(await provider.getIdeaIds()).toEqual(['planned-id']);
+    });
+  });
+
+  describe('getWorkItemIds', () => {
+    it('uses immutable archived metadata IDs instead of dated directory names', async () => {
+      const ideasDir = path.join(testDir, 'specbase', 'ideas', 'planned-id');
+      const activeDir = path.join(testDir, 'specbase', 'changes', 'renamed-active-directory');
+      const archiveDir = path.join(testDir, 'specbase', 'changes', 'archive', '2026-01-02-directory-name');
+      await fs.mkdir(ideasDir, { recursive: true });
+      await fs.writeFile(path.join(ideasDir, '.openspec.yaml'), 'id: planned-id\nsummary: Planned\ncreated: 2026-01-01\n');
+      await fs.mkdir(activeDir, { recursive: true });
+      await fs.writeFile(path.join(activeDir, '.openspec.yaml'), 'schema: spec-driven\nid: immutable-active-id\n');
+      await fs.writeFile(path.join(activeDir, 'proposal.md'), '# Active\n');
+      await fs.mkdir(archiveDir, { recursive: true });
+      await fs.writeFile(path.join(archiveDir, '.openspec.yaml'), 'schema: spec-driven\nid: immutable-archived-id\n');
+      await fs.writeFile(path.join(archiveDir, 'proposal.md'), '# Archived\n');
+      const ids = await provider.getWorkItemIds();
+      expect(ids).toContain('planned-id');
+      expect(ids).toContain('immutable-active-id');
+      expect(ids).toContain('immutable-archived-id');
+      expect(ids).not.toContain('renamed-active-directory');
+      expect(ids).not.toContain('2026-01-02-directory-name');
+    });
+
+    it('strips the date prefix for legacy archived changes without metadata', async () => {
+      const archiveDir = path.join(testDir, 'specbase', 'changes', 'archive', '2026-01-02-legacy-id');
+      await fs.mkdir(archiveDir, { recursive: true });
+      await fs.writeFile(path.join(archiveDir, 'proposal.md'), '# Archived\n');
+      const ids = await provider.getWorkItemIds();
+      expect(ids).toContain('legacy-id');
+      expect(ids).not.toContain('2026-01-02-legacy-id');
+    });
+  });
+
   describe('getAllIds', () => {
     it('should return both change and spec IDs', async () => {
       const changesDir = path.join(testDir, 'specbase', 'changes');

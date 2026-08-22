@@ -21,6 +21,7 @@ import { deriveAge, ageLabel } from '../core/ideas/model.js';
 import { resolveRootForCommand, type ResolvedSpecbaseRoot } from '../core/root-selection.js';
 import { emitFailure, printJson } from './shared-output.js';
 import { COMMAND_REGISTRY } from '../core/completions/command-registry.js';
+import { COMMON_FLAGS } from '../core/completions/shared-flags.js';
 import { isInteractive } from '../utils/interactive.js';
 
 interface IdeasOptions {
@@ -236,6 +237,7 @@ export function registerIdeasCommand(program: Command): void {
     .description('Add an idea to the catalogue')
     .option('--title <title>', 'Idea title (one line)')
     .option('--note <note>', 'Seed note.md body')
+    .option('--store <id>', COMMON_FLAGS.store.description)
     .option('--json', 'Output as JSON')
     .action(async (_options: IdeasAddOptions, command: Command) => {
       await ideasCommand.add(command.optsWithGlobals());
@@ -246,6 +248,7 @@ export function registerIdeasCommand(program: Command): void {
     .alias('ls')
     .description('List open ideas oldest-first')
     .option('--all', 'Include all ideas (reserved; currently the same set)')
+    .option('--store <id>', COMMON_FLAGS.store.description)
     .option('--json', 'Output as JSON')
     .action(async (options: IdeasListOptions, command: Command) => {
       await ideasCommand.list(command.optsWithGlobals());
@@ -254,6 +257,7 @@ export function registerIdeasCommand(program: Command): void {
   ideas
     .command('show <id>')
     .description('Show an idea: metadata, member files, and notes')
+    .option('--store <id>', COMMON_FLAGS.store.description)
     .option('--json', 'Output as JSON')
     .action(async (id: string, options: IdeasShowOptions, command: Command) => {
       await ideasCommand.show(id, command.optsWithGlobals());
@@ -263,6 +267,7 @@ export function registerIdeasCommand(program: Command): void {
     .command('delete <id>')
     .description('Delete an open idea (an idea already proposed into a change is not deletable)')
     .option('--yes', 'Confirm deletion non-interactively')
+    .option('--store <id>', COMMON_FLAGS.store.description)
     .option('--json', 'Output as JSON')
     .action(async (id: string, options: IdeasDeleteOptions, command: Command) => {
       await ideasCommand.delete(id, command.optsWithGlobals());

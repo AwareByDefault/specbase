@@ -29,6 +29,8 @@ export default defineConfig({
     pool: 'forks',
     maxWorkers: resolveMaxWorkers(),
     include: ['test/**/*.test.ts'],
+    // Bun/OpenTUI sources run through the explicit native `test:tui` lane.
+    exclude: ['test/tui/**/*.test.ts', 'test/ops/tui-packed-runtime.test.ts'],
     coverage: {
       reporter: ['text', 'json', 'html'],
       exclude: [

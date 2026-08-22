@@ -10,9 +10,9 @@ import type { SpecModel, Plane } from '../../../src/core/artifact-graph/types.js
 
 describe('skill-generation', () => {
   describe('getSkillTemplates', () => {
-    it('should return all 13 skill templates (12 lifecycle + every-model review-panel)', () => {
+    it('should return all 14 skill templates (13 lifecycle + every-model review-panel)', () => {
       const templates = getSkillTemplates();
-      expect(templates).toHaveLength(13);
+      expect(templates).toHaveLength(14);
     });
 
     it('should have unique directory names', () => {
@@ -95,9 +95,9 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandTemplates', () => {
-    it('should return all 13 command templates (12 lifecycle + every-model review-panel)', () => {
+    it('should return all 14 command templates (13 lifecycle + every-model review-panel)', () => {
       const templates = getCommandTemplates();
-      expect(templates).toHaveLength(13);
+      expect(templates).toHaveLength(14);
     });
 
     it('should have unique IDs', () => {
@@ -152,9 +152,9 @@ describe('skill-generation', () => {
   });
 
   describe('getCommandContents', () => {
-    it('should return all 13 command contents (12 lifecycle + every-model review-panel)', () => {
+    it('should return all 14 command contents (13 lifecycle + every-model review-panel)', () => {
       const contents = getCommandContents();
-      expect(contents).toHaveLength(13);
+      expect(contents).toHaveLength(14);
     });
 
     it('should have valid content structure', () => {
