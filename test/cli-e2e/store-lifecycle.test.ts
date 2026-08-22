@@ -119,6 +119,21 @@ async function writeLifecycleSnapshotFixture(root: string): Promise<void> {
     await fs.writeFile(path.join(directory, '.openspec.yaml'), `schema: spec-driven\nid: ${id}\n`, 'utf8');
     await fs.writeFile(path.join(directory, 'tasks.md'), '- [x] done\n- [ ] pending\n', 'utf8');
   }
+  await fs.writeFile(path.join(archived, '.openspec.yaml'), [
+    'schema: spec-driven',
+    'id: snapshot-archived',
+    'pullRequest:',
+    '  number: 42',
+    '  url: https://github.com/acme/widget/pull/42',
+    '  repository: acme/widget',
+    '  base: main',
+    '  head: feature/snapshot-archived',
+    `  headSha: ${'a'.repeat(40)}`,
+    '  runId: 2026-08-21_17-00-00-abcd',
+    '  state: ready',
+    '',
+  ].join('\n'), 'utf8');
+  await fs.writeFile(path.join(archived, 'tasks.md'), '- [x] done\n- [x] complete\n', 'utf8');
 }
 
 async function writeDirectActionFixture(root: string): Promise<void> {
@@ -142,8 +157,21 @@ async function writeKanbanSnapshotFixture(root: string): Promise<void> {
   await fs.mkdir(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived'), { recursive: true });
   await fs.mkdir(path.join(root, 'specbase', 'specs', 'behavior', 'sample'), { recursive: true });
   await fs.writeFile(path.join(root, 'specbase', 'ideas', 'idea', '.openspec.yaml'), 'id: idea-id\nsummary: A board idea\ncreated: 2025-01-01\n', 'utf8');
-  await fs.writeFile(path.join(root, 'specbase', 'changes', 'active', '.openspec.yaml'), 'schema: spec-driven\nid: board-active\n', 'utf8');
-  await fs.writeFile(path.join(root, 'specbase', 'changes', 'active', 'tasks.md'), '- [x] done\n- [ ] next\n', 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'active', '.openspec.yaml'), [
+    'schema: spec-driven',
+    'id: board-active',
+    'pullRequest:',
+    '  number: 42',
+    '  url: https://github.com/acme/widget/pull/42',
+    '  repository: acme/widget',
+    '  base: main',
+    '  head: feature/board-active',
+    `  headSha: ${'a'.repeat(40)}`,
+    '  runId: 2026-08-21_17-00-00-abcd',
+    '  state: ready',
+    '',
+  ].join('\n'), 'utf8');
+  await fs.writeFile(path.join(root, 'specbase', 'changes', 'active', 'tasks.md'), '- [x] done\n- [x] next\n', 'utf8');
   await fs.writeFile(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived', '.openspec.yaml'), 'schema: spec-driven\nid: board-archived\n', 'utf8');
   await fs.writeFile(path.join(root, 'specbase', 'changes', 'archive', '2025-02-03-archived', 'tasks.md'), '- [x] done\n', 'utf8');
   await fs.writeFile(path.join(root, 'specbase', 'specs', 'behavior', 'sample', 'spec.md'), '---\nid: behavior.sample\n---\n### Requirement: Sample\n**ID:** sample\nText.\n', 'utf8');
@@ -268,10 +296,15 @@ describe('standalone store lifecycle journey', () => {
     const missing = await packageResult('snapshot-missing');
     const ambiguous = await packageResult('snapshot-duplicate');
 
-    expect(active.version).toBe(1);
+    expect(active.version).toBe(2);
     expect(JSON.parse(JSON.stringify(active.result))).toEqual(active.result);
     expect(active.result.snapshot).toMatchObject({ id: 'snapshot-active', position: 'active', lifecycle: 'implementing' });
-    expect(archived.result.snapshot).toMatchObject({ id: 'snapshot-archived', position: 'archived', lifecycle: 'archived' });
+    expect(archived.result.snapshot).toMatchObject({
+      id: 'snapshot-archived',
+      position: 'archived',
+      lifecycle: 'archived',
+      pullRequest: { number: 42, state: 'ready', url: 'https://github.com/acme/widget/pull/42' },
+    });
     expect(missing.result).toMatchObject({ snapshot: null, diagnostics: [{ code: 'lifecycle_snapshot_unresolved', id: 'snapshot-missing' }] });
     expect(ambiguous.result).toMatchObject({ snapshot: null, diagnostics: [{ code: 'lifecycle_snapshot_ambiguous', id: 'snapshot-duplicate' }] });
 
@@ -318,11 +351,12 @@ describe('standalone store lifecycle journey', () => {
       'const staleApply = await validateDirectActionIntent(applyIntent, { root });',
       'writeFileSync(tasks, originalTasks);',
       "const unsupported = await validateDirectActionIntent({ ...applyIntent, version: 99 }, { root });",
-      'console.log(JSON.stringify({ catalog, active, archived, accepted, rejected, acceptedApply, staleApply, unsupported }));',
+      'console.log(JSON.stringify({ actionCatalogVersion: DIRECT_ACTION_CATALOG_VERSION, catalog, active, archived, accepted, rejected, acceptedApply, staleApply, unsupported }));',
     ].join(' ');
     const { stdout } = await execFileAsync(process.execPath, ['--input-type=module', '--eval', script, fixtureRoot], { cwd: consumerRoot });
     const result = JSON.parse(stdout) as {
-      catalog: { actions: Array<{ actionId: string; availability: string; blocker: unknown }> };
+      actionCatalogVersion: number;
+      catalog: { actions: Array<{ actionId: string; availability: string; blocker: unknown; dispatch: unknown }> };
       active: { actions: Array<{ actionId: string; availability: string; blocker: { code: string } | null }> };
       archived: { target: { position: string }; actions: Array<{ availability: string; blocker: { code: string } | null }> };
       accepted: { accepted: boolean };
@@ -332,9 +366,13 @@ describe('standalone store lifecycle journey', () => {
       unsupported: { accepted: boolean; diagnostics: Array<{ code: string }> };
     };
 
+    expect(result.actionCatalogVersion).toBe(2);
     expect(result.catalog.actions.map((action) => action.actionId)).toEqual([
-      'explore', 'propose-feature', 'explore-enforcement', 'propose-enforcement', 'apply', 'deliver-local', 'review', 'open-draft-pr', 'archive',
+      'explore', 'propose-feature', 'explore-enforcement', 'propose-enforcement', 'apply', 'ready-to-review', 'review', 'pr-feedback', 'archive',
     ]);
+    expect(result.catalog.actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ actionId: 'ready-to-review', dispatch: { kind: 'capability', capabilityId: 'specbase.ready-to-review' } }),
+    ]));
     expect(result.catalog.actions.slice(0, 2)).toEqual(expect.arrayContaining([
       expect.objectContaining({ actionId: 'explore', availability: 'available', blocker: null }),
       expect.objectContaining({ actionId: 'propose-feature', availability: 'available', blocker: null }),
@@ -383,6 +421,14 @@ describe('standalone store lifecycle journey', () => {
     expect(cli.exitCode).toBe(0);
     expect(JSON.parse(cli.stdout)).toEqual(packageResult.board);
     expect(packageResult.version).toBe(4);
+    expect(packageResult.board).toMatchObject({
+      lanes: {
+        reviewing: [expect.objectContaining({
+          id: 'board-active',
+          pullRequest: { number: 42, state: 'ready', url: 'https://github.com/acme/widget/pull/42' },
+        })],
+      },
+    });
     await expect(fs.access(path.join(consumerRoot, 'node_modules', '@awarebydefault', 'specbase', 'dist', 'tui'))).rejects.toThrow();
   }, JOURNEY_TIMEOUT_MS);
 

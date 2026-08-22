@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect } from 'vitest';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import {
@@ -99,7 +99,7 @@ describe('deriveLifecycleState', () => {
     ).toBe('implementing');
   });
 
-  it('reviewing only when tasks are done AND the review footprint is present', () => {
+  it('completed tasks plus lastReviewedAt alone stays implementing', () => {
     expect(
       deriveLifecycleState(
         baseInput({
@@ -110,7 +110,7 @@ describe('deriveLifecycleState', () => {
           reviewFootprint: true,
         })
       )
-    ).toBe('reviewing');
+    ).toBe('implementing');
   });
 
   it('tasks complete without a review footprint stays implementing (awaiting review)', () => {
@@ -136,6 +136,7 @@ describe('lifecycle snapshot resolver contract', () => {
     const active = resolveLifecycleSnapshot({ root: activeRoot, id: 'active-id' });
     const archived = resolveLifecycleSnapshot({ root: archivedRoot, id: 'archive-id' });
 
+    expect(active.version as number).toBe(2);
     expect(active.snapshot).toMatchObject({
       id: 'active-id', position: 'active', lifecycle: 'implementing',
       tasks: { complete: 1, total: 2 },
@@ -202,8 +203,9 @@ describe('direct action catalog', () => {
       target: { storeId: null, workItemId: 'idea-id', position: 'idea' },
       diagnostics: [],
     });
+    expect(catalog.version as number).toBe(2);
     expect(catalog.actions.map((action) => action.actionId)).toEqual([
-      'explore', 'propose-feature', 'explore-enforcement', 'propose-enforcement', 'apply', 'deliver-local', 'review', 'open-draft-pr', 'archive',
+      'explore', 'propose-feature', 'explore-enforcement', 'propose-enforcement', 'apply', 'ready-to-review', 'review', 'pr-feedback', 'archive',
     ]);
     expect(catalog.actions.filter((action) => action.availability === 'blocked').every((action) =>
       action.blocker !== null && action.blocker.code.length > 0 && action.blocker.remediation.length > 0
@@ -288,16 +290,70 @@ describe('direct action catalog', () => {
     });
   });
 
-  it('records one canonical draft result and projects Reviewing with its link', async () => {
+  it('projects panel audit and legacy draft metadata without entering Reviewing, then retains ready PR state through archive', () => {
     const root = lifecycleFixture('active', 'change-directory', 'change-id');
-    writeFileSync(path.join(root, 'specbase', 'changes', 'change-directory', 'tasks.md'), '- [x] verified\n- [x] complete\n', 'utf8');
+    const changeDir = path.join(root, 'specbase', 'changes', 'change-directory');
+    writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] verified\n- [x] complete\n', 'utf8');
+    writeFileSync(path.join(changeDir, '.openspec.yaml'), [
+      'schema: spec-driven',
+      'id: change-id',
+      'lastReviewedAt: 2026-08-21T17:00:00.000Z',
+      'draftPullRequest:',
+      '  number: 42',
+      '  url: https://github.com/acme/widget/pull/42',
+      '  repository: acme/widget',
+      '  base: main',
+      '  head: feature/change-id',
+      `  headSha: ${'a'.repeat(40)}`,
+      '  runId: 2026-08-21_17-00-00-abcd',
+      '',
+    ].join('\n'), 'utf8');
+
+    const legacy = resolveLifecycleSnapshot({ root, id: 'change-id' }).snapshot as unknown as Record<string, unknown>;
+    expect(legacy).toMatchObject({
+      lifecycle: 'implementing',
+      pullRequest: { state: 'draft', number: 42 },
+    });
+
+    const ready = { ...(legacy.pullRequest as Record<string, unknown>), state: 'ready' };
+    writeFileSync(path.join(changeDir, '.openspec.yaml'), [
+      'schema: spec-driven',
+      'id: change-id',
+      'pullRequest:',
+      '  number: 42',
+      '  url: https://github.com/acme/widget/pull/42',
+      '  repository: acme/widget',
+      '  base: main',
+      '  head: feature/change-id',
+      `  headSha: ${'a'.repeat(40)}`,
+      '  runId: 2026-08-21_17-00-00-abcd',
+      '  state: ready',
+      '',
+    ].join('\n'), 'utf8');
+    const reviewing = resolveLifecycleSnapshot({ root, id: 'change-id' }).snapshot as unknown as Record<string, unknown>;
+    expect(reviewing).toMatchObject({ lifecycle: 'reviewing', pullRequest: ready });
+
+    const archivedDir = path.join(root, 'specbase', 'changes', 'archive', '2026-08-22-change-id');
+    mkdirSync(path.dirname(archivedDir), { recursive: true });
+    renameSync(changeDir, archivedDir);
+    expect(resolveLifecycleSnapshot({ root, id: 'change-id' }).snapshot).toMatchObject({
+      position: 'archived', lifecycle: 'archived', pullRequest: ready,
+    });
+  });
+
+  it('records only exact ready-to-review observations, allows immutable draft-to-ready promotion, and changes only metadata', async () => {
+    const root = lifecycleFixture('active', 'change-directory', 'change-id');
+    const changeDir = path.join(root, 'specbase', 'changes', 'change-directory');
+    const tasksPath = path.join(changeDir, 'tasks.md');
+    writeFileSync(tasksPath, '- [x] verified\n- [x] complete\n', 'utf8');
+    const tasksBefore = readFileSync(tasksPath, 'utf8');
     const intent = {
-      version: DIRECT_ACTION_CATALOG_VERSION,
+      version: 2,
       storeId: null,
       workItemId: 'change-id',
-      actionId: 'open-draft-pr' as const,
-      dispatchKind: 'capability' as const,
-    };
+      actionId: 'ready-to-review',
+      dispatchKind: 'capability',
+    } as unknown;
     const draft = {
       number: 42,
       url: 'https://github.com/acme/widget/pull/42',
@@ -306,31 +362,60 @@ describe('direct action catalog', () => {
       head: 'feature/change-id',
       headSha: 'a'.repeat(40),
       runId: '2026-08-21_17-00-00-abcd',
-    };
-    const recorded = await recordDirectActionResult(intent, draft, { root });
-    expect(recorded.diagnostics).toEqual([]);
-    expect(recorded).toMatchObject({
+      state: 'draft',
+    } as unknown;
+    const ready = { ...(draft as Record<string, unknown>), state: 'ready' };
+
+    await expect(recordDirectActionResult(intent, draft, { root })).resolves.toMatchObject({
       accepted: true,
-      snapshot: {
-        id: 'change-id',
-        lifecycle: 'reviewing',
-        draftPullRequest: draft,
-      },
-      draftPullRequest: draft,
+      snapshot: { lifecycle: 'implementing', pullRequest: draft },
     });
-    expect(resolveLifecycleSnapshot({ root, id: 'change-id' }).snapshot).toMatchObject({
-      lifecycle: 'reviewing',
-      draftPullRequest: draft,
+    await expect(recordDirectActionResult(intent, ready, { root })).resolves.toMatchObject({
+      accepted: true,
+      snapshot: { lifecycle: 'reviewing', pullRequest: ready },
     });
-    await expect(recordDirectActionResult(intent, draft, { root })).resolves.toMatchObject({ accepted: true });
-    await expect(recordDirectActionResult(intent, { ...draft, number: 43, url: 'https://github.com/acme/widget/pull/43' }, { root })).resolves.toMatchObject({
+    await expect(recordDirectActionResult(intent, ready, { root })).resolves.toMatchObject({ accepted: true });
+    await expect(recordDirectActionResult(intent, draft, { root })).resolves.toMatchObject({
       accepted: false,
       diagnostics: [{ code: 'direct_action_result_conflict' }],
     });
-    await expect(recordDirectActionResult(intent, { ...draft, headSha: 'bad' }, { root })).resolves.toMatchObject({
+    await expect(recordDirectActionResult(intent, { ...ready, number: 43, url: 'https://github.com/acme/widget/pull/43' }, { root })).resolves.toMatchObject({
       accepted: false,
-      diagnostics: [{ code: 'direct_action_result_malformed' }],
+      diagnostics: [{ code: 'direct_action_result_conflict' }],
     });
+    expect(readFileSync(tasksPath, 'utf8')).toBe(tasksBefore);
+    expect(readdirSync(changeDir).sort()).toEqual(['.openspec.yaml', 'tasks.md']);
+    expect(readFileSync(path.join(changeDir, '.openspec.yaml'), 'utf8')).toContain('pullRequest:');
+  });
+
+  it('uses ready-to-review and Reviewing policy without local/draft choreography', async () => {
+    const root = lifecycleFixture('active', 'change-directory', 'change-id');
+    const changeDir = path.join(root, 'specbase', 'changes', 'change-directory');
+    writeFileSync(path.join(changeDir, 'tasks.md'), '- [x] verified\n- [x] complete\n', 'utf8');
+    writeFileSync(path.join(changeDir, '.openspec.yaml'), [
+      'schema: spec-driven',
+      'id: change-id',
+      'pullRequest:',
+      '  number: 42',
+      '  url: https://github.com/acme/widget/pull/42',
+      '  repository: acme/widget',
+      '  base: main',
+      '  head: feature/change-id',
+      `  headSha: ${'a'.repeat(40)}`,
+      '  runId: 2026-08-21_17-00-00-abcd',
+      '  state: ready',
+      '',
+    ].join('\n'), 'utf8');
+    const catalog = await getDirectActions({ root, workItemId: 'change-id' });
+    const actions = catalog.actions as unknown as Array<Record<string, unknown>>;
+    expect(catalog).toMatchObject({ version: 2, target: { workItemId: 'change-id' } });
+    expect(actions.map((action) => action.actionId)).not.toEqual(expect.arrayContaining(['deliver-local', 'open-draft-pr']));
+    expect(actions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ actionId: 'ready-to-review', dispatch: { kind: 'capability', capabilityId: 'specbase.ready-to-review' } }),
+      expect.objectContaining({ actionId: 'pr-feedback', dispatch: { kind: 'capability', capabilityId: 'specbase.pr-feedback' } }),
+      expect.objectContaining({ actionId: 'explore', dispatch: { kind: 'skill', arguments: expect.objectContaining({ workItemId: 'change-id', pullRequest: expect.objectContaining({ number: 42 }) }) } }),
+      expect.objectContaining({ actionId: 'archive', dispatch: { kind: 'skill', skillId: 'specbase-archive-change' } }),
+    ]));
   });
 
   it('retries when the planning revision changes and returns one coherent fresh policy', async () => {
