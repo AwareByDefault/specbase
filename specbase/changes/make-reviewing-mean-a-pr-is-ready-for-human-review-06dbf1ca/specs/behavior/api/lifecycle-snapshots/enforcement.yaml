@@ -1,0 +1,11 @@
+bindings:
+  pr-ready-lifecycle-tests:
+    type: test
+    covers:
+      - reviewing-requires-ready-pr
+      - pull-request-observation-projection
+    source: test/commands/work-item-lifecycle.test.ts
+  pr-ready-package-parity:
+    type: test
+    covers: pull-request-observation-projection
+    source: test/cli-e2e/store-lifecycle.test.ts

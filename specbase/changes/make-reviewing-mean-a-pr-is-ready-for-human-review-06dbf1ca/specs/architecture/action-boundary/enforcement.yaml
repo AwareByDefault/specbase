@@ -1,0 +1,5 @@
+bindings:
+  remote-review-boundary-tests:
+    type: test
+    covers: remote-review-result-boundary
+    source: test/commands/work-item-lifecycle.test.ts
