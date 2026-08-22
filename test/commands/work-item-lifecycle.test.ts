@@ -1,4 +1,6 @@
 import { afterEach, describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
@@ -407,6 +409,12 @@ describe('direct action catalog', () => {
     expect(resolveLifecycleSnapshot({ root, id: 'change-id' }).snapshot).toMatchObject({
       position: 'archived', lifecycle: 'archived', pullRequest: ready,
     });
+  });
+
+  it('keeps the canonical action-result boundary free of remote and Git side-effect imports', async () => {
+    const source = readFileSync(path.join(process.cwd(), 'src', 'core', 'direct-actions.ts'), 'utf8');
+    const forbidden = /(?:octokit|child_process|spawnSync|createDraft|markReady|resolveThread|projectStack\b.*push|\bgit\b\s+push|\bgh\b)/iu;
+    expect(source).not.toMatch(forbidden);
   });
 
   it('records only exact ready-to-review observations, allows immutable draft-to-ready promotion, and changes only metadata', async () => {
